@@ -1,15 +1,30 @@
-# Third-party licenses / Лицензии зависимостей
+# Third-party licenses / Лицензии сторонних библиотек
 
-The source files in this repository use these runtime dependencies:
+PDF Compressor application sources are provided under the [GNU AGPL v3](LICENSE), SPDX identifier **AGPL-3.0-only**.
 
-| Package | Purpose | License (upstream) |
+The application depends on the following separate projects:
+
+| Dependency | Role | Upstream license and source |
 | --- | --- | --- |
-| [PyMuPDF](https://pymupdf.io/licensing) | PDF parsing, optimization, and manipulation | GNU AGPL v3 or Artifex commercial license |
-| [PySide6](https://doc.qt.io/qtforpython-6/) | Qt user interface | LGPL/GPL or commercial license |
-| [Pillow](https://python-pillow.github.io/) | Image processing | HPND license |
+| [PyMuPDF](https://pymupdf.io/licensing) | PDF parsing, optimization and editing | AGPLv3 **or** Artifex commercial licensing |
+| [PySide6 / Qt](https://pypi.org/project/PySide6/) | Desktop GUI | LGPLv3, GPLv2/GPLv3, or commercial; individual Qt modules may differ |
+| [Pillow](https://github.com/python-pillow/Pillow/blob/main/LICENSE) | Image processing | HPND-like historical permission license |
+| Python runtime / packages bundled by PyInstaller | Execution of Windows EXE | Their respective upstream notices and licensing terms |
 
-**Before making this repository public or distributing a bundled executable, decide the project license and check compatibility with PyMuPDF's AGPL obligations.** The AGPL option generally expects sharing the corresponding application source when distributing an application built using it. A proprietary distribution generally requires a commercial PyMuPDF license. Check the official license texts and seek legal advice if needed.
+## Redistributing the Windows EXE
 
-**Перед публикацией или распространением EXE выберите лицензию самого проекта и учитывайте AGPL-обязательства PyMuPDF.** При распространении в рамках открытой AGPL-модели необходимо соблюдать требования к доступности соответствующего исходного кода; для закрытого продукта может потребоваться коммерческая лицензия PyMuPDF.
+- The project is open source under AGPL-3.0-only, but **third-party libraries retain their own licenses**.
+- If you distribute a bundled EXE, comply with PyMuPDF's AGPL obligations, including applicable source-code and copyright/producer-notice requirements. A commercial license is an alternative.
+- For LGPL-licensed Qt components, review notices, license texts, user rights to replace or modify the LGPL components, and any corresponding relinking/reverse-engineering requirements relevant to your packaging method. A PyInstaller **one-file** bundle may need additional compliance work.
+- Check the exact versions and licenses of dependencies **actually packaged** in each EXE, preserve attribution and distribute any required license texts and source/offer information.
+- The currently published v2.6.0 EXE was produced locally before this license documentation update. Its binary content is **unchanged** by this repository cleanup. This update alone does **not** certify its binary redistribution compliance.
 
-This repository does not redistribute the external Python packages; they are installed separately by pip. When packaging with PyInstaller, include applicable third-party notices and license files in distributions where required.
+Official references: [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html), [PyMuPDF licensing](https://pymupdf.io/licensing), [Qt licensing](https://doc.qt.io/qt-6/licensing.html).
+
+## По-русски
+
+Исходный код приложения распространяется по **AGPL-3.0-only**. Сторонние библиотеки сохраняют собственные лицензии.
+
+При публичном распространении готового EXE необходимо проверить соответствие условиям AGPL для PyMuPDF, условиям LGPL/GPL для PySide6/Qt и включить обязательные уведомления. Особенно важно проверить особенности упаковки Qt-библиотек в **один EXE** через PyInstaller. Публикация исходников сама по себе не гарантирует выполнения всех условий.
+
+Для юридически значимого распространения рекомендуется отдельная проверка лицензий и состава собранного бинарника.

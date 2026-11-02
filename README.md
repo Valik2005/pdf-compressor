@@ -1,87 +1,68 @@
 # PDF Compressor 2.6
 
-[Русская версия README](README_RU.md)
+**Offline PDF compression and page tools for Windows 10/11 (64-bit).**  
+**Open source · English / Русский · No account or cloud uploads**
 
-**Offline PDF compressor and page toolkit for Windows**, written in Python and PySide6. The interface supports **English and Russian**, dark/light themes, and batch processing.
+[Русская документация](README_RU.md) · [All releases](https://github.com/Valik2005/pdf-compressor/releases) · [Source license](LICENSE)
 
-> All files are processed locally. The application does not upload documents to a cloud service.
+[![Download PDF Compressor 2.6 for Windows](https://img.shields.io/badge/Download%20for%20Windows-PDF%20Compressor%202.6-567CF5?style=for-the-badge&logo=windows)](https://github.com/Valik2005/pdf-compressor/releases/download/v2.6.0/PDF_Compressor_2_6.exe)
+
+**[⬇ Download PDF_Compressor_2_6.exe](https://github.com/Valik2005/pdf-compressor/releases/download/v2.6.0/PDF_Compressor_2_6.exe)** · [View release notes](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.6.0)
+
+The Windows executable is provided under **Releases → Assets**, not in the source-code folder. You do **not** need Python to run the EXE. The binary is unsigned; Windows SmartScreen may display a warning.
 
 ## Features
 
-- Compress one or multiple PDFs with four presets: target file size, highest quality, balanced, and maximum compression.
-- Try lossless optimization before recompressing embedded images.
-- Preserve selectable/vector PDF text where possible; page images may undergo lossy JPEG recompression.
-- Display processing progress, support cancellation, and summarize resulting file sizes.
-- Preview source and output pages side by side (zoom, page navigation, preview rotation).
-- Merge PDFs; split/extract selected pages; rotate document pages without recompressing page images.
-- Select output directory and filename template; remember language, theme, and settings.
-- Preserve original documents: output is written to new files.
+- Batch PDF compression with four modes: target size, highest quality, balanced, and maximum compression
+- Lossless optimization first; optional JPEG recompression of embedded images
+- Progress indicator, cancellation, resulting size and savings
+- Side-by-side original/output page comparison, navigation, zoom, and preview rotation
+- Merge PDF documents; split or extract pages; rotate document pages
+- Drag and drop, saved settings, light and dark themes
+- Russian and English interface
+- Local processing; original PDF files are not overwritten
 
-**Important:** A requested size such as 1 MB is a goal, **not a guarantee**. PDFs already optimized or containing complex content may not reach the goal without reducing image quality/resolution. Modifying a PDF may invalidate digital signatures; the program includes safeguards for signed documents.
+**Quality note:** A target size such as 1 MB is a goal, not a guarantee. Some PDFs cannot be reduced that far without lowering image quality or resolution. Operations affecting a digitally signed PDF may invalidate the signature.
 
-## Download the Windows EXE (no Python required)
+## Install
 
-After the first Windows build has completed, go to **Actions → Windows EXE and Release → latest successful run → Artifacts** and download `PDF_Compressor_2_6-Windows-x64`. Extract the ZIP to get **`PDF_Compressor_2_6.exe`**.
+1. [Download the Windows EXE](https://github.com/Valik2005/pdf-compressor/releases/download/v2.6.0/PDF_Compressor_2_6.exe).
+2. Run `PDF_Compressor_2_6.exe` on Windows 10/11 x64.
+3. Select English or Русский and start processing documents.
 
-To distribute the EXE through **Releases**, run **Actions → Windows EXE and Release → Run workflow**, specify `v2.6.0`, and inspect the **draft Release**. Once third-party license obligations have been reviewed, the draft can be published so users can download the EXE directly from **Releases → Assets**. The workflow builds the EXE on Windows; it is not checked in as source code.
+No installation wizard or Python runtime is required. Processing takes place on your own PC.
 
-[Русская инструкция по EXE и публикации](EXE_RELEASE_GUIDE_RU.md)
+## Source code
 
-## Windows installation
+| File | Purpose |
+| --- | --- |
+| `app.pyw` | PySide6 desktop GUI and translations |
+| `pdf_engine.py` | PDF compression and document operations |
+| `requirements.txt` | Python runtime dependencies |
+| `app_icon.ico` | Application icon |
+| `tests/` | PDF engine and translation tests |
+| [`BUILDING.md`](BUILDING.md) | Build from source and create your own EXE |
 
-Requires Python **3.11 or newer**; Python 3.14 is supported by the pinned dependency ranges.
+To run from source (Python 3.11+):
 
-1. Download the repository as a ZIP (Code → Download ZIP) and extract it.
-2. Run **`Установить_и_запустить.bat`** to install dependencies and start the app.
-3. Alternatively, in PowerShell or CMD run:
-
-   ```bat
-   python -m pip install -r requirements.txt
-   python app.pyw
-   ```
-
-4. Choose language (**Русский / English**) from the top toolbar. Your preference persists after restart.
-
-For later GUI launches without a console, double-click `app.pyw` (with `.pyw` associated with Python).
-
-## Build a standalone Windows EXE
-
-Double-click **`Собрать_EXE.bat`**, or use PyInstaller manually. The batch script installs its dependencies and creates:
-
-```text
-dist\PDF_Compressor_2_6.exe
+```powershell
+python -m pip install -r requirements.txt
+python app.pyw
 ```
 
-Build on Windows to produce a Windows EXE. The executable is not included in the source repository; GitHub Actions builds it and can attach it to a release.
+To run tests:
 
-## Run tests
-
-```bat
+```powershell
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Tests cover PDF manipulation and translation dictionary integrity. GUI appearance is platform- and DPI-dependent and should be checked manually on Windows.
+## Open-source license and dependencies
 
-## Repository layout
+The **application source code** is distributed under the [GNU Affero General Public License, version 3 (AGPL-3.0-only)](LICENSE). Contributions and redistributions must follow its terms.
 
-```text
-app.pyw                   Desktop application and bilingual UI
-pdf_engine.py             PDF optimization and page operations
-app_icon.ico              Windows application icon
-requirements.txt          Runtime dependencies
-tests/                    Engine and localization tests
-Установить_и_запустить.bat  Windows installer / launcher
-Собрать_EXE.bat           Windows EXE build script
-README_RU.md              Русская инструкция
-Publish_to_GitHub.bat     Guided GitHub publisher
-.github/workflows/windows-exe.yml  Automatic Windows EXE build and draft release
-```
+This project uses **PyMuPDF** (AGPLv3 or commercial) and **PySide6 / Qt** (LGPL/GPL or commercial), along with Pillow. These components retain their own copyrights and license terms. Read [Third-party licenses and redistribution notes](DEPENDENCIES_AND_LICENSING.md) before redistributing a bundled EXE. Source availability alone does not necessarily satisfy all third-party binary distribution requirements.
 
-## Licensing note
+The app is not affiliated with Artifex, PyMuPDF, or Qt.
 
-**PyMuPDF uses AGPL-3.0 or a commercial license**, so distributing an application built on its open-source version has corresponding obligations. PySide6 uses LGPL/GPL/commercial licensing options. Review these obligations before releasing redistributed binaries or declaring the application proprietary. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md). The repository does not include third-party library source code.
-
-## Disclaimer
-
-Use backups of important documents. Compression with JPEG is lossy for images, even if the page resolution is preserved. This project is not affiliated with PyMuPDF, Artifex or Qt.
+**Security note:** The executable is unsigned and was locally built for the v2.6.0 release. Only run files you trust. Its SHA-256 appears in [release notes](RELEASE_NOTES.md).
