@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Windows & PyInstaller
+build/
+dist/
+*.spec
+*.exe
+*.msi
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Generated files and personal documents
+*_compressed.pdf
+*_сжатый.pdf
+*.log
+output/
+results/
+
+# Prevent accidentally uploading personal PDF inputs and recordings
+*.pdf
+*.zip
+*.mp4
+*.mov
+*.jpg
+*.jpeg

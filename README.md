@@ -19,6 +19,14 @@
 
 **Important:** A requested size such as 1 MB is a goal, **not a guarantee**. PDFs already optimized or containing complex content may not reach the goal without reducing image quality/resolution. Modifying a PDF may invalidate digital signatures; the program includes safeguards for signed documents.
 
+## Download the Windows EXE (no Python required)
+
+After the first Windows build has completed, go to **Actions → Windows EXE and Release → latest successful run → Artifacts** and download `PDF_Compressor_2_6-Windows-x64`. Extract the ZIP to get **`PDF_Compressor_2_6.exe`**.
+
+To distribute the EXE through **Releases**, run **Actions → Windows EXE and Release → Run workflow**, specify `v2.6.0`, and inspect the **draft Release**. Once third-party license obligations have been reviewed, the draft can be published so users can download the EXE directly from **Releases → Assets**. The workflow builds the EXE on Windows; it is not checked in as source code.
+
+[Русская инструкция по EXE и публикации](EXE_RELEASE_GUIDE_RU.md)
+
 ## Windows installation
 
 Requires Python **3.11 or newer**; Python 3.14 is supported by the pinned dependency ranges.
@@ -44,7 +52,7 @@ Double-click **`Собрать_EXE.bat`**, or use PyInstaller manually. The batc
 dist\PDF_Compressor_2_6.exe
 ```
 
-Build on Windows to produce a Windows EXE. The executable is not included in the source repository.
+Build on Windows to produce a Windows EXE. The executable is not included in the source repository; GitHub Actions builds it and can attach it to a release.
 
 ## Run tests
 
@@ -67,6 +75,7 @@ tests/                    Engine and localization tests
 Собрать_EXE.bat           Windows EXE build script
 README_RU.md              Русская инструкция
 Publish_to_GitHub.bat     Guided GitHub publisher
+.github/workflows/windows-exe.yml  Automatic Windows EXE build and draft release
 ```
 
 ## Licensing note
