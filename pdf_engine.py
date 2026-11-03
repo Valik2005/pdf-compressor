@@ -92,6 +92,7 @@ def parse_pages(expression: str, page_count: int) -> list[int]:
     if text in ("", "all", "все", "всё", "*"):
         return list(range(page_count))
     result: list[int] = []
+    seen: set[int] = set()
     for part in re.split(r"[,;]", text):
         part = part.strip()
         m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
@@ -108,7 +109,8 @@ def parse_pages(expression: str, page_count: int) -> list[int]:
             if not 1 <= page_num <= page_count:
                 raise ValueError(f"Страница {page_num} вне диапазона 1–{page_count}")
             index = page_num - 1
-            if index not in result:
+            if index not in seen:
+                seen.add(index)
                 result.append(index)
     if not result:
         raise ValueError("Не выбраны страницы")
@@ -273,7 +275,8 @@ def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xre
     factor = min(1.0, max(req_w / w, req_h / h))
     if factor > 0.95:
         return None
-    return max(1, round(w * factor)), max(1, round(h * factor))
+    # Rounding to nearest can drop a pixel below the requested DPI.
+    return max(1, math.ceil(w * factor)), max(1, math.ceil(h * factor))
 
 
 def _useful_dpi_stages(source: Path, dpi_stages: list[int],
@@ -540,8 +543,15 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                 if not target_mode:
                     break
         check_cancel(cancel)
-        shutil.copyfile(best_path, output)
-    # Validate the newly written file and its page count after the source is closed.
+        # Copy while temporary candidates still exist. Remove a partial output
+        # if copying fails or cancellation arrives during the final copy.
+        try:
+            shutil.copyfile(best_path, output)
+            check_cancel(cancel)
+        except Exception:
+            output.unlink(missing_ok=True)
+            raise
+    # Validate the output after temporary candidates are closed.
     try:
         original_info = file_info(source)
         result_info = file_info(output)
