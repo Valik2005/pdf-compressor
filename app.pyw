@@ -881,12 +881,18 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(tools_page, "Инструменты PDF")
         tools_outer = QHBoxLayout(tools_page)
         tools_outer.setContentsMargins(4, 0, 4, 0)
+        # Keep the result banner accessible at the minimum window size.
+        tools_scroll = QScrollArea()
+        tools_scroll.setObjectName("ToolsScroll")
+        tools_scroll.setWidgetResizable(True)
+        tools_scroll.setFrameShape(QFrame.NoFrame)
+        tools_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        tools_scroll.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        tools_outer.addWidget(tools_scroll, 1)
         tools_shell = QWidget()
         tools_shell.setObjectName("ToolsShell")
         tools_shell.setMaximumWidth(1040)
-        tools_outer.addStretch(1)
-        tools_outer.addWidget(tools_shell, 20)
-        tools_outer.addStretch(1)
+        tools_scroll.setWidget(tools_shell)
         tools_layout = QVBoxLayout(tools_shell)
         tools_layout.setContentsMargins(24, 24, 24, 22)
         tools_layout.setSpacing(14)
@@ -1211,8 +1217,9 @@ class MainWindow(QMainWindow):
             QMainWindow, QWidget#Central, QWidget#TabBody, QWidget#LeftPanel,
             QWidget#RightPanel, QWidget#ToolsPage {{background:{bg};}}
             QWidget#ToolsShell, QWidget#LeftContent {{background:transparent;}}
-            QScrollArea#LeftScroll {{background:transparent;border:0;}}
-            QScrollArea#LeftScroll > QWidget > QWidget {{background:transparent;}}
+            QScrollArea#LeftScroll, QScrollArea#ToolsScroll {{background:transparent;border:0;}}
+            QScrollArea#LeftScroll > QWidget > QWidget,
+            QScrollArea#ToolsScroll > QWidget > QWidget {{background:transparent;}}
             QLabel {{background:transparent;}}
             QTabWidget::pane {{border:1px solid {border};border-radius:11px;background:{bg};}}
             QTabBar::tab {{background:transparent;color:{muted};padding:10px 20px;margin-right:5px;
