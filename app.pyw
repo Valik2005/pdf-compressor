@@ -120,6 +120,13 @@ I18N_EN = {
     "все или 1-3,6": "all or 1-3,6",
     "Угол:": "Angle:",
     "Повернуть PDF": "Rotate PDF",
+    "Открыть папку": "Open folder",
+    "PDF успешно объединены": "PDFs merged successfully",
+    "Страницы успешно извлечены": "Pages extracted successfully",
+    "PDF успешно повёрнут": "PDF rotated successfully",
+    "Создан файл:": "File created:",
+    "Папка:": "Folder:",
+    "Не найдена папка результата.": "Output folder not found.",
     "Без интернета · Без загрузки в облако · Исходные файлы не изменяются": "Works offline · No cloud uploads · Original files are unchanged",
     "Укажите корректный размер PDF, например 1 или 0,5 МБ": "Enter a valid PDF size, such as 1 or 0.5 MB",
     "Добавить PDF": "Add PDF",
@@ -488,6 +495,11 @@ class MainWindow(QMainWindow):
         self.thread: QThread | None = None
         self.worker: JobWorker | None = None
         self.busy = False
+        self._active_action: str | None = None
+        self._tool_focus_button: QPushButton | None = None
+        self._tool_outputs: list[str] = []
+        self._tool_errors: list[str] = []
+        self._tool_feedback_state: dict | None = None
         self.selected_source: str | None = None
         self.preview_cache: dict[tuple[str, int], QPixmap] = {}
         self.preview_rotation = 0
@@ -864,6 +876,7 @@ class MainWindow(QMainWindow):
         rl.addWidget(result_card)
 
         tools_page = QWidget()
+        self.tools_page = tools_page
         tools_page.setObjectName("ToolsPage")
         self.tabs.addTab(tools_page, "Инструменты PDF")
         tools_outer = QHBoxLayout(tools_page)
@@ -954,6 +967,31 @@ class MainWindow(QMainWindow):
         rg.addWidget(self.rotate_btn)
         rg_outer.addLayout(rg)
         tools_layout.addWidget(rotate_group)
+
+        # Show results inline without opening Explorer or a modal dialog.
+        self.tool_result_card = RoundedCard()
+        self.tool_result_card.setObjectName("ToolCard")
+        feedback_row = QHBoxLayout(self.tool_result_card)
+        feedback_row.setContentsMargins(18, 14, 18, 14)
+        feedback_row.setSpacing(12)
+        feedback_text = QVBoxLayout()
+        feedback_text.setSpacing(5)
+        self.tool_result_title = QLabel("")
+        self.tool_result_title.setObjectName("ToolCardTitle")
+        feedback_text.addWidget(self.tool_result_title)
+        self.tool_result_detail = QLabel("")
+        self.tool_result_detail.setObjectName("Muted")
+        self.tool_result_detail.setTextFormat(Qt.PlainText)
+        self.tool_result_detail.setWordWrap(True)
+        self.tool_result_detail.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        feedback_text.addWidget(self.tool_result_detail)
+        feedback_row.addLayout(feedback_text, 1)
+        self.open_tool_folder_btn = QPushButton("Открыть папку")
+        self.open_tool_folder_btn.setObjectName("Secondary")
+        self.open_tool_folder_btn.clicked.connect(self.open_tool_result_folder)
+        feedback_row.addWidget(self.open_tool_folder_btn)
+        tools_layout.addWidget(self.tool_result_card)
+        self.tool_result_card.hide()
         tools_layout.addStretch()
         footer = QLabel("Без интернета · Без загрузки в облако · Исходные файлы не изменяются")
         footer.setObjectName("Muted")
@@ -990,7 +1028,7 @@ class MainWindow(QMainWindow):
         """Capture original UI labels once; widgets aren't reconstructed on switch."""
         dynamic = {self.count, self.status, self.document_name, self.result_metric,
                    self.compare_status, self.page_total, self.theme_btn, self.start_btn,
-                   self.smartfit_note,
+                   self.smartfit_note, self.tool_result_title, self.tool_result_detail,
                    self.single_preview.label, *(p.label for p in self.preview_widgets)}
         for widget in self.findChildren(QWidget):
             if widget is self.language_box:
@@ -1051,6 +1089,8 @@ class MainWindow(QMainWindow):
             self.merge_name.setText("merged" if self.language == "en" else "объединённый")
         self.setWindowTitle(f"PDF Compressor {APP_VERSION}  •  {self.t('Локальная обработка')}")
         self.set_status(self._status_ru)
+        if self._tool_feedback_state is not None:
+            self.render_tool_feedback()
         self.on_mode_changed()
         old_page = self.page_number.text()
         if self.entries:
@@ -1466,6 +1506,16 @@ class MainWindow(QMainWindow):
     def begin(self, action: str, paths: list[str], opts: dict):
         if self.busy:
             return
+        self._active_action = action
+        self._tool_focus_button = {
+            "merge": self.merge_btn, "split": self.split_btn,
+            "rotate": self.rotate_btn,
+        }.get(action)
+        self._tool_outputs = []
+        self._tool_errors = []
+        if self._tool_focus_button is not None:
+            self._tool_feedback_state = None
+            self.tool_result_card.hide()
         self.busy = True
         self.active_paths = list(paths)
         self.progressbar.setValue(0)
@@ -1473,6 +1523,12 @@ class MainWindow(QMainWindow):
         for btn in (self.start_btn, self.add_btn, self.remove_btn, self.clear_btn,
                     self.merge_btn, self.split_btn, self.rotate_btn):
             btn.setEnabled(False)
+        # Disabling the clicked button makes Qt move focus to the next control.
+        # Clear that transient focus; restore the originating button on finish.
+        if self._tool_focus_button is not None:
+            focused = QApplication.focusWidget()
+            if focused is not None and self.tools_page.isAncestorOf(focused):
+                focused.clearFocus()
         self.worker = JobWorker(action, paths, opts)
         self.thread = QThread(self)
         self.worker.moveToThread(self.thread)
@@ -1546,6 +1602,52 @@ class MainWindow(QMainWindow):
         opts["degrees"] = int(self.degrees.currentData())
         self.begin("rotate", [path], opts)
 
+    def open_tool_result_folder(self):
+        if not self._tool_outputs:
+            return
+        folder = Path(self._tool_outputs[0]).parent
+        if folder.is_dir():
+            open_file(str(folder))
+        else:
+            self.warn("Папка", "Не найдена папка результата.")
+
+    def render_tool_feedback(self):
+        state = self._tool_feedback_state
+        if state is None:
+            self.tool_result_card.hide()
+            return
+        action, message = state["action"], state["message"]
+        outputs, errors = state["outputs"], state["errors"]
+        if errors:
+            title = self.t("Ошибка операции")
+            detail = self.translated(errors[0])
+            can_open = False
+        elif message.startswith("Операция отменена"):
+            title = self.t("Операция отменена")
+            detail = self.translated(message)
+            can_open = False
+        elif outputs and message.startswith("Готово."):
+            titles = {
+                "merge": "PDF успешно объединены",
+                "split": "Страницы успешно извлечены",
+                "rotate": "PDF успешно повёрнут",
+            }
+            title = self.t(titles[action])
+            if len(outputs) == 1:
+                detail = f"{self.t('Создан файл:')} {outputs[0]}"
+            else:
+                detail = (f"{self.t('Создано файлов:')} {len(outputs)}\n"
+                          f"{self.t('Папка:')} {Path(outputs[0]).parent}")
+            can_open = True
+        else:
+            title = self.t("Ошибка операции")
+            detail = self.translated(message)
+            can_open = False
+        self.tool_result_title.setText(title)
+        self.tool_result_detail.setText(detail)
+        self.open_tool_folder_btn.setVisible(can_open)
+        self.tool_result_card.show()
+
     def update_progress(self, stage: str, current: int, total: int):
         self.set_status(stage + (f"  •  страница {current}/{total}" if total > 1 else ""))
         self.progressbar.setValue(round(100 * current / max(1, total)))
@@ -1562,6 +1664,8 @@ class MainWindow(QMainWindow):
         source = self.active_paths[index] if 0 <= index < len(self.active_paths) else None
         row_idx = next((i for i, e in enumerate(self.entries) if e["path"] == source), -1)
         if isinstance(outcome, Exception):
+            if self._active_action in ("merge", "split", "rotate"):
+                self._tool_errors.append(str(outcome))
             if row_idx >= 0:
                 self.entries[row_idx]["status"] = "Ошибка"
                 self.entries[row_idx]["result"] = str(outcome)
@@ -1584,6 +1688,8 @@ class MainWindow(QMainWindow):
                 self.last_created_path = outcome.output
         else:
             files = outcome if isinstance(outcome, list) else [outcome]
+            if self._active_action in ("merge", "split", "rotate"):
+                self._tool_outputs.extend(str(path) for path in files)
             if row_idx >= 0:
                 self.entries[row_idx]["status"] = "Инструмент: готово"
                 self.entries[row_idx]["result"] = f"Создано файлов: {len(files)}"
@@ -1606,6 +1712,21 @@ class MainWindow(QMainWindow):
                     self.merge_btn, self.split_btn, self.rotate_btn):
             btn.setEnabled(True)
         self.progressbar.setValue(100 if message.startswith("Готово") else 0)
+        if self._tool_focus_button is not None:
+            self._tool_feedback_state = {
+                "action": self._active_action, "message": message,
+                "outputs": list(self._tool_outputs),
+                "errors": list(self._tool_errors),
+            }
+            self.render_tool_feedback()
+            # Preserve Tab navigation without leaving focus on the next tool.
+            focused = QApplication.focusWidget()
+            if (self.tabs.currentWidget() is self.tools_page and
+                    (focused is None or focused in
+                     (self.merge_btn, self.split_btn, self.rotate_btn))):
+                self._tool_focus_button.setFocus(Qt.OtherFocusReason)
+        self._tool_focus_button = None
+        self._active_action = None
         self.update_preview()
 
     def cancel_operation(self):
