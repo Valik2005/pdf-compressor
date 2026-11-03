@@ -543,11 +543,16 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                 if not target_mode:
                     break
         check_cancel(cancel)
-    # Copy and validation share one cleanup boundary: a failed or cancelled copy
-    # must never leave a partial PDF that looks like a completed result.
+        # Copy while temporary candidates still exist. Remove a partial output
+        # if copying fails or cancellation arrives during the final copy.
+        try:
+            shutil.copyfile(best_path, output)
+            check_cancel(cancel)
+        except Exception:
+            output.unlink(missing_ok=True)
+            raise
+    # Validate the output after temporary candidates are closed.
     try:
-        shutil.copyfile(best_path, output)
-        check_cancel(cancel)
         original_info = file_info(source)
         result_info = file_info(output)
         if original_info[1] != result_info[1]:
