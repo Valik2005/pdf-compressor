@@ -92,6 +92,7 @@ def parse_pages(expression: str, page_count: int) -> list[int]:
     if text in ("", "all", "все", "всё", "*"):
         return list(range(page_count))
     result: list[int] = []
+    seen: set[int] = set()
     for part in re.split(r"[,;]", text):
         part = part.strip()
         m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
@@ -108,7 +109,8 @@ def parse_pages(expression: str, page_count: int) -> list[int]:
             if not 1 <= page_num <= page_count:
                 raise ValueError(f"Страница {page_num} вне диапазона 1–{page_count}")
             index = page_num - 1
-            if index not in result:
+            if index not in seen:
+                seen.add(index)
                 result.append(index)
     if not result:
         raise ValueError("Не выбраны страницы")
@@ -273,7 +275,8 @@ def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xre
     factor = min(1.0, max(req_w / w, req_h / h))
     if factor > 0.95:
         return None
-    return max(1, round(w * factor)), max(1, round(h * factor))
+    # Rounding to nearest can drop a pixel below the requested DPI.
+    return max(1, math.ceil(w * factor)), max(1, math.ceil(h * factor))
 
 
 def _useful_dpi_stages(source: Path, dpi_stages: list[int],
