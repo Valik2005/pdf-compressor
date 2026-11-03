@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
+from time import perf_counter
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings, QThread, QObject, Signal, QUrl, QTimer, QRegularExpression, QRectF
@@ -390,6 +391,7 @@ class PreviewPane(QScrollArea):
 class JobWorker(QObject):
     progress = Signal(str, int, int)
     result = Signal(int, object)
+    timing = Signal(int, float)
     finished = Signal(str)
 
     def __init__(self, action: str, inputs: list[str], options: dict):
@@ -412,6 +414,7 @@ class JobWorker(QObject):
                     if self.cancel.is_set():
                         raise Cancelled()
                     self.progress.emit(f"Файл {idx + 1}/{len(self.inputs)}: {Path(src).name}", 0, 1)
+                    started_at = perf_counter()
                     try:
                         result = compress_pdf(src, self.options["folder"],
                             mode=self.options["mode"], target_mb=self.options["target"],
@@ -420,11 +423,13 @@ class JobWorker(QObject):
                             cancel=self.cancel,
                             progress=lambda stage, cur, total, idx=idx:
                                 self.progress.emit(f"{idx + 1}/{len(self.inputs)} • {stage}", cur, total))
+                        self.timing.emit(idx, perf_counter() - started_at)
                         self.result.emit(idx, result)
                         completed += 1
                     except Cancelled:
                         raise
                     except Exception as e:
+                        self.timing.emit(idx, perf_counter() - started_at)
                         self.result.emit(idx, e)
                         errors += 1
             elif self.action == "merge":
@@ -1473,6 +1478,7 @@ class MainWindow(QMainWindow):
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.update_progress)
+        self.worker.timing.connect(self.record_timing)
         self.worker.result.connect(self.record_result)
         self.worker.finished.connect(self.receive_end_message)
         self.worker.finished.connect(self.thread.quit)
@@ -1491,7 +1497,7 @@ class MainWindow(QMainWindow):
             self.warn("Настройки", str(error))
             return
         for entry in self.entries:
-            entry.update(status="В очереди", result="", result_path="")
+            entry.update(status="В очереди", result="", result_path="", elapsed_seconds=None)
         self.refresh_table()
         self.begin("compress", [e["path"] for e in self.entries], opts)
 
@@ -1544,6 +1550,14 @@ class MainWindow(QMainWindow):
         self.set_status(stage + (f"  •  страница {current}/{total}" if total > 1 else ""))
         self.progressbar.setValue(round(100 * current / max(1, total)))
 
+    def record_timing(self, index: int, seconds: float):
+        if 0 <= index < len(self.active_paths):
+            source = self.active_paths[index]
+            for entry in self.entries:
+                if entry["path"] == source:
+                    entry["elapsed_seconds"] = seconds
+                    break
+
     def record_result(self, index: int, outcome):
         source = self.active_paths[index] if 0 <= index < len(self.active_paths) else None
         row_idx = next((i for i, e in enumerate(self.entries) if e["path"] == source), -1)
@@ -1560,8 +1574,10 @@ class MainWindow(QMainWindow):
                 e = self.entries[row_idx]
                 e["status"] = "Готово" if outcome.target_met is not False else "Цель не достигнута"
                 suffix = " · цель не достигнута" if outcome.target_met is False else ""
+                elapsed = e.get("elapsed_seconds")
+                timing_text = (f" · Время: {elapsed:.1f} с" if elapsed is not None else "")
                 e["result"] = (f"{human_size(outcome.result_bytes)}  (−{outcome.saving_percent:.1f}%)"
-                               f" · {outcome.description}{suffix}")
+                               f" · {outcome.description}{suffix}{timing_text}")
                 e["result_path"] = outcome.output
                 e["analysis"] = outcome.analysis
                 e["recommendations"] = outcome.recommendations
