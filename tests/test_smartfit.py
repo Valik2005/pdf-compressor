@@ -210,3 +210,15 @@ def test_useful_dpi_stages_remain_available(tmp_path):
         after_image = output[0].get_images(full=True)[0]
         assert after_image[2] < before_image[2]
         assert after_image[3] < before_image[3]
+
+def test_downscale_respects_both_axes_on_stretched_placement():
+    """A stretched image must not fall below the requested DPI on either axis."""
+    size = _required_scaled_size({42: (500.0, 100.0)}, 42, (1200, 800), 150)
+    assert size is not None
+    assert size[0] * 72 / 500 >= 150
+    assert size[1] * 72 / 100 >= 150
+
+
+def test_downscale_skipped_when_one_axis_already_needs_full_resolution():
+    """Never downscale when one placement axis already needs all source pixels."""
+    assert _required_scaled_size({42: (500.0, 400.0)}, 42, (1200, 800), 150) is None
