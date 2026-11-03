@@ -125,6 +125,7 @@ I18N_EN = {
     "Страницы успешно извлечены": "Pages extracted successfully",
     "PDF успешно повёрнут": "PDF rotated successfully",
     "Создан файл:": "File created:",
+    "Первый файл:": "First file:",
     "Папка:": "Folder:",
     "Не найдена папка результата.": "Output folder not found.",
     "Без интернета · Без загрузки в облако · Исходные файлы не изменяются": "Works offline · No cloud uploads · Original files are unchanged",
@@ -883,6 +884,7 @@ class MainWindow(QMainWindow):
         tools_outer.setContentsMargins(4, 0, 4, 0)
         # Keep the result banner accessible at the minimum window size.
         tools_scroll = QScrollArea()
+        self.tools_scroll = tools_scroll
         tools_scroll.setObjectName("ToolsScroll")
         tools_scroll.setWidgetResizable(True)
         tools_scroll.setFrameShape(QFrame.NoFrame)
@@ -1642,10 +1644,12 @@ class MainWindow(QMainWindow):
             }
             title = self.t(titles[action])
             if len(outputs) == 1:
-                detail = f"{self.t('Создан файл:')} {outputs[0]}"
+                detail = (f"{self.t('Создано файлов:')} 1\n"
+                          f"{self.t('Создан файл:')} {outputs[0]}")
             else:
                 detail = (f"{self.t('Создано файлов:')} {len(outputs)}\n"
-                          f"{self.t('Папка:')} {Path(outputs[0]).parent}")
+                          f"{self.t('Папка:')} {Path(outputs[0]).parent}\n"
+                          f"{self.t('Первый файл:')} {Path(outputs[0]).name}")
             can_open = True
         else:
             title = self.t("Ошибка операции")
@@ -1655,6 +1659,11 @@ class MainWindow(QMainWindow):
         self.tool_result_detail.setText(detail)
         self.open_tool_folder_btn.setVisible(can_open)
         self.tool_result_card.show()
+
+    def scroll_to_tool_feedback(self):
+        if (self.tabs.currentWidget() is self.tools_page and
+                self.tool_result_card.isVisible()):
+            self.tools_scroll.ensureWidgetVisible(self.tool_result_card, 12, 12)
 
     def update_progress(self, stage: str, current: int, total: int):
         self.set_status(stage + (f"  •  страница {current}/{total}" if total > 1 else ""))
@@ -1727,6 +1736,8 @@ class MainWindow(QMainWindow):
                 "errors": list(self._tool_errors),
             }
             self.render_tool_feedback()
+            # Make the confirmation visible even when the tools tab must scroll.
+            QTimer.singleShot(0, self.scroll_to_tool_feedback)
             # Preserve Tab navigation without leaving focus on the next tool.
             focused = QApplication.focusWidget()
             if (self.tabs.currentWidget() is self.tools_page and
