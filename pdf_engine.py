@@ -481,6 +481,16 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
         result_info = file_info(output)
         if original_info[1] != result_info[1]:
             raise RuntimeError("Число страниц изменилось после сжатия")
+        # SmartFit must not silently lose selectable text during image replacement.
+        # Compare extracted text page by page, without rendering raster pages.
+        if smartfit and analysis is not None and analysis.text_pages:
+            with pymupdf.open(source) as before, pymupdf.open(output) as after:
+                for page_index in range(len(before)):
+                    check_cancel(cancel)
+                    if before[page_index].get_text("text") != after[page_index].get_text("text"):
+                        raise RuntimeError(
+                            f"Извлекаемый текст изменился на странице {page_index + 1}"
+                        )
         target_met = result_info[0] <= target_bytes if target_mode else None
         notes = (smartfit_recommendations(analysis, target_met, allow_downscale)
                  if smartfit and analysis else ())
