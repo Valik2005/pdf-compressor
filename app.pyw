@@ -1511,9 +1511,9 @@ class MainWindow(QMainWindow):
             "merge": self.merge_btn, "split": self.split_btn,
             "rotate": self.rotate_btn,
         }.get(action)
-        self._tool_outputs = []
-        self._tool_errors = []
         if self._tool_focus_button is not None:
+            self._tool_outputs = []
+            self._tool_errors = []
             self._tool_feedback_state = None
             self.tool_result_card.hide()
         self.busy = True
@@ -1603,9 +1603,10 @@ class MainWindow(QMainWindow):
         self.begin("rotate", [path], opts)
 
     def open_tool_result_folder(self):
-        if not self._tool_outputs:
+        state = self._tool_feedback_state
+        if not state or not state["outputs"]:
             return
-        folder = Path(self._tool_outputs[0]).parent
+        folder = Path(state["outputs"][0]).parent
         if folder.is_dir():
             open_file(str(folder))
         else:
