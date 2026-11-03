@@ -156,3 +156,57 @@ def test_smartfit_does_not_downscale_without_permission(tmp_path):
         result_xref = output[0].get_images(full=True)[0][0]
         assert original.extract_image(source_xref)["width"] == output.extract_image(result_xref)["width"]
         assert original.extract_image(source_xref)["height"] == output.extract_image(result_xref)["height"]
+
+
+def test_unhelpful_dpi_stages_are_skipped(tmp_path):
+    """Low-resolution pages must not trigger redundant JPEG recompression."""
+    from pdf_engine import _useful_dpi_stages
+    source = create_pdf(tmp_path / "lowdpi.pdf", text=True, image=True)
+    assert _useful_dpi_stages(source, [220, 180, 150]) == set()
+
+    normal = compress_pdf(
+        source, tmp_path / "normal", mode="smartfit",
+        target_mb=0.01, allow_downscale=False
+    )
+    opt_in = compress_pdf(
+        source, tmp_path / "opt-in", mode="smartfit",
+        target_mb=0.01, allow_downscale=True
+    )
+    assert not normal.target_met
+    assert not opt_in.target_met
+    assert normal.candidates_tried == opt_in.candidates_tried
+    assert normal.quality == opt_in.quality
+    assert not opt_in.downscaled
+
+
+def test_useful_dpi_stages_remain_available(tmp_path):
+    """High-resolution images must still be eligible for downscaling."""
+    from pdf_engine import _useful_dpi_stages
+    source = tmp_path / "highdpi.pdf"
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=595, height=842)
+        page.insert_image(
+            pymupdf.Rect(20, 20, 120, 160),
+            stream=raster_data((900, 1200))
+        )
+        page.insert_text((150, 80), "Selectable text", fontsize=16)
+        doc.save(source)
+
+    assert _useful_dpi_stages(source, [220, 180, 150]) == {220, 180, 150}
+    normal = compress_pdf(
+        source, tmp_path / "normal", mode="smartfit",
+        target_mb=0.15, allow_downscale=False
+    )
+    opt_in = compress_pdf(
+        source, tmp_path / "opt-in", mode="smartfit",
+        target_mb=0.15, allow_downscale=True
+    )
+    assert not normal.target_met
+    assert opt_in.target_met
+    assert opt_in.downscaled
+    with pymupdf.open(source) as original, pymupdf.open(opt_in.output) as output:
+        assert output[0].get_text("text") == original[0].get_text("text")
+        before_image = original[0].get_images(full=True)[0]
+        after_image = output[0].get_images(full=True)[0]
+        assert after_image[2] < before_image[2]
+        assert after_image[3] < before_image[3]
