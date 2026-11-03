@@ -128,3 +128,31 @@ def test_cancel_during_smartfit_analysis(tmp_path):
         analyze_pdf(path, cancel=cancelled)
     with pytest.raises(Cancelled):
         compress_pdf(path, tmp_path / "out", mode="smartfit", cancel=cancelled)
+
+
+def test_smartfit_preserves_selectable_text(tmp_path):
+    """Image recompression must not alter searchable text on mixed pages."""
+    source = create_pdf(tmp_path / "mixed.pdf", text=True, image=True)
+    result = compress_pdf(
+        source, tmp_path / "output", mode="smartfit", target_mb=0.15
+    )
+    with pymupdf.open(source) as original, pymupdf.open(result.output) as output:
+        assert len(original) == len(output)
+        assert [page.get_text("text") for page in original] == [
+            page.get_text("text") for page in output
+        ]
+
+
+def test_smartfit_does_not_downscale_without_permission(tmp_path):
+    """Target-size pressure alone must never reduce image pixel dimensions."""
+    source = create_pdf(tmp_path / "scan.pdf", text=False, image=True)
+    result = compress_pdf(
+        source, tmp_path / "output", mode="smartfit",
+        target_mb=0.01, allow_downscale=False
+    )
+    assert result.downscaled is False
+    with pymupdf.open(source) as original, pymupdf.open(result.output) as output:
+        source_xref = original[0].get_images(full=True)[0][0]
+        result_xref = output[0].get_images(full=True)[0][0]
+        assert original.extract_image(source_xref)["width"] == output.extract_image(result_xref)["width"]
+        assert original.extract_image(source_xref)["height"] == output.extract_image(result_xref)["height"]
