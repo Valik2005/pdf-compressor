@@ -274,6 +274,33 @@ def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xre
     return max(1, round(w * factor)), max(1, round(h * factor))
 
 
+def _useful_dpi_stages(source: Path, dpi_stages: list[int],
+                       cancel: threading.Event | None = None) -> set[int]:
+    """Only consider DPI stages that can actually resize an embedded image.
+
+    This preflight reads image dimensions and their largest page placements,
+    without decoding image pixel data. False positives are harmless; a false
+    negative would skip a useful stage, so use the same scaling rule as the
+    actual candidate builder.
+    """
+    if not dpi_stages:
+        return set()
+    with pymupdf.open(source) as doc:
+        placements = _all_image_placements(doc, cancel)
+        images: dict[int, tuple[int, int]] = {}
+        for page in doc:
+            check_cancel(cancel)
+            for info in page.get_images(full=True):
+                xref, smask, width, height = map(int, info[:4])
+                if xref not in images and not smask and min(width, height) >= 130:
+                    images[xref] = (width, height)
+        return {
+            dpi for dpi in dpi_stages
+            if any(_required_scaled_size(placements, xref, dimensions, dpi) is not None
+                   for xref, dimensions in images.items())
+        }
+
+
 def build_candidate(source: Path, target: Path, quality: int | None = None,
                     max_dpi: int | None = None, cancel: threading.Event | None = None,
                     progress: Progress | None = None) -> tuple[int, bool, int]:
@@ -398,8 +425,17 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
             if smartfit and analysis is not None and analysis.raster_images == 0:
                 stages = []
             fitted = False
+            useful_dpi_stages: set[int] | None = None
             for dpi_stage in stages:
                 check_cancel(cancel)
+                if target_mode and dpi_stage is not None:
+                    # Only calculate after full-resolution attempts have failed.
+                    if useful_dpi_stages is None:
+                        useful_dpi_stages = _useful_dpi_stages(
+                            source, [stage for stage in stages if stage is not None], cancel
+                        )
+                    if dpi_stage not in useful_dpi_stages:
+                        continue
                 attempts: list[int] = []
                 if target_mode:
                     floors = {"scan": 55, "mixed": 62, "text": 72, "other": 65}
