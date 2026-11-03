@@ -268,7 +268,9 @@ def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xre
     w, h = dimensions
     req_w = max(1, min(w, math.ceil(usage[0] * max_dpi / 72)))
     req_h = max(1, min(h, math.ceil(usage[1] * max_dpi / 72)))
-    factor = min(1.0, req_w / w, req_h / h)
+    # Keep at least the requested DPI on BOTH axes. The smaller ratio
+    # would undersample a stretched or rotated placement on the other axis.
+    factor = min(1.0, max(req_w / w, req_h / h))
     if factor > 0.95:
         return None
     return max(1, round(w * factor)), max(1, round(h * factor))

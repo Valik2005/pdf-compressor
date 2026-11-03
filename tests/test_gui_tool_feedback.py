@@ -41,6 +41,9 @@ def window(gui_module, qt_app, monkeypatch, tmp_path):
     )
     win = gui_module.MainWindow()
     win.show()
+    # These tests exercise the PDF tools tab; widgets on an inactive tab
+    # are not visible even when their own show() method has been called.
+    win.tabs.setCurrentWidget(win.tools_page)
     qt_app.processEvents()
     yield win
     win.close()
