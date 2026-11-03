@@ -277,7 +277,8 @@ def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xre
 
 
 def _useful_dpi_stages(source: Path, dpi_stages: list[int],
-                       cancel: threading.Event | None = None) -> set[int]:
+                       cancel: threading.Event | None = None,
+                       placements: dict[int, tuple[float, float] | None] | None = None) -> set[int]:
     """Only consider DPI stages that can actually resize an embedded image.
 
     This preflight reads image dimensions and their largest page placements,
@@ -288,7 +289,8 @@ def _useful_dpi_stages(source: Path, dpi_stages: list[int],
     if not dpi_stages:
         return set()
     with pymupdf.open(source) as doc:
-        placements = _all_image_placements(doc, cancel)
+        if placements is None:
+            placements = _all_image_placements(doc, cancel)
         images: dict[int, tuple[int, int]] = {}
         for page in doc:
             check_cancel(cancel)
@@ -305,7 +307,9 @@ def _useful_dpi_stages(source: Path, dpi_stages: list[int],
 
 def build_candidate(source: Path, target: Path, quality: int | None = None,
                     max_dpi: int | None = None, cancel: threading.Event | None = None,
-                    progress: Progress | None = None) -> tuple[int, bool, int]:
+                    progress: Progress | None = None,
+                    image_placements: dict[int, tuple[float, float] | None] | None = None
+                    ) -> tuple[int, bool, int]:
     """Build one candidate, preserving pages/text; optionally recompress raster images.
 
     Only replaces images when JPEG bytes are smaller than the source image.
@@ -318,7 +322,8 @@ def build_candidate(source: Path, target: Path, quality: int | None = None,
         validate_doc(doc)
         handled: set[int] = set()
         # Calculate placement across the document, not just the first page.
-        placements = _all_image_placements(doc, cancel) if max_dpi is not None else {}
+        placements = (image_placements if image_placements is not None
+                      else _all_image_placements(doc, cancel)) if max_dpi is not None else {}
         page_total = len(doc)
         for page_no in range(page_total):
             check_cancel(cancel)
@@ -428,13 +433,19 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                 stages = []
             fitted = False
             useful_dpi_stages: set[int] | None = None
+            image_placements: dict[int, tuple[float, float] | None] | None = None
             for dpi_stage in stages:
                 check_cancel(cancel)
                 if target_mode and dpi_stage is not None:
                     # Only calculate after full-resolution attempts have failed.
                     if useful_dpi_stages is None:
+                        # The same placements are needed for every JPEG-quality
+                        # trial. Compute them once instead of rescanning all pages.
+                        with pymupdf.open(source) as placement_doc:
+                            image_placements = _all_image_placements(placement_doc, cancel)
                         useful_dpi_stages = _useful_dpi_stages(
-                            source, [stage for stage in stages if stage is not None], cancel
+                            source, [stage for stage in stages if stage is not None],
+                            cancel, placements=image_placements
                         )
                     if dpi_stage not in useful_dpi_stages:
                         continue
@@ -444,14 +455,23 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                     low = floors[analysis.kind] if smartfit and analysis else 30
                     high = 97
                     stage_best_quality = None
+                    first_trial = True
+                    probe_floor = False
                     while low <= high:
-                        q = (low + high) // 2
+                        # If the first (midpoint) trial is too large, check the
+                        # minimum permitted quality immediately. When even that
+                        # cannot meet the target, more JPEG trials at this DPI
+                        # only waste time. Otherwise resume normal binary search.
+                        q = low if probe_floor else (low + high) // 2
+                        checking_floor = probe_floor
+                        probe_floor = False
                         attempts.append(q)
                         emit(progress, f"Подбор качества {q}%" + (f", до {dpi_stage} DPI" if dpi_stage else ""), 0, 1)
                         candidate = temp / "candidate.pdf"
                         size, scaled, changed = build_candidate(source, candidate, quality=q,
                                                               max_dpi=dpi_stage, cancel=cancel,
-                                                              progress=progress)
+                                                              progress=progress,
+                                                              image_placements=image_placements)
                         candidates_tried += 1
                         check_cancel(cancel)
                         if size <= target_bytes:
@@ -475,6 +495,13 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                                 best_downscale = scaled
                                 desc = f"JPEG {q}%" + (f", до {dpi_stage} DPI" if scaled else ", исходное разрешение")
                             high = q - 1
+                            if first_trial and q > low:
+                                probe_floor = True
+                            elif checking_floor and stage_best_quality is None:
+                                # No quality in the allowed range can normally
+                                # beat the floor; move to the next DPI stage.
+                                break
+                        first_trial = False
                     if smartfit and stage_best_quality is not None:
                         # JPEG size is not always strictly monotone. Check two
                         # nearby higher-quality values before settling.
@@ -484,7 +511,8 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                             check_cancel(cancel)
                             size, scaled, _ = build_candidate(source, candidate, quality=q,
                                                               max_dpi=dpi_stage, cancel=cancel,
-                                                              progress=progress)
+                                                              progress=progress,
+                                                              image_placements=image_placements)
                             candidates_tried += 1
                             if size <= target_bytes and (best_quality is None or q > best_quality):
                                 best_path = temp / "chosen.pdf"
