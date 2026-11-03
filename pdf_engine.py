@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Backend for PDF Compressor 2.0. No GUI dependencies.
+"""Backend for PDF Compressor 2.7 SmartFit. No GUI dependencies.
 
 The original PDFs are never written to. Image replacements preserve selectable
 text and vector content, but lossy JPEG recompression can affect image fidelity.
@@ -115,6 +115,90 @@ def parse_pages(expression: str, page_count: int) -> list[int]:
     return result
 
 
+@dataclass(frozen=True)
+class PdfAnalysis:
+    """Fast structural triage, NOT a guarantee of visual readability."""
+    source: str
+    pages: int
+    source_bytes: int
+    kind: str  # text, scan, mixed, other
+    text_pages: int
+    image_pages: int
+    scan_pages: int
+    mixed_pages: int
+    raster_images: int
+
+
+def analyze_pdf(source: str | Path, cancel: threading.Event | None = None,
+                progress: Progress | None = None) -> PdfAnalysis:
+    """Classify document using text and image placement without rendering pages.
+
+    The classification is a heuristic. A page with an image covering at least
+    half the page and no selectable text is considered a scan. This deliberately
+    avoids loading full-resolution bitmaps into RAM during analysis.
+    """
+    source = Path(source).resolve()
+    if not source.is_file() or source.suffix.lower() != ".pdf":
+        raise ValueError("Укажите существующий PDF-файл")
+    text_pages = image_pages = scan_pages = mixed_pages = 0
+    unique_images: set[int] = set()
+    with pymupdf.open(source) as doc:
+        validate_doc(doc)
+        total = len(doc)
+        for index, page in enumerate(doc):
+            check_cancel(cancel)
+            has_text = bool(page.get_text("text").strip())
+            image_info = page.get_image_info(hashes=False, xrefs=False)
+            has_image = bool(image_info)
+            if has_text:
+                text_pages += 1
+            if has_image:
+                image_pages += 1
+            coverage = 0.0
+            page_area = page.rect.get_area()
+            if has_image and page_area > 0:
+                # Overlapping images may double-count; clamp to 1.0.
+                for image in image_info:
+                    coverage += (pymupdf.Rect(image["bbox"]) & page.rect).get_area() / page_area
+                coverage = min(1.0, coverage)
+            if has_image and not has_text and coverage >= 0.50:
+                scan_pages += 1
+            if has_text and has_image and coverage >= 0.12:
+                mixed_pages += 1
+            for item in page.get_images(full=True):
+                unique_images.add(int(item[0]))
+            emit(progress, "Анализ документа", index + 1, total)
+    if text_pages and (scan_pages or mixed_pages >= max(1, text_pages // 2)):
+        kind = "mixed"
+    elif text_pages:
+        kind = "text"
+    elif image_pages:
+        kind = "scan"
+    else:
+        kind = "other"
+    return PdfAnalysis(str(source), total, source.stat().st_size, kind,
+                       text_pages, image_pages, scan_pages, mixed_pages, len(unique_images))
+
+
+def smartfit_recommendations(analysis: PdfAnalysis, target_met: bool,
+                             allow_downscale: bool) -> tuple[str, ...]:
+    """Actionable, conservative advice; not a quality certification."""
+    notes: list[str] = []
+    if target_met:
+        notes.append("Размер достигнут. Просмотрите страницы перед отправкой.")
+    elif analysis.raster_images == 0:
+        notes.append("В PDF почти нет встроенных изображений: сжатие может не помочь.")
+    elif not allow_downscale:
+        notes.append("Размер не достигнут. Можно разрешить уменьшение разрешения изображений.")
+    else:
+        notes.append("Размер не достигнут без более сильной потери качества. Увеличьте лимит.")
+    if analysis.kind == "scan":
+        notes.append("Документ похож на скан: проверьте мелкий текст и печати.")
+    elif analysis.kind == "mixed":
+        notes.append("Смешанный PDF: проверьте изображения и мелкие детали.")
+    return tuple(notes)
+
+
 @dataclass
 class CompressionResult:
     source: str
@@ -126,6 +210,9 @@ class CompressionResult:
     target_met: bool | None
     pages: int
     downscaled: bool
+    analysis: PdfAnalysis | None = None
+    recommendations: tuple[str, ...] = ()
+    candidates_tried: int = 0
 
     @property
     def saving_percent(self) -> float:
@@ -138,26 +225,50 @@ def _save_pdf(doc: pymupdf.Document, target: Path) -> int:
     return target.stat().st_size
 
 
-def _required_scaled_size(page: pymupdf.Page, xref: int, dimensions: tuple[int, int], max_dpi: int) -> tuple[int, int] | None:
-    """Best safe shared-image DPI based on every occurrence on a page.
+def _all_image_placements(doc: pymupdf.Document, cancel: threading.Event | None = None
+                          ) -> dict[int, tuple[float, float] | None]:
+    """Find the largest occurrence of every image across ALL PDF pages.
 
-    If page geometry cannot be determined, keep full resolution.
+    Images are shared by xref: resizing based on their first occurrence can
+    destroy quality where the same image is drawn larger on a later page.
+    Unknown placement means the image must NOT be downscaled.
     """
-    try:
-        rects = page.get_image_rects(xref)
-    except Exception:
-        return None
-    if not rects:
+    sizes: dict[int, tuple[float, float] | None] = {}
+    for page in doc:
+        check_cancel(cancel)
+        for item in page.get_images(full=True):
+            xref = int(item[0])
+            try:
+                rects = page.get_image_rects(xref)
+            except Exception:
+                sizes[xref] = None
+                continue
+            if not rects:
+                sizes[xref] = None
+                continue
+            if xref in sizes and sizes[xref] is None:
+                continue
+            width = max((r.width for r in rects), default=0.0)
+            height = max((r.height for r in rects), default=0.0)
+            if width <= 0 or height <= 0:
+                sizes[xref] = None
+                continue
+            current = sizes.get(xref, (0.0, 0.0))
+            if current is not None:
+                sizes[xref] = max(current[0], width), max(current[1], height)
+    return sizes
+
+
+def _required_scaled_size(placements: dict[int, tuple[float, float] | None], xref: int,
+                          dimensions: tuple[int, int], max_dpi: int) -> tuple[int, int] | None:
+    """Conservative downscale based on the largest use of the shared image."""
+    usage = placements.get(xref)
+    if not usage:
         return None
     w, h = dimensions
-    widths = [r.width for r in rects if r.width > 0]
-    heights = [r.height for r in rects if r.height > 0]
-    if not widths or not heights:
-        return None
-    # PDF points to inches. Largest physical usage requires most pixels.
-    req_w = max(1, min(w, math.ceil(max(widths) * max_dpi / 72)))
-    req_h = max(1, min(h, math.ceil(max(heights) * max_dpi / 72)))
-    factor = min(1, req_w / w, req_h / h)
+    req_w = max(1, min(w, math.ceil(usage[0] * max_dpi / 72)))
+    req_h = max(1, min(h, math.ceil(usage[1] * max_dpi / 72)))
+    factor = min(1.0, req_w / w, req_h / h)
     if factor > 0.95:
         return None
     return max(1, round(w * factor)), max(1, round(h * factor))
@@ -177,6 +288,8 @@ def build_candidate(source: Path, target: Path, quality: int | None = None,
     with pymupdf.open(source) as doc:
         validate_doc(doc)
         handled: set[int] = set()
+        # Calculate placement across the document, not just the first page.
+        placements = _all_image_placements(doc, cancel) if max_dpi is not None else {}
         page_total = len(doc)
         for page_no in range(page_total):
             check_cancel(cancel)
@@ -205,7 +318,7 @@ def build_candidate(source: Path, target: Path, quality: int | None = None,
                                 continue
                             resized = None
                             if max_dpi is not None:
-                                resized = _required_scaled_size(page, xref, image.size, max_dpi)
+                                resized = _required_scaled_size(placements, xref, image.size, max_dpi)
                                 if resized:
                                     image = image.resize(resized, Image.Resampling.LANCZOS)
                             out = BytesIO()
@@ -235,16 +348,25 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                  progress: Progress | None = None) -> CompressionResult:
     """Compress without ever rewriting source or prematurely overwriting output.
 
-    Modes: quality (95), balanced (85), smallest (48), target (binary search).
+    Modes: quality, balanced, smallest, target, smartfit (conservative target).
+    SmartFit classifies pages without rasterizing them and selects quality limits
+    appropriate for scans, digital text and mixed PDFs. It cannot certify that
+    every visual detail survives compression; previews remain essential.
     """
     source = Path(source).resolve()
     if not source.is_file() or source.suffix.lower() != ".pdf":
         raise ValueError("Укажите существующий PDF-файл")
     if not (0.01 <= target_mb <= 100000):
         raise ValueError("Целевой размер должен быть от 0,01 до 100000 МБ")
-    if mode not in ("target", "quality", "balanced", "smallest"):
+    if mode not in ("target", "smartfit", "quality", "balanced", "smallest"):
         raise ValueError("Неизвестный режим сжатия")
     original_size = source.stat().st_size
+    smartfit = mode == "smartfit"
+    target_mode = mode in ("target", "smartfit")
+    analysis = None
+    if smartfit:
+        emit(progress, "Анализ документа", 0, 1)
+        analysis = analyze_pdf(source, cancel=cancel, progress=progress)
     target_bytes = int(target_mb * 1_000_000)
     proposed = name_template.replace("{name}", source.stem)
     output = make_output(Path(out_folder), proposed, reserved=reserved)
@@ -260,23 +382,30 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
         desc = "Оптимизация без потерь" if best_path == baseline else "Без изменений (файл уже оптимизирован)"
         best_quality: int | None = None
         best_downscale = False
-        fitted = mode == "target" and best_size <= target_bytes
-        if mode == "target" and fitted:
+        candidates_tried = 0
+        fitted = target_mode and best_size <= target_bytes
+        if target_mode and fitted:
             emit(progress, "Цель достигнута без потерь изображения", 1, 1)
         else:
             quality_values = {"quality": 95, "balanced": 85, "smallest": 48}
             # In target mode try full resolution first. Downscaling is an explicit opt-in.
             stages: list[int | None] = [None]
-            if mode == "target" and allow_downscale:
-                stages.extend([220, 180, 150, 120])
+            if target_mode and allow_downscale:
+                stages.extend([220, 180, 150, 120] if not smartfit else [220, 180, 150])
             elif mode == "smallest" and allow_downscale:
                 stages = [150]
+            # A text-only PDF has no raster images that JPEG settings could help.
+            if smartfit and analysis is not None and analysis.raster_images == 0:
+                stages = []
             fitted = False
             for dpi_stage in stages:
                 check_cancel(cancel)
                 attempts: list[int] = []
-                if mode == "target":
-                    low, high = 30, 97
+                if target_mode:
+                    floors = {"scan": 55, "mixed": 62, "text": 72, "other": 65}
+                    low = floors[analysis.kind] if smartfit and analysis else 30
+                    high = 97
+                    stage_best_quality = None
                     while low <= high:
                         q = (low + high) // 2
                         attempts.append(q)
@@ -285,6 +414,7 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                         size, scaled, changed = build_candidate(source, candidate, quality=q,
                                                               max_dpi=dpi_stage, cancel=cancel,
                                                               progress=progress)
+                        candidates_tried += 1
                         check_cancel(cancel)
                         if size <= target_bytes:
                             # With target met, retain highest-quality candidate of this DPI stage.
@@ -296,6 +426,7 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                                 best_downscale = scaled
                                 desc = f"JPEG {q}%" + (f", до {dpi_stage} DPI" if scaled else ", исходное разрешение")
                             fitted = True
+                            stage_best_quality = q if stage_best_quality is None else max(q, stage_best_quality)
                             low = q + 1
                         else:
                             if not fitted and size < best_size:
@@ -306,6 +437,24 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                                 best_downscale = scaled
                                 desc = f"JPEG {q}%" + (f", до {dpi_stage} DPI" if scaled else ", исходное разрешение")
                             high = q - 1
+                    if smartfit and stage_best_quality is not None:
+                        # JPEG size is not always strictly monotone. Check two
+                        # nearby higher-quality values before settling.
+                        for q in (stage_best_quality + 1, stage_best_quality + 2):
+                            if q > 97:
+                                continue
+                            check_cancel(cancel)
+                            size, scaled, _ = build_candidate(source, candidate, quality=q,
+                                                              max_dpi=dpi_stage, cancel=cancel,
+                                                              progress=progress)
+                            candidates_tried += 1
+                            if size <= target_bytes and (best_quality is None or q > best_quality):
+                                best_path = temp / "chosen.pdf"
+                                shutil.copyfile(candidate, best_path)
+                                best_size = size
+                                best_quality = q
+                                best_downscale = scaled
+                                desc = f"JPEG {q}%" + (f", до {dpi_stage} DPI" if scaled else ", исходное разрешение")
                     if fitted:
                         break
                 else:
@@ -315,13 +464,14 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                     size, scaled, changed = build_candidate(source, candidate, quality=q,
                                                           max_dpi=dpi_stage, cancel=cancel,
                                                           progress=progress)
+                    candidates_tried += 1
                     if size < best_size:
                         best_path = candidate
                         best_size = size
                         best_quality = q
                         best_downscale = scaled
                         desc = f"JPEG {q}%" + (f", до {dpi_stage} DPI" if scaled else ", исходное разрешение")
-                if mode != "target":
+                if not target_mode:
                     break
         check_cancel(cancel)
         shutil.copyfile(best_path, output)
@@ -331,10 +481,13 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
         result_info = file_info(output)
         if original_info[1] != result_info[1]:
             raise RuntimeError("Число страниц изменилось после сжатия")
+        target_met = result_info[0] <= target_bytes if target_mode else None
+        notes = (smartfit_recommendations(analysis, target_met, allow_downscale)
+                 if smartfit and analysis else ())
         return CompressionResult(
             str(source), str(output), original_size, result_info[0], desc,
-            best_quality, (best_size <= target_bytes if mode == "target" else None),
-            original_info[1], best_downscale
+            best_quality, target_met, original_info[1], best_downscale,
+            analysis, notes, candidates_tried
         )
     except Exception:
         output.unlink(missing_ok=True)

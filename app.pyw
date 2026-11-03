@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.0 - offline desktop interface for Windows / Qt6."""
+"""PDF Compressor 2.7 SmartFit - offline desktop GUI (Qt6)."""
 from __future__ import annotations
 
 import os
@@ -23,7 +23,7 @@ from pdf_engine import (
     rotate_pdf, split_pdf
 )
 
-APP_VERSION = "2.6"
+APP_VERSION = "2.7"
 
 
 # Text is keyed by the original Russian UI copy. No external translation file is
@@ -47,6 +47,24 @@ I18N_EN = {
     "Параметры сжатия": "Compression settings",
     "Режим": "Mode",
     "До заданного размера": "Target file size",
+    "SmartFit · автоматически": "SmartFit · automatic",
+    "▶  Подготовить PDF к отправке": "▶  Prepare PDF for sending",
+    "SmartFit анализирует тип PDF и подбирает сжатие. После обработки проверьте документ в предпросмотре.": "SmartFit analyzes PDF content and selects compression settings. Check the preview before sending.",
+    "Тип документа:": "Document type:",
+    "Текстовый PDF": "Text-based PDF",
+    "Скан": "Scanned PDF",
+    "Смешанный PDF": "Mixed PDF",
+    "Другой PDF": "Other PDF",
+    "страниц": "pages",
+    "SmartFit": "SmartFit",
+    "Рекомендации:": "Suggestions:",
+    "Размер достигнут. Просмотрите страницы перед отправкой.": "Target met. Check the pages before sending.",
+    "В PDF почти нет встроенных изображений: сжатие может не помочь.": "There are few embedded images; compression may not help.",
+    "Размер не достигнут. Можно разрешить уменьшение разрешения изображений.": "Target not met. You can allow image downscaling.",
+    "Размер не достигнут без более сильной потери качества. Увеличьте лимит.": "Target not met without greater quality loss. Increase the limit.",
+    "Документ похож на скан: проверьте мелкий текст и печати.": "This looks like a scan: check small text and stamps.",
+    "Смешанный PDF: проверьте изображения и мелкие детали.": "Mixed PDF: check images and fine details.",
+    "Анализ документа": "Analyzing document",
     "Максимальное качество": "Highest quality",
     "Сбалансированный": "Balanced",
     "Максимальное сжатие": "Maximum compression",
@@ -474,7 +492,7 @@ class MainWindow(QMainWindow):
             self.language = "ru"
         self._original_texts = []
         self._status_ru = "Готов к работе · исходные файлы не изменяются"
-        self.setWindowTitle("PDF Compressor 2.6  •  Локальная обработка")
+        self.setWindowTitle("PDF Compressor 2.7  •  Локальная обработка")
         asset_folder = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
         icon_path = asset_folder / "app_icon.ico"
         if icon_path.exists():
@@ -504,7 +522,7 @@ class MainWindow(QMainWindow):
         title = QLabel("PDF Compressor")
         title.setObjectName("Title")
         header.addWidget(title)
-        version = QLabel("2.6")
+        version = QLabel("2.7")
         version.setObjectName("Badge")
         header.addWidget(version)
         header.addStretch(1)
@@ -647,6 +665,7 @@ class MainWindow(QMainWindow):
         mode_line.setSpacing(8)
         mode_line.addWidget(QLabel("Режим"))
         self.mode = QComboBox()
+        self.mode.addItem("SmartFit · автоматически", "smartfit")
         self.mode.addItem("До заданного размера", "target")
         self.mode.addItem("Максимальное качество", "quality")
         self.mode.addItem("Сбалансированный", "balanced")
@@ -666,6 +685,11 @@ class MainWindow(QMainWindow):
         self.downscale = QCheckBox("Разрешить уменьшение разрешения при необходимости")
         self.downscale.setToolTip("Если размер недостижим без изменения числа пикселей, можно уменьшить разрешение изображений.")
         cl.addWidget(self.downscale)
+        self.smartfit_note = QLabel("SmartFit анализирует тип PDF и подбирает сжатие. После обработки проверьте документ в предпросмотре.")
+        self.smartfit_note.setObjectName("Muted")
+        self.smartfit_note.setWordWrap(True)
+        self.smartfit_note.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        cl.addWidget(self.smartfit_note)
         label = QLabel("Сохранение результата")
         label.setObjectName("CardCaption")
         cl.addWidget(label)
@@ -960,7 +984,8 @@ class MainWindow(QMainWindow):
     def capture_texts(self):
         """Capture original UI labels once; widgets aren't reconstructed on switch."""
         dynamic = {self.count, self.status, self.document_name, self.result_metric,
-                   self.compare_status, self.page_total, self.theme_btn,
+                   self.compare_status, self.page_total, self.theme_btn, self.start_btn,
+                   self.smartfit_note,
                    self.single_preview.label, *(p.label for p in self.preview_widgets)}
         for widget in self.findChildren(QWidget):
             if widget is self.language_box:
@@ -1021,6 +1046,7 @@ class MainWindow(QMainWindow):
             self.merge_name.setText("merged" if self.language == "en" else "объединённый")
         self.setWindowTitle(f"PDF Compressor {APP_VERSION}  •  {self.t('Локальная обработка')}")
         self.set_status(self._status_ru)
+        self.on_mode_changed()
         old_page = self.page_number.text()
         if self.entries:
             self.refresh_table()
@@ -1072,7 +1098,7 @@ class MainWindow(QMainWindow):
         saved_target = float(self.settings.value("target", 1.0))
         self.target.setText(f"{saved_target:.2f}".replace(".", ","))
         self.downscale.setChecked(str(self.settings.value("downscale", "false")).lower() == "true")
-        wanted = str(self.settings.value("mode", "target"))
+        wanted = str(self.settings.value("mode", "smartfit"))
         index = self.mode.findData(wanted)
         self.mode.setCurrentIndex(max(0, index))
         self.on_mode_changed()
@@ -1092,9 +1118,36 @@ class MainWindow(QMainWindow):
         self.settings.sync()
 
     def on_mode_changed(self):
-        active = self.mode.currentData() == "target"
+        mode = self.mode.currentData()
+        active = mode in ("target", "smartfit")
         self.target.setVisible(active)
         self.target_label.setVisible(active)
+        self.start_btn.setText(self.t("▶  Подготовить PDF к отправке" if mode == "smartfit"
+                                      else "▶  Сжать все PDF"))
+        self.update_smartfit_note()
+
+    def update_smartfit_note(self):
+        if not hasattr(self, "smartfit_note"):
+            return
+        active = self.mode.currentData() == "smartfit"
+        self.smartfit_note.setVisible(active)
+        if not active:
+            return
+        entry = self.selected_entry() if hasattr(self, "table") else None
+        analysis = entry.get("analysis") if entry else None
+        if analysis is None:
+            self.smartfit_note.setText(self.t(
+                "SmartFit анализирует тип PDF и подбирает сжатие. После обработки проверьте документ в предпросмотре."))
+            self.smartfit_note.setToolTip("")
+            return
+        kinds = {"text": "Текстовый PDF", "scan": "Скан",
+                 "mixed": "Смешанный PDF", "other": "Другой PDF"}
+        text = f"{self.t('Тип документа:')} {self.t(kinds.get(analysis.kind, 'Другой PDF'))} · {analysis.pages} {self.t('страниц')}"
+        advice = entry.get("recommendations", ())
+        if advice:
+            text += "\n" + self.t(advice[0])
+        self.smartfit_note.setText(text)
+        self.smartfit_note.setToolTip("\n".join(self.t(message) for message in advice))
 
     def apply_theme(self):
         if self.dark:
@@ -1292,6 +1345,7 @@ class MainWindow(QMainWindow):
             self.page_number.setText("1")
             self.page_number.blockSignals(False)
             self.update_preview()
+        self.update_smartfit_note()
 
     def on_double_clicked(self, row, col):
         if 0 <= row < len(self.entries):
@@ -1323,8 +1377,13 @@ class MainWindow(QMainWindow):
             with pymupdf.open(path) as pdf:
                 if page_index >= len(pdf):
                     raise ValueError(self.t("В PDF нет выбранной страницы"))
-                pix = pdf[page_index].get_pixmap(matrix=pymupdf.Matrix(1.9, 1.9),
-                                                 colorspace=pymupdf.csRGB, alpha=False)
+                # Render previews at a bounded pixel size to keep RAM and CPU
+                # usage predictable, especially on 4 GB Windows machines.
+                page = pdf[page_index]
+                max_dimension = max(page.rect.width, page.rect.height)
+                scale = min(1.9, 1600.0 / max(1.0, max_dimension))
+                pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale),
+                                      colorspace=pymupdf.csRGB, alpha=False)
                 picture = QPixmap()
                 if not picture.loadFromData(pix.tobytes("png"), "PNG"):
                     raise ValueError(self.t("Не удалось загрузить страницу"))
@@ -1393,7 +1452,7 @@ class MainWindow(QMainWindow):
             Path(folder).mkdir(parents=True, exist_ok=True)
         except OSError as error:
             raise ValueError(f"{self.t('Не удалось создать папку:')} {error}")
-        target = self.target_value() if self.mode.currentData() == "target" else 1.0
+        target = self.target_value() if self.mode.currentData() in ("target", "smartfit") else 1.0
         self.save_settings()
         return {"folder": folder, "mode": self.mode.currentData(),
                 "target": target, "downscale": self.downscale.isChecked(),
@@ -1504,6 +1563,8 @@ class MainWindow(QMainWindow):
                 e["result"] = (f"{human_size(outcome.result_bytes)}  (−{outcome.saving_percent:.1f}%)"
                                f" · {outcome.description}{suffix}")
                 e["result_path"] = outcome.output
+                e["analysis"] = outcome.analysis
+                e["recommendations"] = outcome.recommendations
                 self.last_created_path = outcome.output
         else:
             files = outcome if isinstance(outcome, list) else [outcome]
@@ -1548,7 +1609,7 @@ class MainWindow(QMainWindow):
 
 def run_app():
     app = QApplication(sys.argv)
-    app.setApplicationName("PDF Compressor 2.6")
+    app.setApplicationName("PDF Compressor 2.7")
     app.setStyle("Fusion")
     app.setFont(QFont("Segoe UI", 10))
     win = MainWindow()
