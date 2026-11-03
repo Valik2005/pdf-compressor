@@ -7,7 +7,7 @@
 - **SmartFit mode**: enter a target size in MB, then select **Prepare PDF for sending**.
 - **Document triage** without page rasterization: text-based, scanned, mixed, or other; detected using extractable text and visible image placement. This is a **heuristic**, not optical text recognition or a quality certificate.
 - **Conservative quality search**: scanned and mixed documents have a higher minimum JPEG quality than the original aggressive target-size mode. When a PDF cannot reasonably reach the requested size, the program reports the missed target rather than forcing unlimited loss of quality.
-- **Optional downscaling** remains an explicit checkbox, not a hidden action.
+- **Optional downscaling** remains an explicit checkbox, not a hidden action. DPI stages that cannot reduce the dimensions of any eligible image are skipped to avoid redundant compression passes.
 - **Shared-image protection**: when an image object is reused in several pages, downscaling uses its **largest placement across the entire document**, not just the first page.
 - **Output advice**: hints about scans, images, missed targets and visual inspection.
 - **Bounded preview rendering** to limit RAM/CPU usage for huge pages.
@@ -15,7 +15,7 @@
 
 ## Boundaries of this release
 
-- SmartFit **does not yet automatically verify visual readability or text preservation**. That is planned for 2.8.
+- SmartFit checks that extractable text is unchanged page by page after compression, but **does not automatically verify visual readability** (especially scanned text, seals, and fine details). Deeper integrity and visual checks remain planned for 2.8.
 - No OCR, AI chatbot, PDF text editor or password-creation features.
 - A requested file size is **a target, not a guarantee**.
 - Source PDFs are not overwritten. The result is saved with a non-conflicting name.
