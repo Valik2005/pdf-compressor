@@ -1,0 +1,65 @@
+name: Windows onefile release candidate audit
+
+# Candidate-only. Never publishes a GitHub Release or distributes an EXE.
+on:
+  push:
+    branches:
+      - release/2.7-bundle-audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-audit-onefile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Install pinned reviewed dependencies
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Build actual onefile candidate
+        run: python -m PyInstaller --noconfirm --clean release_windows_review.spec
+      - name: Generate exact candidate manifest
+        run: python tools/release_manifest.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --out .\\dist\\onefile-manifest.json
+      - name: Inspect PyInstaller archive and reject Virtual Keyboard
+        run: python tools/audit_pyinstaller_bundle.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\\dist\\onefile-bundle-audit.json
+      - name: Validate manifest matches executable
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, json
+          from pathlib import Path
+          exe = Path("dist/PDF_Compressor_2_7_license_review.exe")
+          manifest = json.loads(Path("dist/onefile-manifest.json").read_text(encoding="utf-8"))
+          digest = hashlib.sha256(exe.read_bytes()).hexdigest()
+          assert manifest["exe_sha256"].lower() == digest
+          assert manifest["exe_size_bytes"] == exe.stat().st_size
+          print("Verified candidate EXE:", exe.stat().st_size, digest)
+          '@ | python -
+      - name: GUI startup smoke (no PDF re-tests)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path ".\\dist\\PDF_Compressor_2_7_license_review.exe").Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Onefile candidate exited early: $($p.ExitCode)" }
+            Write-Output "Onefile GUI startup succeeded"
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload audit JSON only, NOT EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: onefile-candidate-audit
+          path: |
+            dist/onefile-manifest.json
+            dist/onefile-bundle-audit.json
+          if-no-files-found: error
