@@ -1,0 +1,77 @@
+name: Windows onefile Qt modified-library relink integration
+
+# A nonfunctional PE-resource modification exercises recipient-relinked
+# Qt binary bytes, rebuilt into the actual onefile executable on Windows.
+# Does not certify source-code-modified Qt compatibility or legal compliance.
+on:
+  pull_request:
+    branches: [develop/2.7-smartfit]
+    paths:
+      - tools/rebuild_onefile_with_qt.py
+      - tools/modify_qt_binary_resource.py
+      - tools/verify_relinked_onefile.py
+      - release_windows_review.spec
+      - .github/workflows/qt-relink-integration.yml
+  workflow_dispatch:
+
+concurrency:
+  group: qt-modified-onefile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-modified-qt-in-onefile:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Install stock Qt bindings to prepare a modified DLL fixture
+        run: python -m pip install "PySide6==6.12.0"
+      - name: Create resource-modified Qt6Widgets DLL (real changed PE bytes)
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import PySide6
+          from tools.modify_qt_binary_resource import add_resource
+          stock = Path(PySide6.__file__).resolve().parent / "Qt6Widgets.dll"
+          print(add_resource(stock, Path("qt-overrides/Qt6Widgets.dll")))
+          '@ | python -
+      - name: Rebuild onefile in fresh environment with modified Qt DLL
+        run: python tools/rebuild_onefile_with_qt.py --qt-overrides .\\qt-overrides --work-dir .\\qt-relink-work
+      - name: Verify embedded Qt6Widgets binary bytes match modified DLL
+        run: python tools/verify_relinked_onefile.py --exe .\\qt-relink-work\\dist\\PDF_Compressor_2_7_license_review.exe --dll .\\qt-overrides\\Qt6Widgets.dll
+      - name: Start rebuilt modified-library onefile GUI (offscreen)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path ".\\qt-relink-work\\dist\\PDF_Compressor_2_7_license_review.exe").Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) {
+              throw "Modified-Qt onefile exited early with code $($p.ExitCode)"
+            }
+            Write-Output "Qt modified-resource onefile startup passed"
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload modified-library rebuild report only (no binary)
+        uses: actions/upload-artifact@v4
+        with:
+          name: qt-modified-onefile-rebuild-proof
+          path: |
+            qt-relink-work/dist/qt-relink-build-report.json
+            qt-relink-work/dist/build-manifest.json
+            qt-relink-work/dist/bundle-audit.json
+          if-no-files-found: error
