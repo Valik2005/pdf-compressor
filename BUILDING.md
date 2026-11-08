@@ -2,7 +2,7 @@
 
 **Prerequisites:** Windows 10/11 x64; Python 3.11+; Git; internet access to install packages.
 
-**PDF Compressor 2.7.0 is now publicly available.** Official release: https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0 . The release EXE is built by `.github/workflows/release-v2_7.yml` with pinned dependencies, Windows tests, source archives, third-party licenses, SHA-256 verification and Qt-relinking instructions. The commands below describe additional **local development preview** builds, not the exact published asset.
+**PDF Compressor 2.7.1** official release: https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1 . The release EXE is built by `.github/workflows/release-v2_7_1.yml` with pinned dependencies, Windows tests, six archived third-party sources, licenses and SHA-256. It publishes just three assets: one EXE, one combined source/license ZIP and checksums. These commands describe local development previews rather than the exact published asset.
 
 ## 1. Checkout and dependencies
 
@@ -49,11 +49,11 @@ The JSON manifest records the EXE SHA-256/size, Python version, installed packag
 
 Run the EXE directly (without invoking Python); load, compress, merge, extract and rotate test PDF files; verify output integrity, cancellation and light/dark themes. A local preview smoke test was reported successful on Windows 11.
 
-**Do not publish the preview as stable v2.7.0 until** the release checklist and third-party license review are satisfied, especially AGPL obligations for PyMuPDF and LGPL obligations for Qt / PySide6 `--onefile` distribution. See the published [release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0), [historical review checklist](docs/RELEASE_CHECKLIST_2_7.md) and [final third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
+**Do not distribute locally rebuilt preview files as official releases.** The official [v2.7.1 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) uses separately verified source provenance, license materials and onefile rebuild instructions. See [historical 2.7 review](docs/RELEASE_CHECKLIST_2_7.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
 
 ## 6. Experimental bundle audit (not release-approved)
 
-The November 8 preview included unused Qt Virtual Keyboard components with GPLv3/commercial terms. The new **experimental** `release_windows_review.spec` excludes that library/plugin for evaluation:
+Some earlier review builds bundled unused Qt components. The current `release_windows_review.spec` excludes Qt Virtual Keyboard, PDF, QML and Quick payloads not used by the application; this is verified on Windows with an archive inventory:
 
 ```powershell
 .\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean release_windows_review.spec
