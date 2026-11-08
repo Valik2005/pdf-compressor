@@ -28,9 +28,9 @@
       "filename": "pyside-setup-everywhere-src-6.12.0.tar.xz",
       "url": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz",
       "expected_sha256": null,
-      "checksum_source": null,
+      "checksum_source": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz.mirrorlist",
       "required": true,
-      "review_note": "PySide6/Shiboken sources; checksum not independently captured yet; inspect license texts and wheel correspondence."
+      "review_note": "Required binding and shiboken sources. Attempt to validate against official Qt mirrorlist SHA-256; if unavailable, keep this source unverified until an authoritative checksum is established."
     },
     {
       "id": "qtbase-6.12.0-required",
