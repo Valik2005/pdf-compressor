@@ -1,0 +1,57 @@
+name: One-time delete merged 2.7.1 development branch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cleanup-v2_7_1-branch.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prove squashed PR was merged and branch has no unique file content
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch='develop/2.7.1-optimization'
+          expected_head='f65258b90d44aeab384c085f722c7fdf4561c2a7'
+          merged_sha='bea3aa016f4ccdf5d94cae48e3ddda7864c4b863'
+          gh api "repos/$GITHUB_REPOSITORY/pulls/8" > pr.json
+          python - <<'PY'
+          import json
+          p=json.load(open('pr.json'))
+          assert p['merged'] and p['state']=='closed'
+          assert p['merge_commit_sha']=='bea3aa016f4ccdf5d94cae48e3ddda7864c4b863'
+          assert p['head']['ref']=='develop/2.7.1-optimization'
+          assert p['head']['sha']=='f65258b90d44aeab384c085f722c7fdf4561c2a7'
+          assert p['base']['ref']=='main'
+          print('PR #8 was successfully squash-merged into main')
+          PY
+          git merge-base --is-ancestor "$merged_sha" HEAD
+          actual_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq .object.sha)"
+          test "$actual_head" = "$expected_head"
+          git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+          git diff --name-only "refs/remotes/origin/$branch" HEAD > branch-differences.txt
+          python - <<'PY'
+          from pathlib import Path
+          paths=set(Path('branch-differences.txt').read_text().splitlines())
+          allowed={'.github/workflows/release-v2_7_1.yml',
+                   '.github/workflows/cleanup-v2_7_1-branch.yml'}
+          print('Content differences from squash-merged branch:', sorted(paths))
+          if paths - allowed:
+              raise SystemExit(f'Refusing deletion: unmerged content files {paths-allowed}')
+          PY
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
+          echo "Deleted merged 2.7.1 branch. Stable main and v2.7.1 tag untouched."
