@@ -1,25 +1,7 @@
-name: PDF Compressor 2.7 final release gate
+name: PDF Compressor 2.7 historical verification (manual, no publication)
 
-# Dry-run both assets on PRs; only a successful push to main may publish.
+# v2.7.0 is already published. Never attempt to republish on later main pushes.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
-    branches: [main]
-    paths:
-      - ".github/workflows/release-v2_7.yml"
-      - "tools/**"
-      - "docs/**"
-      - "release_windows_review.spec"
-      - "app.pyw"
-      - "pdf_engine.py"
-      - "requirements*.txt"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/release-v2_7.yml"
-      - "release_windows_review.spec"
-      - "app.pyw"
-      - "pdf_engine.py"
   workflow_dispatch:
 
 concurrency:
