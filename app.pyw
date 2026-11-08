@@ -668,8 +668,9 @@ class MainWindow(QMainWindow):
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         self.table.cellDoubleClicked.connect(self.on_double_clicked)
         table_layout.addWidget(self.table)
-        table_card.setFixedHeight(137)
-        ll.addWidget(table_card)
+        table_card.setMinimumHeight(137)
+        table_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        ll.addWidget(table_card, 1)
 
         controls_card = RoundedCard()
         controls_card.setObjectName("SettingsCard")
@@ -735,7 +736,6 @@ class MainWindow(QMainWindow):
         controls_card.setMinimumHeight(213)
         self.controls_card = controls_card
         ll.addWidget(controls_card)
-        ll.addStretch(0)
 
         command_line = QHBoxLayout()
         command_line.setSpacing(7)
