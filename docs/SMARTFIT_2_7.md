@@ -1,6 +1,6 @@
 # PDF Compressor 2.7 SmartFit — development preview
 
-**Status:** source-only preview. Windows GUI / PyInstaller EXE not yet verified; **v2.6.0** remains the published stable release. Do not redistribute this preview as a finished v2.7.0 release.
+**Status:** development preview. Windows 11 GUI and a local PyInstaller EXE were smoke-tested on 2026-11-08; distribution-license review and final release build are still pending. **v2.6.0** remains the published stable release.
 
 ## Added in 2.7
 
@@ -37,7 +37,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Build on Windows (Python + PyInstaller): see [BUILDING.md](../BUILDING.md) in the repository main branch. The new v2.7 executable has **not been compiled or tested on Windows**.
+Build on Windows (Python + PyInstaller): see [BUILDING.md](../BUILDING.md) in the current development branch. A preview EXE has been built and launched on Windows 11, but it is **not approved for public redistribution**.
 
 ## Test coverage (source preview)
 
