@@ -46,6 +46,7 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
         ],
     }
     collected = {}
+    license_bodies: dict[str, list[str]] = {}
     def add(name: str, content: bytes):
         if content and len(content) <= 2_000_000 and name not in collected:
             collected[name] = content
@@ -73,6 +74,7 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
                 add(name, path.read_bytes())
                 if name in collected:
                     record["documents"] += 1
+                    license_bodies.setdefault(pkg, []).append(collected[name].decode("utf-8", "replace"))
         if not record["documents"]:
             report["missing"].append(f"No local license-document files: {pkg} {dist.version}")
     python_lic = next((p for p in (Path(sys.base_prefix) / "LICENSE.txt", Path(sys.base_prefix) / "LICENSE") if p.is_file()), None)
@@ -80,6 +82,38 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
         add("python-runtime/LICENSE.txt", python_lic.read_bytes())
     else:
         report["missing"].append("Python runtime LICENSE not found")
+    # A filename match is not proof that the FULL applicable license was copied.
+    # PySide6 wheels can contain a short commercial-license reference even
+    # when a community LGPL/GPL license is applicable to the bundled modules.
+    # PyMuPDF COPYING may be only a one-line dual-license description.
+    report["license_text_assessment"] = {}
+    for pkg in PACKAGES:
+        bodies = license_bodies.get(pkg, [])
+        complete_copyleft_text = any(
+            len(body) > 1000 and (
+                "GNU LESSER GENERAL PUBLIC LICENSE" in body.upper()
+                or "GNU AFFERO GENERAL PUBLIC LICENSE" in body.upper()
+                or "GNU GENERAL PUBLIC LICENSE" in body.upper()
+            ) for body in bodies
+        )
+        report["license_text_assessment"][pkg] = {
+            "full_gnu_copyleft_text_found_in_package": complete_copyleft_text,
+            "documents_are_not_a_compliance_certificate": True,
+        }
+        if pkg in ("PySide6", "PySide6_Essentials", "PySide6_Addons", "shiboken6") and not complete_copyleft_text:
+            report["missing"].append(
+                f"{pkg}: full community LGPL/GPL license text not found among collected package files; "
+                "a Qt commercial-license reference is not equivalent"
+            )
+        if pkg == "PyMuPDF" and not complete_copyleft_text:
+            report["missing"].append(
+                "PyMuPDF: package COPYING is only a dual-license summary, not full AGPL text or corresponding source"
+            )
+    report["missing"].extend([
+        "Full corresponding sources for bundled Qt and MuPDF have not been verified",
+        "Practical LGPL-compatible library replacement/relinking process has not been verified",
+        "Qt PDF/PDFium and other transitive native license notices are not completely inventoried",
+    ])
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as z:
         for name, contents in sorted(collected.items()):
