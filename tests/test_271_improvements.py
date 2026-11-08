@@ -42,6 +42,8 @@ def test_tiny_images_skip_wasteful_smartfit_quality_trials(tmp_path):
     assert result.target_met is False
     assert result.analysis is not None
     assert result.analysis.raster_images == 1
+    assert any("JPEG-сжатие не затронет изображения" in note
+               for note in result.recommendations)
     with pymupdf.open(result.output) as saved:
         assert len(saved) == 90
         assert "Searchable vector text" in saved[0].get_text("text")
@@ -105,3 +107,13 @@ def test_interrupted_final_copy_leaves_no_output(tmp_path, monkeypatch, operatio
         else:
             merge_pdfs([source, source], out_dir)
     assert not list(out_dir.glob("*.pdf")), "Partial/corrupted output must be removed"
+
+
+def test_271_gui_version_and_noop_advice_translation():
+    # Validate these without requiring a running Qt desktop session.
+    from pathlib import Path
+    ui = (Path(__file__).parents[1] / "app.pyw").read_text(encoding="utf-8")
+    assert 'APP_VERSION = "2.7.1"' in ui
+    assert 'version = QLabel(APP_VERSION)' in ui
+    assert 'app.setApplicationName(f"PDF Compressor {APP_VERSION}")' in ui
+    assert 'JPEG compression cannot affect these images:' in ui
