@@ -43,14 +43,24 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
     if not project_license.is_file():
         raise ValueError("Application AGPL LICENSE file missing")
     notices: dict[str, bytes] = {"app/AGPL-3.0/LICENSE": project_license.read_bytes()}
+    download_report_path = source_dir / "source-download-report.json"
+    download_report = json.loads(download_report_path.read_text(encoding="utf-8"))
+    verified_upstream = {item["id"]: item for item in download_report["archives"]
+                         if item.get("status") == "hash_matches_official_source"}
     provenance = []
     for component_id, paths in SOURCES.items():
         entry = selected[component_id]
         archive = source_dir / entry["filename"]
-        if not archive.is_file() or not entry.get("expected_sha256"):
-            raise ValueError(f"Source archive/hash missing: {component_id}")
+        reported = verified_upstream.get(component_id, {})
+        expected = entry.get("expected_sha256") or reported.get("trusted_expected_sha256")
+        if not archive.is_file() or not expected or (not entry.get("expected_sha256") and not entry.get("checksum_source")):
+            raise ValueError(f"Source archive/official checksum missing: {component_id}")
         got = digest(archive)
-        if got != entry["expected_sha256"].lower():
+        if got != expected.lower() or got != reported.get("downloaded_sha256"):
+            raise ValueError(f"Source archive SHA-256 mismatch: {component_id}")
+        if reported.get("trusted_expected_sha256") != got:
+            raise ValueError(f"Source archive lacks matching upstream checksum: {component_id}")
+        if got != expected.lower():
             raise ValueError(f"Source archive SHA-256 mismatch: {component_id}")
         provenance.append({"component": component_id, "archive": archive.name, "sha256": got})
         with tarfile.open(archive, "r:*") as tar:
