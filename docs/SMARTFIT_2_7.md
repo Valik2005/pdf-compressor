@@ -1,6 +1,6 @@
-# PDF Compressor 2.7 SmartFit — development preview
+# PDF Compressor 2.7 SmartFit — released engine, 2.7.1 maintenance
 
-**Status:** development preview. Windows 11 GUI and a local PyInstaller EXE were smoke-tested on 2026-11-08; distribution-license review and final release build are still pending. **v2.6.0** remains the published stable release.
+**Status:** PDF Compressor 2.7.0 was released on 2026-11-08. The 2.7.1 maintenance update improves cancellation while copying large PDF outputs and avoids ineffective JPEG quality trials for documents containing only tiny/masked images.
 
 ## Added in 2.7
 
@@ -19,7 +19,7 @@
 - No OCR, AI chatbot, PDF text editor or password-creation features.
 - A requested file size is **a target, not a guarantee**.
 - Source PDFs are not overwritten. The result is saved with a non-conflicting name.
-- The already-published 2.6 Windows EXE has **not changed**.
+- The source PDF is never overwritten. Previous release assets remain unchanged.
 
 ## Run from source
 
@@ -37,9 +37,9 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Build on Windows (Python + PyInstaller): see [BUILDING.md](../BUILDING.md) in the current development branch. A preview EXE has been built and launched on Windows 11, but it is **not approved for public redistribution**.
+Build the official Windows onefile from the verified release workflow; see [BUILDING.md](../BUILDING.md). Local builds are separate preview artifacts and must not be misrepresented as official release downloads.
 
-## Test coverage (source preview)
+## Test coverage
 
 The automated test suite covers document classification, target-size reporting, scan output, cancellation, page-preserving operations, text preservation in existing modes and reused image objects across multiple pages.
 
@@ -49,4 +49,4 @@ The automated test suite covers document classification, target-size reporting, 
 - **2.9**: PDF space-use diagnosis and actionable recommendations.
 - **3.0**: protecting selected pages and highlighting likely quality regressions.
 
-This work uses the existing AGPLv3-licensed application source. Third-party package licenses remain separate; binary distribution requires another compliance review.
+This work uses the AGPLv3-licensed application source. The official release includes a separate source/license archive and Qt onefile relinking instructions.

@@ -1,0 +1,352 @@
+name: PDF Compressor 2.7.1 maintenance release gate
+
+# Dry-run both assets on PRs; only a successful push to main may publish.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+    branches: [main]
+    paths:
+      - ".github/workflows/release-v2_7_1.yml"
+      - "tools/**"
+      - "docs/**"
+      - "release_windows_review.spec"
+      - "app.pyw"
+      - "pdf_engine.py"
+      - "requirements*.txt"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-v2_7_1.yml"
+      - "release_windows_review.spec"
+      - "app.pyw"
+      - "pdf_engine.py"
+  workflow_dispatch:
+
+concurrency:
+  group: pdf-compressor-release-2-7-1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Verify exact committed version and run functional source tests
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+
+  sources-and-notices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Download and verify all six mandatory sources
+        run: python tools/fetch_required_sources.py --out-dir dist/source-candidates --require-all
+      - name: Independently verify archive hashes against committed catalog
+        run: python tools/verify_source_archives.py --catalog docs/source-archives-2_7.json --source-dir dist/source-candidates --out dist/source-archive-audit.json --require-all-verified
+      - name: Assemble third-party notices from verified upstream sources
+        run: python tools/package_release_notices.py --sources dist/source-candidates --out dist/release-notices-review.zip
+      - name: Validate source asset names and notice contents
+        run: |
+          python - <<'PY'
+          import json, pathlib, zipfile
+          cat=json.loads(pathlib.Path('docs/source-archives-2_7.json').read_text())
+          required=[x for x in cat['entries'] if x['required']]
+          assert len(required)==6
+          for item in required:
+              p=pathlib.Path('dist/source-candidates')/item['filename']
+              assert p.is_file() and p.stat().st_size>10000, p
+          with zipfile.ZipFile('dist/release-notices-review.zip') as z:
+              names=z.namelist()
+              assert len(names)>=65
+              for prefix in ['app/AGPL-3.0/LICENSE', 'components/qtbase-6.12.0-required/LICENSES/LGPL-3.0-only.txt', 'components/qtbase-6.12.0-required/LICENSES/Apache-2.0.txt', 'components/qtbase-6.12.0-required/LICENSES/MIT.txt', 'components/mupdf-1.27.2-native/COPYING']:
+                  assert prefix in names, prefix
+              print('Verified license/notice files:',len(names))
+          PY
+      - name: Stage immutable source and notice assets
+        run: |
+          mkdir -p release-assets
+          cp dist/source-candidates/*.tar.gz dist/source-candidates/*.tar.xz release-assets/
+          cp dist/release-notices-review.zip release-assets/THIRD_PARTY_NOTICES_2_7.zip
+          cp dist/source-archive-audit.json release-assets/source-archive-audit.json
+          cp dist/source-candidates/source-download-report.json release-assets/source-download-report.json
+          cp docs/LGPL_RELINKING_2_7.md release-assets/LGPL_RELINKING_2_7.md
+          cp docs/third_party_libffi_license.txt release-assets/libffi-LICENSE.txt
+          cp docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md release-assets/THIRD_PARTY_NOTICES_2_7.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-2-7-1-verified-sources
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  windows-onefile:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Freeze installed binary dependencies
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Confirm linked runtime versions match required source archives
+        shell: pwsh
+        run: |
+          @'
+          import ssl
+          import pymupdf
+          import PySide6
+          from PySide6.QtCore import qVersion
+          import PIL
+          print("PyMuPDF",pymupdf.__doc__[:130] if pymupdf.__doc__ else "")
+          print("MuPDF engine",getattr(pymupdf, "mupdf_version", "unknown"))
+          print("Qt",qVersion(),"PySide6",PySide6.__version__)
+          print("OpenSSL",ssl.OPENSSL_VERSION)
+          print("Pillow",PIL.__version__)
+          assert qVersion()=="6.12.0"
+          assert PySide6.__version__=="6.12.0"
+          assert PIL.__version__=="12.3.0"
+          assert "OpenSSL 3." in ssl.OPENSSL_VERSION
+          '@ | python -
+      - name: Verify 2.7.1 application version before packaging
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          app = Path("app.pyw").read_text(encoding="utf-8")
+          assert 'APP_VERSION = "2.7.1"' in app
+          assert 'version = QLabel(APP_VERSION)' in app
+          print("Application version 2.7.1 verified")
+          '@ | python -
+      - name: Build exact Windows onefile
+        run: python -m PyInstaller --clean --noconfirm release_windows_review.spec
+      - name: Rename reviewed binary to public release name
+        shell: pwsh
+        run: Move-Item dist/PDF_Compressor_2_7_license_review.exe dist/PDF_Compressor_2_7_1.exe
+      - name: Capture final manifest, inventory and native-source mapping
+        shell: pwsh
+        run: |
+          python tools/release_manifest.py --exe dist/PDF_Compressor_2_7_1.exe --out dist/build-manifest.json
+          python tools/audit_pyinstaller_bundle.py --exe dist/PDF_Compressor_2_7_1.exe --reject-virtual-keyboard --out dist/bundle-audit.json
+          python tools/audit_onefile_native_sources.py --audit dist/bundle-audit.json --out dist/native-source-mapping.json
+          python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_7_1.exe --manifest dist/build-manifest.json --out dist/license-evidence.zip
+      - name: Verify final EXE SHA, exact commit and forbidden Qt modules
+        shell: pwsh
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          @'
+          import hashlib,json,os
+          from pathlib import Path
+          exe=Path('dist/PDF_Compressor_2_7_1.exe')
+          m=json.loads(Path('dist/build-manifest.json').read_text())
+          a=json.loads(Path('dist/bundle-audit.json').read_text())
+          natives=json.loads(Path('dist/native-source-mapping.json').read_text())
+          assert m['source_git_commit']==os.environ['EXPECTED_SOURCE_COMMIT'],(m['source_git_commit'],os.environ['EXPECTED_SOURCE_COMMIT'])
+          assert m['source_has_local_changes'] is False
+          assert m['exe_size_bytes']==exe.stat().st_size
+          assert hashlib.sha256(exe.read_bytes()).hexdigest()==m['exe_sha256']==a['sha256']
+          assert m['builder_os']=='Windows'
+          assert m['builder_python'].startswith('3.14.')
+          assert all(m['installed_builder_package_versions'][name]==version for name,version in [('PySide6','6.12.0'),('Pillow','12.3.0'),('PyMuPDF','1.27.2.3'),('pyinstaller','6.22.3')])
+          names=[x['name'].replace(chr(92),'/').lower() for x in a['all_entries']]
+          assert not a['included_virtual_keyboard_files']
+          blocked=('qt6pdf.dll','qpdf.dll','qt6qml.dll','qt6quick.dll')
+          assert not [n for n in names if any(n.endswith('/'+e) for e in blocked)]
+          assert natives['native_file_count']>100
+          assert not natives['unmapped_native_files'] and not natives['missing_required_source_entries']
+          print('Final EXE integrity OK:',m['exe_name'],m['exe_size_bytes'],m['exe_sha256'])
+          '@ | python -
+      - name: Clean-runner Windows GUI smoke (no installed project needed)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path 'dist/PDF_Compressor_2_7_1.exe').Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Final EXE exited early: $($p.ExitCode)" }
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Prepare Windows release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory release-assets -Force | Out-Null
+          Copy-Item dist/PDF_Compressor_2_7_1.exe release-assets/
+          Copy-Item dist/build-manifest.json release-assets/
+          Copy-Item dist/bundle-audit.json release-assets/
+          Copy-Item dist/native-source-mapping.json release-assets/
+          Copy-Item dist/license-evidence.zip release-assets/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-2-7-1-verified-windows-onefile
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+
+  package-preflight:
+    # Exercise the actual 300 MB three-asset packager on PRs, without
+    # attaching or publishing a public executable.
+    needs: [sources-and-notices, windows-onefile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-sources
+          path: release-input/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-windows-onefile
+          path: release-input/windows
+      - name: Verify exact onefile, six corresponding sources and assembled release assets
+        shell: bash
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python tools/assemble_patch_release.py \
+            --sources release-input/sources \
+            --windows release-input/windows \
+            --catalog docs/source-archives-2_7.json \
+            --exe-name PDF_Compressor_2_7_1.exe \
+            --source-sha "$EXPECTED_SOURCE_COMMIT" \
+            --out release-assets
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          ( cd release-assets && sha256sum -c SHA256SUMS.txt --status )
+          echo "Exact three-file 2.7.1 release packing passed (not published)."
+
+  publish:
+    # Never publish from pull requests or manual dry-runs.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [windows-tests, sources-and-notices, windows-onefile, package-preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to overwrite a public v2.7.1 release or tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v2.7.1 >/dev/null 2>&1; then
+            echo "2.7.1 release already exists. Refusing overwrite." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin refs/tags/v2.7.1 >/dev/null 2>&1; then
+            echo "v2.7.1 tag already exists. Refusing overwrite." >&2
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-sources
+          path: release-input/sources
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-windows-onefile
+          path: release-input/windows
+
+      - name: Build three-file release package and verify source audits
+        env:
+          EXPECTED_RELEASE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/assemble_patch_release.py \
+            --sources release-input/sources \
+            --windows release-input/windows \
+            --catalog docs/source-archives-2_7.json \
+            --exe-name PDF_Compressor_2_7_1.exe \
+            --source-sha "$EXPECTED_RELEASE_SHA" \
+            --out release-assets
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+
+      - name: Create draft release containing only one EXE, one ZIP and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create v2.7.1 release-assets/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "PDF Compressor 2.7.1" \
+            --notes-file docs/RELEASE_NOTES_2_7_1.md --draft
+
+      - name: Verify uploaded assets against independent GitHub digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.7.1" > release-record.json
+          python - <<'PY'
+          import hashlib,json,pathlib
+          release=json.loads(pathlib.Path('release-record.json').read_text())
+          expected={'PDF_Compressor_2_7_1.exe',
+                    'Third_Party_Sources_and_Licenses.zip','SHA256SUMS.txt'}
+          assets={item['name']:item for item in release['assets']}
+          assert set(assets)==expected,sorted(assets)
+          assert release['draft'] and not release['prerelease']
+          assert release['target_commitish']=='${{ github.sha }}'
+          for filename in expected:
+              local=pathlib.Path('release-assets')/filename
+              digest=hashlib.sha256(local.read_bytes()).hexdigest()
+              assert assets[filename]['digest']==f'sha256:{digest}',filename
+          lines=(pathlib.Path('release-assets')/'SHA256SUMS.txt').read_text().splitlines()
+          assert len(lines)==2
+          assert all('  ' in line for line in lines)
+          print('Exact three draft assets verified against GitHub and source commit')
+          PY
+
+      - name: Publish verified v2.7.1 and mark latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit v2.7.1 --draft=false --latest
+
+      - name: Confirm public release is stable and exactly three files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.7.1" | python -c "import json,sys; r=json.load(sys.stdin); assert not r['draft'] and not r['prerelease']; assert len(r['assets'])==3; print('Published',r['html_url'])"
