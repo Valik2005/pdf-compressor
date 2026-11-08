@@ -1,12 +1,35 @@
-# PDF Compressor 2.7
+<div align="center">
+
+# 📄 PDF Compressor 2.7
+
+**Удобное сжатие PDF и работа со страницами — прямо на вашем компьютере.**
+
+Русский и английский интерфейс · Windows 10/11 · Бесплатно и с открытым кодом
+
+<p>
+  <img alt="Release 2.7.0" src="https://img.shields.io/badge/Release-2.7.0-2563eb?style=flat-square" />
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
+  <img alt="Offline" src="https://img.shields.io/badge/Processing-Offline-238636?style=flat-square" />
+  <img alt="AGPL-3.0" src="https://img.shields.io/badge/License-AGPL--3.0-8250df?style=flat-square" />
+</p>
+
+<a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.0/PDF_Compressor_2_7.exe">
+  <img alt="⬇ Скачать PDF Compressor 2.7 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.7%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+</a>
+
+**Один EXE · Без установки Python · 69,99 МБ**
+
+[Прямая ссылка на EXE](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.0/PDF_Compressor_2_7.exe) · [Страница релиза](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.0/SHA256SUMS.txt)
 
 [English README](README.md)
 
-**Программа для сжатия PDF и работы со страницами**, полностью локальная программа для Windows на Python и PySide6. Интерфейс на **русском и английском**, тёмная и светлая темы.
+</div>
 
-> Документы обрабатываются на компьютере, без загрузки на сервер.
+---
 
-## Возможности
+> 🔒 **Конфиденциальность:** все PDF обрабатываются локально. Документы никуда не загружаются.
+
+## ✨ Возможности
 
 - Сжатие одного или нескольких PDF за раз.
 - Четыре режима: до заданного размера (**SmartFit**), максимальное качество, сбалансированный и максимальное сжатие.
@@ -21,17 +44,22 @@
 
 **Важно:** указанный размер (например, 1 МБ) — **цель, а не гарантия**. Не каждый PDF можно уменьшить до такого размера без потери качества. Изменение PDF может нарушать цифровые подписи, поэтому предусмотрены ограничения для подписанных документов.
 
-## Скачать EXE без Python
+## ⬇️ Скачать EXE без Python
 
-**[Скачать PDF Compressor 2.7.0 на GitHub](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0).**
+Нажми зелёную кнопку **«СКАЧАТЬ»** в начале страницы — она ведёт **сразу на файл** `PDF_Compressor_2_7.exe` из официального GitHub Release.
 
-1. Открой страницу релиза и раздел **Assets**.
-2. Скачай **`PDF_Compressor_2_7.exe`**.
-3. Запусти на **Windows 10/11 (64 бита)**. Это **один EXE**: Python устанавливать не нужно, отдельную папку DLL распаковывать тоже.
+| Параметр | Значение |
+| :-- | :-- |
+| **Версия** | 2.7.0 (стабильная) |
+| **ОС** | Windows 10/11, 64-бит |
+| **Формат** | Один EXE, без установщика и Python |
+| **Размер** | 69,99 МБ |
 
-EXE не подписан цифровой подписью — Windows SmartScreen может показать предупреждение. В материалах релиза также есть `SHA256SUMS.txt`, отчёт о сборке, лицензии и исходники сторонних библиотек.
+[**Скачать EXE напрямую**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.0/PDF_Compressor_2_7.exe) · [Все файлы релиза и лицензии](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0) · [Проверить SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.0/SHA256SUMS.txt)
 
-## Установка на Windows из исходников
+> Файл не имеет цифровой подписи: Windows SmartScreen может показать стандартное предупреждение. Перед запуском можно сверить SHA-256 с `SHA256SUMS.txt`.
+
+## 🖥️ Установка на Windows из исходников
 
 Нужен Python **3.11 или новее**. Официальный релизный EXE собирается на Python 3.14 с закреплёнными версиями зависимостей.
 
@@ -47,7 +75,7 @@ EXE не подписан цифровой подписью — Windows SmartScr
 
 Для дальнейшего запуска без консоли можно открывать `app.pyw` через установленный Python.
 
-## Сборка EXE
+## 🛠️ Сборка EXE
 
 Официальная сборка v2.7.0 производится [через GitHub Actions](.github/workflows/release-v2_7.yml) с проверкой запуска, зависимостей и контрольных сумм. Для локальной тестовой сборки в Windows:
 
@@ -58,7 +86,7 @@ python -m PyInstaller --noconfirm --clean release_windows_review.spec
 
 Результат: `dist\PDF_Compressor_2_7_license_review.exe`. Релизный workflow собирает и публикует проверенный файл под именем `PDF_Compressor_2_7.exe`. EXE для Windows необходимо собирать **в Windows**. Подробности: [BUILDING.md](BUILDING.md), [пересборка с изменённым Qt](docs/LGPL_RELINKING_2_7.md).
 
-## Тесты
+## ✅ Тесты
 
 ```bat
 python -m pip install -r requirements-dev.txt
@@ -67,7 +95,7 @@ python -m pytest -q
 
 Тесты проверяют PDF-движок, сценарии SmartFit, сборочные инструменты и переводы. Реальное отображение интерфейса и масштабирование Windows зависят от системы; в релизном workflow дополнительно проверяется запуск EXE.
 
-## Структура репозитория
+## 📂 Структура репозитория
 
 ```text
 app.pyw                       Приложение с интерфейсом RU/EN
@@ -82,10 +110,10 @@ README.md                     English README
 .github/workflows/release-v2_7.yml   Сборка и публикация версии 2.7
 ```
 
-## Лицензии зависимостей
+## 📜 Лицензии зависимостей
 
 Исходный код приложения распространяется по **GNU AGPL-3.0-only**. PyMuPDF/MuPDF используют AGPL или коммерческое лицензирование, Qt/PySide6 — LGPL/GPL или коммерческие варианты. В [релизе 2.7.0](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0) доступны архивы исходников сторонних библиотек, лицензионные уведомления, контрольные суммы и инструкция по пересборке одного EXE с совместимыми изменёнными Qt-библиотеками. Подробнее: [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) и [уведомления](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
 
-## Примечание
+## ℹ️ Примечание
 
 JPEG-сжатие изображений не полностью без потерь. Проверяй качество итоговых PDF и сохраняй резервные копии важных документов. Программа не связана с разработчиками PyMuPDF, Artifex и Qt.
