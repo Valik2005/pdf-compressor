@@ -39,6 +39,13 @@ def test_valid_external_dlls_reported(tmp_path, monkeypatch):
     assert result["external_qt_dll_count"] == 4
     assert result["virtual_keyboard_files"] == []
     assert "NOT CERTIFIED" in result["status"]
+    assert result["schema_version"] == 2
+    assert result["native_binary_count"] == 5
+    manifest = result["native_binary_manifest"]
+    assert len({item["path"] for item in manifest}) == 5
+    assert all(len(item["sha256"]) == 64 for item in manifest)
+    assert all(item["size_bytes"] > 0 for item in manifest)
+    assert result["optional_qt_module_observations"]["qt_qml"] == []
 
 
 def test_missing_qt_core_fails(tmp_path, monkeypatch):
