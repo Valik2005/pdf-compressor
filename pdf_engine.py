@@ -37,6 +37,24 @@ def emit(progress: Progress | None, stage: str, current: int, total: int):
         progress(stage, current, total)
 
 
+def _copy_with_cancel(source: Path, target: Path,
+                      cancel: threading.Event | None = None) -> None:
+    """Copy a PDF in bounded chunks so cancellation remains responsive.
+
+    Callers own cleanup of an incomplete destination. A fixed 1 MiB buffer
+    avoids loading large scanned PDFs into RAM during the final output copy.
+    """
+    check_cancel(cancel)
+    with Path(source).open("rb") as reader, Path(target).open("wb") as writer:
+        while True:
+            check_cancel(cancel)
+            block = reader.read(1024 * 1024)
+            if not block:
+                break
+            writer.write(block)
+    check_cancel(cancel)
+
+
 def human_size(count: int) -> str:
     value = float(count)
     for unit in ("Б", "КБ", "МБ", "ГБ"):
@@ -129,6 +147,9 @@ class PdfAnalysis:
     scan_pages: int
     mixed_pages: int
     raster_images: int
+    # Subset eligible for JPEG replacement (by PDF metadata; no bitmap decode).
+    # The count is conservative: alpha/CMYK may be rejected later by Pillow.
+    recompressible_images: int = 0
 
 
 def analyze_pdf(source: str | Path, cancel: threading.Event | None = None,
@@ -144,6 +165,7 @@ def analyze_pdf(source: str | Path, cancel: threading.Event | None = None,
         raise ValueError("Укажите существующий PDF-файл")
     text_pages = image_pages = scan_pages = mixed_pages = 0
     unique_images: set[int] = set()
+    eligible_images: set[int] = set()
     with pymupdf.open(source) as doc:
         validate_doc(doc)
         total = len(doc)
@@ -168,7 +190,13 @@ def analyze_pdf(source: str | Path, cancel: threading.Event | None = None,
             if has_text and has_image and coverage >= 0.12:
                 mixed_pages += 1
             for item in page.get_images(full=True):
-                unique_images.add(int(item[0]))
+                xref, smask, width, height = map(int, item[:4])
+                unique_images.add(xref)
+                # Matches the cheap, metadata-only rejection rules in
+                # build_candidate. Avoid JPEG search for tiny icons and
+                # transparent images that it cannot recompress.
+                if not smask and min(width, height) >= 130:
+                    eligible_images.add(xref)
             emit(progress, "Анализ документа", index + 1, total)
     if text_pages and (scan_pages or mixed_pages >= max(1, text_pages // 2)):
         kind = "mixed"
@@ -179,7 +207,8 @@ def analyze_pdf(source: str | Path, cancel: threading.Event | None = None,
     else:
         kind = "other"
     return PdfAnalysis(str(source), total, source.stat().st_size, kind,
-                       text_pages, image_pages, scan_pages, mixed_pages, len(unique_images))
+                       text_pages, image_pages, scan_pages, mixed_pages,
+                       len(unique_images), len(eligible_images))
 
 
 def smartfit_recommendations(analysis: PdfAnalysis, target_met: bool,
@@ -431,8 +460,10 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                 stages.extend([220, 180, 150, 120] if not smartfit else [220, 180, 150])
             elif mode == "smallest" and allow_downscale:
                 stages = [150]
-            # A text-only PDF has no raster images that JPEG settings could help.
-            if smartfit and analysis is not None and analysis.raster_images == 0:
+            # Scan for eligible image XREFs during the existing structural
+            # analysis, so all-JPEG search stages are skipped for PDFs with
+            # only tiny icons/masked images (no extra full-document pass).
+            if smartfit and analysis is not None and analysis.recompressible_images == 0:
                 stages = []
             fitted = False
             useful_dpi_stages: set[int] | None = None
@@ -546,7 +577,7 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
         # Copy while temporary candidates still exist. Remove a partial output
         # if copying fails or cancellation arrives during the final copy.
         try:
-            shutil.copyfile(best_path, output)
+            _copy_with_cancel(best_path, output, cancel)
             check_cancel(cancel)
         except Exception:
             output.unlink(missing_ok=True)
@@ -599,7 +630,7 @@ def merge_pdfs(inputs: Iterable[str | Path], out_folder: str | Path, name: str =
                 check_cancel(cancel)
                 _save_pdf(result, tmp)
             check_cancel(cancel)
-            shutil.copyfile(tmp, output)
+            _copy_with_cancel(tmp, output, cancel)
             check_cancel(cancel)
         return output
     except Exception:
