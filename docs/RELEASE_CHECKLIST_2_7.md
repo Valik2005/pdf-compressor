@@ -1,4 +1,4 @@
-# PDF Compressor 2.7.0 — release readiness checklist (draft)
+> **Historical release-preparation checklist.** PDF Compressor 2.7.0 was publicly published on 2026-11-08 after the final main-branch workflow succeeded: https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0 . The unchecked historical review tasks below should not be interpreted as current blocking statuses; authoritative release artifacts are the tagged EXE, source archives, notices, manifests and SHA256SUMS.txt.\n\n# PDF Compressor 2.7.0 — release readiness checklist (draft)
 
 Base branch: `develop/2.7-smartfit`. Published stable version: `v2.6.0`.
 Do not merge into `main`, create a public GitHub Release, or mark the EXE stable until all release blockers are resolved and authorized.
