@@ -23,8 +23,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: pdf-compressor-release-2-7-1
-  cancel-in-progress: false
+  group: pdf-compressor-release-2-7-1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
