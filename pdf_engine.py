@@ -45,6 +45,13 @@ def _copy_with_cancel(source: Path, target: Path,
     avoids loading large scanned PDFs into RAM during the final output copy.
     """
     check_cancel(cancel)
+    # The OS-level copy fast path is both faster for the typical small PDF
+    # and keeps existing error/cancellation auditing for those copies intact.
+    # Large PDFs use bounded chunks for responsive cancellation and low RAM.
+    if Path(source).stat().st_size <= 1024 * 1024:
+        shutil.copyfile(source, target)
+        check_cancel(cancel)
+        return
     with Path(source).open("rb") as reader, Path(target).open("wb") as writer:
         while True:
             check_cancel(cancel)
