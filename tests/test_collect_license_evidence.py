@@ -48,3 +48,30 @@ def test_reject_unsafe_notice_paths():
     assert not mod.notice_file("../LICENSE")
     assert not mod.notice_file("/licenses/COPYING")
     assert mod.notice_file("abc.dist-info/licenses/LICENSE.md")
+
+def test_short_commercial_license_reference_is_not_accepted_as_lgpl(tmp_path, monkeypatch):
+    mod = module()
+    exe = tmp_path / "test.exe"
+    exe.write_bytes(b"test exe")
+    lic = tmp_path / "LICENSE"
+    lic.write_text("AGPL test contents")
+    class FakeDist:
+        version = "6.12.0"
+        files = [Path("PySide6-6.12.0.dist-info/licenses/LicenseRef-Qt-Commercial.txt")]
+        def locate_file(self, path):
+            return tmp_path / str(path)
+    location = tmp_path / str(FakeDist.files[0])
+    location.parent.mkdir(parents=True)
+    location.write_text("Licensees holding valid commercial Qt licenses may use this software.")
+
+    def fake_dist(name):
+        if name == "PySide6":
+            return FakeDist()
+        raise mod.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(mod.metadata, "distribution", fake_dist)
+    result = mod.collect(exe, lic, None, tmp_path / "evidence.zip")
+    assert result["packages"]["PySide6"]["documents"] == 1
+    assert result["license_text_assessment"]["PySide6"]["full_gnu_copyleft_text_found_in_package"] is False
+    assert any("PySide6: full community LGPL/GPL" in gap for gap in result["missing"])
+    assert any("replacement/relinking" in gap for gap in result["missing"])
