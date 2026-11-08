@@ -55,3 +55,7 @@ The source code imports PySide6.QtCore, QtGui and QtWidgets. Other libraries (Qt
 - **Other native components:** Python runtime, Pillow codecs, OpenSSL, other Qt plugins. Their notice and corresponding source requirements depend on exact versions.
 
 Until the entire source/notice/relinking requirement is reviewed, the onedir candidate is **only a technical experiment**, not a legally approved release. Do not merge to main or publish without explicit maintainer authorization.
+
+## First automated Windows build check
+
+GitHub Actions run [42470112055](https://github.com/Valik2005/pdf-compressor/actions/runs/42470112055) successfully built the onedir candidate on Windows with the pinned reviewed versions. Its external-DLL audit found **40 Qt DLLs** and **zero Qt Virtual Keyboard components**. The build-runner EXE is not the same file or SHA-256 as the locally reviewed onefile EXE; this run uploaded only an audit JSON, not an executable distribution. An additional automated GUI-startup smoke check is now being added to the workflow; Windows user-facing runtime checks remain separate.

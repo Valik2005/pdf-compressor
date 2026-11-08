@@ -32,7 +32,7 @@ Do not merge into `main`, create a public GitHub Release, or mark the EXE stable
 - [ ] Finalize 2.7 release notes, tagging, asset names, checksums and release announcement.
 - [ ] Explicit maintainer approval to merge `develop/2.7-smartfit` into `main` and publish the release.
 
-The successful GitHub Actions runs test source code; they do not build or audit the executable. The preview test does not validate a future rebuild.
+The general GitHub Actions test matrix checks source. A separate experimental Windows onedir workflow now builds and audits a one-folder candidate; that does not certify the final onefile release EXE or satisfy license requirements.
 
 ## Virtual Keyboard-free preview verification (2026-11-08)
 
@@ -42,3 +42,9 @@ The successful GitHub Actions runs test source code; they do not build or audit 
 - [x] Run `tools/collect_license_evidence.py` and inspect resulting 9-file archive.
 - [ ] Obtain full LGPL/GPL/AGPL license texts, complete source and Qt relinking proof; the collected archive is incomplete.
 - [ ] Complete all conditions documented in `docs/RELEASE_LICENSE_EVIDENCE_2_7.md` before publishing.
+
+## Separate-DLL experimental candidate
+
+- [x] Windows GitHub Actions run [42470112055](https://github.com/Valik2005/pdf-compressor/actions/runs/42470112055) builds the pinned-dependency onedir candidate; 40 Qt DLLs external, 0 Virtual Keyboard files.
+- [ ] Verify automated GUI startup in the new workflow and complete manual Windows onedir smoke test before proposing the alternate packaging.
+- [ ] Verify real replacement/rebuild with a compatible user-modified Qt DLL plus full source/notice obligations.

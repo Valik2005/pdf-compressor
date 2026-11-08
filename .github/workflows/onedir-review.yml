@@ -25,6 +25,25 @@ jobs:
         run: python -m PyInstaller --noconfirm --clean release_windows_onedir_review.spec
       - name: Verify external Qt DLL layout and absence of Virtual Keyboard
         run: python tools/verify_onedir_bundle.py --bundle-dir .\dist\PDF_Compressor_2_7_onedir_review --out .\dist\onedir-audit.json
+      - name: GUI startup smoke test (headless; no PDF processed)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path ".\dist\PDF_Compressor_2_7_onedir_review\PDF_Compressor_2_7_onedir_review.exe").Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 4
+            $p.Refresh()
+            if ($p.HasExited) {
+              throw "Review EXE exited early with code $($p.ExitCode)"
+            }
+            Write-Output "GUI startup smoke test passed: process remains running."
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) {
+              Stop-Process -Id $p.Id -Force
+            }
+          }
       - name: Upload audit JSON only (no binary redistribution)
         uses: actions/upload-artifact@v4
         with:
