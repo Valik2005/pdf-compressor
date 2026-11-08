@@ -2,7 +2,7 @@
 
 **Prerequisites:** Windows 10/11 x64; Python 3.11+; Git; internet access to install packages.
 
-A 2.7 **preview** EXE was successfully built and launched on Windows 11 on 2026-11-08. This does **not** constitute an official stable release, a clean-machine certification, or third-party license compliance. The published stable version remains v2.6.0.
+**PDF Compressor 2.7.0 is now publicly available.** Official release: https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0 . The release EXE is built by `.github/workflows/release-v2_7.yml` with pinned dependencies, Windows tests, source archives, third-party licenses, SHA-256 verification and Qt-relinking instructions. The commands below describe additional **local development preview** builds, not the exact published asset.
 
 ## 1. Checkout and dependencies
 
@@ -23,7 +23,7 @@ New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\PDFCompressorTests" | Out
 .\.venv\Scripts\python.exe -m pytest -q --basetemp "$env:LOCALAPPDATA\PDFCompressorTests\pytest-run"
 ```
 
-This explicit pytest path avoids failures caused by Windows access restrictions on a pre-existing pytest temporary directory. GitHub Actions tests Windows Python 3.13 and 3.14, but does not itself build or smoke-test the EXE.
+This explicit pytest path avoids failures caused by Windows access restrictions on a pre-existing pytest temporary directory. GitHub Actions tests Windows Python 3.13 and 3.14, and the separate final release workflow builds and smoke-tests the exact Windows EXE.
 
 ## 3. Build the preview EXE
 
@@ -49,7 +49,7 @@ The JSON manifest records the EXE SHA-256/size, Python version, installed packag
 
 Run the EXE directly (without invoking Python); load, compress, merge, extract and rotate test PDF files; verify output integrity, cancellation and light/dark themes. A local preview smoke test was reported successful on Windows 11.
 
-**Do not publish the preview as stable v2.7.0 until** the release checklist and third-party license review are satisfied, especially AGPL obligations for PyMuPDF and LGPL obligations for Qt / PySide6 `--onefile` distribution. See [release checklist](docs/RELEASE_CHECKLIST_2_7.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_2_7.md).
+**Do not publish the preview as stable v2.7.0 until** the release checklist and third-party license review are satisfied, especially AGPL obligations for PyMuPDF and LGPL obligations for Qt / PySide6 `--onefile` distribution. See the published [release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0), [historical review checklist](docs/RELEASE_CHECKLIST_2_7.md) and [final third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
 
 ## 6. Experimental bundle audit (not release-approved)
 
