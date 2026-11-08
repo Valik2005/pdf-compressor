@@ -2,7 +2,7 @@
 
 **Offline PDF compression for Windows — open source, Russian and English.**
 
-> **Development branch:** This is an unverified source-code preview of PDF Compressor 2.7. The stable Windows EXE remains [PDF Compressor 2.6](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.6.0). There is no official 2.7 EXE yet.
+> **Development branch:** This branch contains PDF Compressor 2.7 development sources. A local preview EXE was built and launched on Windows 11 on 2026-11-08; redistribution clearance is still pending. The stable Windows EXE remains [PDF Compressor 2.6](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.6.0). There is no official 2.7 GitHub Release yet.
 
 ## What is new
 
@@ -29,4 +29,4 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-**No executable is included in this source preview.** The verified Windows version remains v2.6.0. The source license is [AGPL-3.0-only](https://github.com/Valik2005/pdf-compressor/blob/main/LICENSE); review [third-party licenses](https://github.com/Valik2005/pdf-compressor/blob/main/DEPENDENCIES_AND_LICENSING.md) before distributing a bundled build.
+**No official executable is published for 2.7.** A preview EXE was built and smoke-tested locally, but the published stable version remains v2.6.0. See [BUILDING.md](BUILDING.md), [2.7 release checklist](docs/RELEASE_CHECKLIST_2_7.md) and [draft third-party notices](docs/THIRD_PARTY_NOTICES_2_7.md). The source license is [AGPL-3.0-only](https://github.com/Valik2005/pdf-compressor/blob/main/LICENSE); review [third-party licenses](https://github.com/Valik2005/pdf-compressor/blob/main/DEPENDENCIES_AND_LICENSING.md) before distributing a bundled build.
