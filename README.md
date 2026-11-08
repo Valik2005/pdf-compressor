@@ -111,7 +111,7 @@ README_RU.md                  Русская инструкция
 
 ## 📜 Licensing note
 
-The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.7.0 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0) includes the applicable source archives, notices, hashes and instructions for rebuilding the one-file EXE with compatible modified Qt libraries. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
+The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.7.0 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.0) groups the applicable upstream sources, license notices, build reports and Qt onefile relinking instructions into **`Third_Party_Sources_and_Licenses.zip`**. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
 
 ## ℹ️ Disclaimer
 
