@@ -71,3 +71,27 @@ def test_embedded_pyside_binary_fails(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "audit_pyinstaller_bundle", FakeAuditor)
     with pytest.raises(ValueError, match="inside EXE"):
         v.verify(root)
+
+
+def test_native_inventory_hash_changes_with_dll_content(tmp_path, monkeypatch):
+    root, v = fake_bundle(tmp_path, monkeypatch)
+    before = v.verify(root)
+    target = "_internal/PySide6/Qt6Core.dll"
+    first = next(item for item in before["native_binary_manifest"] if item["path"] == target)
+    (root / target).write_bytes(b"modified compatible dll fixture")
+    after = v.verify(root)
+    second = next(item for item in after["native_binary_manifest"] if item["path"] == target)
+    assert first["sha256"] != second["sha256"]
+    assert first["size_bytes"] != second["size_bytes"]
+    assert before["exe_sha256"] == after["exe_sha256"]
+
+
+def test_native_inventory_records_nested_pyd(tmp_path, monkeypatch):
+    root, v = fake_bundle(tmp_path, monkeypatch)
+    binding = root / "_internal" / "extension" / "native.pyd"
+    binding.parent.mkdir(parents=True)
+    binding.write_bytes(b"native binding fixture")
+    result = v.verify(root)
+    assert result["native_binary_count"] == 6
+    assert any(item["path"] == "_internal/extension/native.pyd"
+               for item in result["native_binary_manifest"])
