@@ -13,6 +13,16 @@
       "review_note": "Source distribution; audit whether it matches bundled MuPDF native components and all transitive sources."
     },
     {
+      "id": "mupdf-1.27.2-native",
+      "version": "1.27.2",
+      "filename": "mupdf-1.27.2-source.tar.gz",
+      "url": "https://mupdf.com/downloads/archive/mupdf-1.27.2-source.tar.gz",
+      "expected_sha256": "553867b135303dc4c25ab67c5f234d8e900a0e36e66e8484d99adc05fe1e8737",
+      "checksum_source": "https://fossies.org/linux/misc/mupdf-1.27.2-source.tar.gz/",
+      "required": true,
+      "review_note": "Required separate native MuPDF source. PyMuPDF setup.py hard-codes version_mupdf=1.27.2 and downloads this archive; PyMuPDF sdist alone does not include native MuPDF source. SHA-256 cross-referenced with FreeBSD ports and Fossies."
+    },
+    {
       "id": "qt-6.12.0-full",
       "version": "6.12.0",
       "filename": "qt-everywhere-src-6.12.0.tar.xz",
