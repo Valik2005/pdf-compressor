@@ -20,7 +20,11 @@
       "expected_sha256": "553867b135303dc4c25ab67c5f234d8e900a0e36e66e8484d99adc05fe1e8737",
       "checksum_source": "https://fossies.org/linux/misc/mupdf-1.27.2-source.tar.gz/",
       "required": true,
-      "review_note": "Required separate native MuPDF source. PyMuPDF setup.py hard-codes version_mupdf=1.27.2 and downloads this archive; PyMuPDF sdist alone does not include native MuPDF source. SHA-256 cross-referenced with FreeBSD ports and Fossies."
+      "review_note": "Required separate native MuPDF source. PyMuPDF setup.py hard-codes version_mupdf=1.27.2 and downloads this archive; PyMuPDF sdist alone does not include native MuPDF source. SHA-256 cross-referenced with FreeBSD ports and Fossies.",
+      "alternate_urls": [
+        "https://casper.mupdf.com/downloads/archive/mupdf-1.27.2-source.tar.gz",
+        "https://mse.uk.distfiles.macports.org/mupdf/mupdf-1.27.2-source.tar.gz"
+      ]
     },
     {
       "id": "qt-6.12.0-full",
