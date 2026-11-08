@@ -1,0 +1,177 @@
+name: One-time 2.7.1 post-release functional acceptance
+
+# Runs against the IMMUTABLE published v2.7.1 app and binary.
+# Does not rebuild, modify, republish, or replace any release asset.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/qa-271-post-release.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-acceptance:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2.7.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install exact official release dependencies
+        shell: pwsh
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0"
+
+      - name: Exercise real Qt buttons and workflows from the tagged app source
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, runpy, tempfile, time, sys
+          from pathlib import Path
+          from io import BytesIO
+          import pymupdf
+          from PIL import Image
+          from PySide6.QtWidgets import QApplication
+
+          def sha(path):
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+          with tempfile.TemporaryDirectory() as work:
+              root = Path(work)
+              source_a = root / "text.pdf"
+              source_b = root / "mixed.pdf"
+              with pymupdf.open() as doc:
+                  for i in range(3):
+                      p = doc.new_page()
+                      p.insert_text((80, 120), f"Functional acceptance page {i}", fontsize=15)
+                  doc.save(source_a)
+              buf = BytesIO()
+              Image.effect_noise((600, 800), 110).convert("RGB").save(buf, "PNG")
+              with pymupdf.open() as doc:
+                  p=doc.new_page()
+                  p.insert_text((60, 40), "Searchable text survives GUI SmartFit", fontsize=13)
+                  p.insert_image(pymupdf.Rect(20, 70, 550, 760), stream=buf.getvalue())
+                  doc.save(source_b)
+              original_hashes={p:sha(p) for p in (source_a, source_b)}
+
+              ui = runpy.run_path("app.pyw", run_name="acceptance_test")
+              assert ui["APP_VERSION"] == "2.7.1"
+              app = QApplication([])
+              win = ui["MainWindow"]()
+              win.show()
+              app.processEvents()
+
+              def wait_idle(label, limit=100):
+                  deadline=time.monotonic()+limit
+                  while time.monotonic()<deadline:
+                      app.processEvents()
+                      if not win.busy:
+                          app.processEvents()
+                          return
+                      time.sleep(0.05)
+                  raise AssertionError(f"GUI action timed out: {label}")
+
+              dest = root / "outputs"
+              win.folder_edit.setText(str(dest))
+              win.target.setText("0,80")
+              win.mode.setCurrentIndex(win.mode.findData("smartfit"))
+              win.downscale.setChecked(False)
+              win.add_files([str(source_a), str(source_b)])
+              assert len(win.entries)==2, win.entries
+              win.start_btn.click()
+              assert win.busy
+              wait_idle("batch SmartFit")
+              outputs=[]
+              for entry in win.entries:
+                  assert entry["status"] in ("Готово", "Цель не достигнута"), entry
+                  out=Path(entry["result_path"])
+                  assert out.is_file() and out.stat().st_size>100
+                  with pymupdf.open(entry["path"]) as original, pymupdf.open(out) as result:
+                      assert len(original)==len(result)
+                      assert [p.get_text("text") for p in original] == [p.get_text("text") for p in result]
+                  outputs.append(out)
+              assert len(set(outputs))==2
+              assert all(sha(p)==h for p,h in original_hashes.items())
+              print("PASS: GUI add files, click SmartFit, batch, result paths, page/text integrity, originals unchanged")
+
+              win.table.selectRow(0)
+              win.view_mode.setCurrentIndex(win.view_mode.findData("compare"))
+              win.update_preview()
+              assert win.preview_stack.currentIndex()==1
+              previous_rotation=win.preview_rotation
+              win.rotate_preview_btn.click()
+              assert win.preview_rotation==(previous_rotation+90)%360
+              print("PASS: GUI before/after preview and preview-only rotation")
+
+              win.merge_name.setText("acceptance_merged")
+              win.start_merge()
+              assert win.busy
+              wait_idle("merge")
+              assert len(win._tool_outputs)>=1, win._tool_errors
+              merged=Path(win._tool_outputs[-1])
+              with pymupdf.open(merged) as d:
+                  assert len(d)==4
+              print("PASS: GUI PDF merge and 4 output pages")
+
+              win.table.selectRow(0)
+              win.split_pages.setText("1-2")
+              win.split_each.setChecked(False)
+              win.start_split()
+              assert win.busy
+              wait_idle("extract")
+              assert len(win._tool_outputs)>=1, win._tool_errors
+              split=Path(win._tool_outputs[-1])
+              with pymupdf.open(split) as d:
+                  assert len(d)==2
+              print("PASS: GUI extract selected pages")
+
+              win.rotate_pages.setText("2")
+              win.degrees.setCurrentIndex(win.degrees.findData(90))
+              win.start_rotate()
+              assert win.busy
+              wait_idle("rotate")
+              assert len(win._tool_outputs)>=1, win._tool_errors
+              rotated=Path(win._tool_outputs[-1])
+              with pymupdf.open(rotated) as d:
+                  assert len(d)==3
+                  assert d[0].rotation==0 and d[1].rotation==90 and d[2].rotation==0
+              assert all(sha(p)==h for p,h in original_hashes.items())
+              print("PASS: GUI page rotation and source immutability")
+              win.close()
+              app.processEvents()
+          print("ALL TAGGED GUI FUNCTIONAL ACCEPTANCE TESTS PASSED")
+          '@ | Set-Content -Path qa_gui_postrelease.py -Encoding utf8
+          python qa_gui_postrelease.py
+
+      - name: Download the actual published EXE and verify its public SHA-256
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory downloaded -Force | Out-Null
+          gh release download v2.7.1 --pattern PDF_Compressor_2_7_1.exe --dir downloaded --repo "$env:GITHUB_REPOSITORY"
+          $f = (Resolve-Path "downloaded/PDF_Compressor_2_7_1.exe").Path
+          $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = "df8f537293ef724f567150387242c82411d2b7e1cdaf626eb5e01723f95ec157"
+          if ($hash -ne $expected) { throw "Release EXE hash mismatch: $hash" }
+          Write-Host "PASS: exact published EXE verified against immutable release SHA-256: $hash"
+
+      - name: Start the downloaded published EXE in Windows
+        shell: pwsh
+        run: |
+          $f = (Resolve-Path "downloaded/PDF_Compressor_2_7_1.exe").Path
+          $p = Start-Process -FilePath $f -PassThru
+          try {
+            Start-Sleep -Seconds 14
+            $p.Refresh()
+            if ($p.HasExited) { throw "Published EXE exited unexpectedly with $($p.ExitCode)" }
+            Write-Host "PASS: published Windows EXE launched and remained running"
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
