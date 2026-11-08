@@ -29,7 +29,7 @@ a = Analysis(
 # as well as excluding the Python modules above. CI asserts their absence
 # and verifies that the executable still starts on Windows.
 def drop_unused_qt(destination):
-    name = destination.replace("\\\\", "/").lower()
+    name = destination.replace(chr(92), "/").lower()
     basename = name.rsplit("/", 1)[-1]
     if basename == "qt6pdf.dll" or basename.startswith("qt6qml") and basename.endswith(".dll"):
         return True
@@ -51,7 +51,7 @@ def drop_virtual_keyboard(destination):
 
 removed = [entry[0] for entry in a.binaries + a.datas if drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0])]
 a.binaries = [entry for entry in a.binaries if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
-a.datas = [entry for entry in a.datas if not drop_virtual_keyboard(entry[0])]
+a.datas = [entry for entry in a.datas if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
 print("Unused Qt PDF/QML/Quick and Virtual Keyboard items filtered:", removed)
 
 pyz = PYZ(a.pure)
