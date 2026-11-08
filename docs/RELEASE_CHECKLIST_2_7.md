@@ -46,5 +46,13 @@ The general GitHub Actions test matrix checks source. A separate experimental Wi
 ## Separate-DLL experimental candidate
 
 - [x] Windows GitHub Actions run [42470112055](https://github.com/Valik2005/pdf-compressor/actions/runs/42470112055) builds the pinned-dependency onedir candidate; 40 Qt DLLs external, 0 Virtual Keyboard files.
-- [ ] Verify automated GUI startup in the new workflow and complete manual Windows onedir smoke test before proposing the alternate packaging.
+- [x] Automated Windows offscreen GUI startup smoke test [#42470397048](https://github.com/Valik2005/pdf-compressor/actions/runs/42470397048) passed with external Qt DLLs.
+- [ ] Complete manual Windows onedir smoke test before proposing the alternate packaging.
 - [ ] Verify real replacement/rebuild with a compatible user-modified Qt DLL plus full source/notice obligations.
+
+## Corresponding-source archive provenance
+
+- [x] Document exact upstream archive names/official URLs for Qt 6.12.0, PySide6 6.12.0 and PyMuPDF 1.27.2.3 (`docs/source-archives-2_7.json`).
+- [x] Pin publicly published SHA-256 for PyMuPDF sdist and optional QtBase subset, with fail-closed source verifier.
+- [ ] Acquire required full Qt, Qt for Python and PyMuPDF sources under maintainer control and independently verify their checksums; Qt full and PySide6 published SHA-256 still need confirming.
+- [ ] Verify the archives contain the actual corresponding source for all native libraries/plugins in the final bundle, not merely matching version labels.
