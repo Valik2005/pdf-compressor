@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.7 SmartFit - offline desktop GUI (Qt6)."""
+"""PDF Compressor 2.7.1 SmartFit - offline desktop GUI (Qt6)."""
 from __future__ import annotations
 
 import os
@@ -24,7 +24,7 @@ from pdf_engine import (
     rotate_pdf, split_pdf
 )
 
-APP_VERSION = "2.7"
+APP_VERSION = "2.7.1"
 
 
 # Text is keyed by the original Russian UI copy. No external translation file is
@@ -61,6 +61,7 @@ I18N_EN = {
     "Рекомендации:": "Suggestions:",
     "Размер достигнут. Просмотрите страницы перед отправкой.": "Target met. Check the pages before sending.",
     "В PDF почти нет встроенных изображений: сжатие может не помочь.": "There are few embedded images; compression may not help.",
+    "JPEG-сжатие не затронет изображения: они слишком малы или имеют маску прозрачности.": "JPEG compression cannot affect these images: they are too small or have transparency masks.",
     "Размер не достигнут. Можно разрешить уменьшение разрешения изображений.": "Target not met. You can allow image downscaling.",
     "Размер не достигнут без более сильной потери качества. Увеличьте лимит.": "Target not met without greater quality loss. Increase the limit.",
     "Документ похож на скан: проверьте мелкий текст и печати.": "This looks like a scan: check small text and stamps.",
@@ -540,7 +541,7 @@ class MainWindow(QMainWindow):
         title = QLabel("PDF Compressor")
         title.setObjectName("Title")
         header.addWidget(title)
-        version = QLabel("2.7")
+        version = QLabel(APP_VERSION)
         version.setObjectName("Badge")
         header.addWidget(version)
         header.addStretch(1)
@@ -1765,7 +1766,7 @@ class MainWindow(QMainWindow):
 
 def run_app():
     app = QApplication(sys.argv)
-    app.setApplicationName("PDF Compressor 2.7")
+    app.setApplicationName(f"PDF Compressor {APP_VERSION}")
     app.setStyle("Fusion")
     app.setFont(QFont("Segoe UI", 10))
     win = MainWindow()
