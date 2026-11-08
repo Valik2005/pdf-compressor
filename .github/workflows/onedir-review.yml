@@ -1,0 +1,68 @@
+name: Experimental Windows onedir bundle audit
+
+# Only a review-branch experiment. Does not publish or upload binaries.
+on:
+  push:
+    branches:
+      - release/2.7-bundle-audit
+  workflow_dispatch:
+
+jobs:
+  build-and-audit:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Install exact reviewed dependency versions
+        run: |
+          python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Build experimental separate-DLL EXE
+        run: python -m PyInstaller --noconfirm --clean release_windows_onedir_review.spec
+      - name: Verify external Qt DLL layout and absence of Virtual Keyboard
+        run: python tools/verify_onedir_bundle.py --bundle-dir .\dist\PDF_Compressor_2_7_onedir_review --out .\dist\onedir-audit.json
+      - name: Validate hashed native binary inventory
+        shell: pwsh
+        run: |
+          @'
+          import json
+          from pathlib import Path
+          audit = json.loads(Path("dist/onedir-audit.json").read_text(encoding="utf-8"))
+          assert audit["schema_version"] == 2
+          files = audit["native_binary_manifest"]
+          assert len(files) == audit["native_binary_count"]
+          assert len(files) > audit["external_qt_dll_count"]
+          assert all(len(item["sha256"]) == 64 and item["size_bytes"] > 0 for item in files)
+          assert len({item["path"].casefold() for item in files}) == len(files)
+          assert not audit["virtual_keyboard_files"]
+          print("Native-file SHA-256 inventory validated:", len(files), "files")
+          '@ | python -
+      - name: GUI startup smoke test (headless; no PDF processed)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path ".\dist\PDF_Compressor_2_7_onedir_review\PDF_Compressor_2_7_onedir_review.exe").Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 4
+            $p.Refresh()
+            if ($p.HasExited) {
+              throw "Review EXE exited early with code $($p.ExitCode)"
+            }
+            Write-Output "GUI startup smoke test passed: process remains running."
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) {
+              Stop-Process -Id $p.Id -Force
+            }
+          }
+      - name: Upload audit JSON only (no binary redistribution)
+        uses: actions/upload-artifact@v4
+        with:
+          name: onedir-layout-audit
+          path: dist/onedir-audit.json
+          if-no-files-found: error

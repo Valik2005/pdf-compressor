@@ -95,3 +95,40 @@ def test_image_and_selectable_text_survive(tmp_path):
         assert images
         assert images[0][2:4]==(1100,800)
         assert doc[0].get_pixmap().samples
+
+
+def test_batch_outputs_are_independent_and_sources_unchanged(tmp_path):
+    """Exercise the engine's real batch calling pattern, not just audit tools."""
+    import hashlib
+
+    sources = []
+    for index in range(4):
+        source = tmp_path / f"batch_{index}.pdf"
+        with pymupdf.open() as doc:
+            page = doc.new_page()
+            page.insert_text((72, 72), f"Batch document {index}", fontsize=14)
+            doc.save(source)
+        sources.append(source)
+
+    original_hashes = {
+        source: hashlib.sha256(source.read_bytes()).hexdigest()
+        for source in sources
+    }
+    reserved = set()
+    outputs = []
+    for source in sources:
+        result = compress_pdf(
+            source, tmp_path / "results", mode="smartfit", target_mb=1,
+            name_template="same_name", reserved=reserved
+        )
+        assert result.target_met is True
+        assert result.pages == 1
+        outputs.append(Path(result.output))
+        with pymupdf.open(result.output) as pdf:
+            assert len(pdf) == 1
+            assert source.stem.split("_")[-1] in pdf[0].get_text()
+
+    assert len(set(outputs)) == len(sources)
+    assert all(path.is_file() for path in outputs)
+    assert all(hashlib.sha256(source.read_bytes()).hexdigest() == digest
+               for source, digest in original_hashes.items())

@@ -1,0 +1,49 @@
+name: Acquire exact third-party sources for release review
+
+# Source evidence only. Does not publish a release or label compliance complete.
+on:
+  pull_request:
+    branches: [develop/2.7-smartfit]
+    paths:
+      - docs/source-archives-2_7.json
+      - tools/fetch_required_sources.py
+      - tools/package_release_notices.py
+      - .github/workflows/source-evidence.yml
+  workflow_dispatch:
+
+concurrency:
+  group: source-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Download required upstream archives and validate published checksums
+        run: python tools/fetch_required_sources.py --out-dir dist/source-candidates
+      - name: Produce complete base LGPL/GPL/AGPL and third-party notices from pinned sources
+        run: python tools/package_release_notices.py --sources dist/source-candidates --out dist/release-notices-review.zip
+      - name: Save source archives and honest verification report (review only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-candidates-NOT-CERTIFIED
+          path: dist/source-candidates/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload license and third-party notices review pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notices-review-NOT-CERTIFIED
+          path: dist/release-notices-review.zip
+          if-no-files-found: error
+          retention-days: 14

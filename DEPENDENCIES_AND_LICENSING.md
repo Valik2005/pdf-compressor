@@ -28,3 +28,10 @@ Official references: [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html), [Py
 При публичном распространении готового EXE необходимо проверить соответствие условиям AGPL для PyMuPDF, условиям LGPL/GPL для PySide6/Qt и включить обязательные уведомления. Особенно важно проверить особенности упаковки Qt-библиотек в **один EXE** через PyInstaller. Публикация исходников сама по себе не гарантирует выполнения всех условий.
 
 Для юридически значимого распространения рекомендуется отдельная проверка лицензий и состава собранного бинарника.
+
+## Version 2.7 release preparation
+
+- Draft third-party notices: [docs/THIRD_PARTY_NOTICES_2_7.md](docs/THIRD_PARTY_NOTICES_2_7.md).
+- Release gate checklist: [docs/RELEASE_CHECKLIST_2_7.md](docs/RELEASE_CHECKLIST_2_7.md).
+- Use `tools/release_manifest.py` to record exact builder versions and final EXE hash. This is **not** proof of complete binary licensing compliance.
+- Source availability, LGPL Qt replacement/relinking rights and full component license texts still require review before public v2.7 distribution.
