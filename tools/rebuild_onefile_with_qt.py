@@ -70,8 +70,11 @@ def build(work_dir: Path, overrides: Path | None) -> dict:
     work_dir = work_dir.resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     venv_dir = work_dir / "venv"
-    if not (venv_dir / "Scripts" / "python.exe").is_file():
-        run([sys.executable, "-m", "venv", str(venv_dir)], source)
+    # Recreate the environment every time: a previous Qt replacement must not
+    # silently contaminate the next build (even when version pins match).
+    if venv_dir.exists():
+        shutil.rmtree(venv_dir)
+    run([sys.executable, "-m", "venv", str(venv_dir)], source)
     py = venv_dir / "Scripts" / "python.exe"
     run([str(py), "-m", "pip", "install", *PINS], source)
     # Ask the environment itself for its installed PySide6 package location.
