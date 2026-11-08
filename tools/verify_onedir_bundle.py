@@ -59,14 +59,50 @@ def verify(bundle_dir: Path, executable_name: str = BUNDLE_NAME) -> dict:
                 and "pyside6" in e["name"].lower()]
     if embedded:
         raise ValueError(f"PySide6 binaries unexpectedly inside EXE: {embedded[:5]}")
+    # Hash every native executable/binding in the *actual* folder tree, not
+    # just the top-level Qt DLLs. Reviewers can correlate this immutable
+    # inventory with the exact third-party source and license evidence.
+    native_extensions = {".dll", ".pyd", ".exe"}
+    native_files = sorted(
+        (p for p in bundle_dir.rglob("*")
+         if p.is_file() and not p.is_symlink()
+         and p.suffix.casefold() in native_extensions),
+        key=lambda p: p.relative_to(bundle_dir).as_posix().casefold(),
+    )
+    native_manifest = [
+        {
+            "path": p.relative_to(bundle_dir).as_posix(),
+            "size_bytes": p.stat().st_size,
+            "sha256": sha256_file(p),
+        }
+        for p in native_files
+    ]
+    module_observations = {
+        "qt_pdf_or_pdfium": sorted(
+            p.relative_to(bundle_dir).as_posix()
+            for p in dlls
+            if p.name.casefold() in {"qt6pdf.dll", "qt6pdfwidgets.dll", "qpdf.dll"}
+        ),
+        "qt_qml": sorted(
+            p.relative_to(bundle_dir).as_posix()
+            for p in dlls if p.name.casefold().startswith("qt6qml")
+        ),
+        "qt_quick": sorted(
+            p.relative_to(bundle_dir).as_posix()
+            for p in dlls if p.name.casefold().startswith("qt6quick")
+        ),
+    }
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": "EXPERIMENTAL EXTERNAL-DLL LAYOUT; LICENSE COMPLIANCE NOT CERTIFIED",
         "exe_name": exe.name,
         "exe_sha256": sha256_file(exe),
         "external_qt_dll_count": len(dlls),
         "external_qt_dlls": sorted(p.relative_to(bundle_dir).as_posix() for p in dlls),
         "qt_platform_plugins": sorted(p.relative_to(bundle_dir).as_posix() for p in plugins),
+        "native_binary_count": len(native_manifest),
+        "native_binary_manifest": native_manifest,
+        "optional_qt_module_observations": module_observations,
         "virtual_keyboard_files": forbidden,
         "warning": "The modified-library replacement path, full license terms and source delivery remain unverified.",
     }
