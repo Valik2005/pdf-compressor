@@ -14,7 +14,7 @@ import re
 import urllib.parse
 import urllib.request
 
-ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com"}
+ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com", "casper.mupdf.com", "mse.uk.distfiles.macports.org"}
 SHA256_RE = re.compile(r"SHA-256\s+Hash\s*:\s*([a-fA-F0-9]{64})", re.I)
 MAX_SIZE = 600 * 1024 * 1024
 
@@ -28,7 +28,7 @@ def fetch(url: str, dest: Path, *, max_bytes: int = MAX_SIZE) -> str:
     total = 0
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with urllib.request.urlopen(req, timeout=150) as response, dest.open("wb") as out:
+        with urllib.request.urlopen(req, timeout=60) as response, dest.open("wb") as out:
             redirected = urllib.parse.urlsplit(response.geturl())
             # Qt's official mirror redirects are permitted for binary archives;
             # the exact SHA-256 still must match a trusted upstream value.
@@ -81,15 +81,26 @@ def acquire(catalog_path: Path, out_dir: Path) -> dict:
             if not digest and entry.get("checksum_source"):
                 digest = official_digest(entry["checksum_source"], out_dir / "_qt-mirrorlist.tmp")
             record["trusted_expected_sha256"] = digest
-            actual = fetch(entry["url"], out_dir / filename)
-            record["downloaded_sha256"] = actual
-            if not digest:
-                record["status"] = "UNVERIFIED_NO_OFFICIAL_CHECKSUM"
-            elif actual.lower() != digest.lower():
-                (out_dir / filename).unlink(missing_ok=True)
-                record["status"] = "HASH_MISMATCH"
-            else:
-                record["status"] = "hash_matches_official_source"
+            errors = []
+            candidates = [entry["url"], *entry.get("alternate_urls", [])]
+            if not digest and len(candidates) > 1:
+                raise ValueError("Unpinned mirrored downloads are not permitted")
+            for url in candidates:
+                try:
+                    actual = fetch(url, out_dir / filename)
+                    record["downloaded_sha256"] = actual
+                    if digest and actual.lower() != digest.lower():
+                        (out_dir / filename).unlink(missing_ok=True)
+                        errors.append("Hash mismatch: " + url)
+                        continue
+                    record["downloaded_from"] = url
+                    record["status"] = ("hash_matches_official_source" if digest
+                                        else "UNVERIFIED_NO_OFFICIAL_CHECKSUM")
+                    break
+                except Exception as retry_error:
+                    errors.append(f"{url}: {retry_error}")
+            if record["status"] == "pending":
+                raise ValueError("All source locations failed: " + "; ".join(errors))
         except Exception as exc:
             record["status"] = "DOWNLOAD_OR_CHECKSUM_ERROR"
             record["error"] = str(exc)[:300]
