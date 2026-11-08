@@ -56,3 +56,14 @@ The general GitHub Actions test matrix checks source. A separate experimental Wi
 - [x] Pin publicly published SHA-256 for PyMuPDF sdist and optional QtBase subset, with fail-closed source verifier.
 - [ ] Acquire required full Qt, Qt for Python and PyMuPDF sources under maintainer control and independently verify their checksums; Qt full and PySide6 published SHA-256 still need confirming.
 - [ ] Verify the archives contain the actual corresponding source for all native libraries/plugins in the final bundle, not merely matching version labels.
+
+## Updated native-binary audit gate (2026-11-08)
+
+- [x] Added schema 2 native inventory recording relative path, byte size and SHA-256 of every DLL/PYD/EXE in the experimental onedir build.
+- [x] Added automated tests for the inventory structure and a Windows workflow assertion step.
+- [ ] Confirm the **latest** Windows Actions run passes with the new schema 2 inventory; older successful runs do not certify newer commits.
+- [ ] Review the generated native manifest against the exact PySide6, Qt PDF/PDFium, MuPDF and other bundled native component source/notice evidence.
+- [ ] Independently obtain and verify full Qt 6.12.0 and Qt for Python 6.12.0 source archive hashes; the catalog intentionally marks them unverified.
+- [ ] Validate a real compatible Qt DLL replacement on Windows, not merely that DLLs are stored externally.
+
+**Distribution choice remains open:** the experimental onedir folder is not interchangeable with the previously requested single EXE. No packaging change or release publication is authorized by these audit results.
