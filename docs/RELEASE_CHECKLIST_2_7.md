@@ -67,3 +67,16 @@ The general GitHub Actions test matrix checks source. A separate experimental Wi
 - [ ] Validate a real compatible Qt DLL replacement on Windows, not merely that DLLs are stored externally.
 
 **Distribution choice remains open:** the experimental onedir folder is not interchangeable with the previously requested single EXE. No packaging change or release publication is authorized by these audit results.
+
+
+## CI checkpoint and scope control (2026-11-08)
+
+- [x] PR #7 commit `13f635e49b67c69a8c52a3e82f951a2575aec7e6`: Windows Tests run [42472689355](https://github.com/Valik2005/pdf-compressor/actions/runs/42472689355) completed successfully on Python 3.13 and 3.14. This includes the new four-file SmartFit engine regression test.
+- [ ] Confirm a **push-triggered** Experimental Windows onedir bundle audit run for the same final head. The commit-workflow-runs API used for PR checks only lists pull-request-triggered runs; a missing onedir entry there is **not** proof of a failed or absent push workflow.
+- [ ] Obtain and inspect the matching `onedir-layout-audit` artifact (schema 2, native DLL/PYD/EXE hashes) from that exact onedir run; do not reuse an older artifact as proof.
+- [ ] Complete the actual component-to-license/source mapping and LGPL library-replacement demonstration. A successful layout audit or GUI startup alone is insufficient.
+- [ ] Decide whether the requested single-EXE distribution has a demonstrably compliant route; do not silently substitute onedir.
+
+### Avoid unnecessary retesting
+
+Existing manual PDF stress, cancellation, batch and Windows preview results remain historical evidence. Do not repeat the full functional matrix solely because documentation, inventory tests or packaging audit scripts changed. For a final binary, perform a narrowly scoped packaging regression (startup, native-library loading, and the actual replacement/relinking procedure) plus any checks directly affected by changes since the previous functional test. The final EXE checksum and clean-machine behavior still require verification before release.
