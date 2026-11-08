@@ -56,6 +56,8 @@ jobs:
           if blocked: raise AssertionError(f"Unexpected optional Qt module files: {blocked}")
           print("Unused Qt PDF, QML, Quick DLL/plugin files excluded")
           '@ | python -
+      - name: Map all native onefile DLLs and PYDs to source/notice categories
+        run: python tools/audit_onefile_native_sources.py --audit .\\dist\\onefile-bundle-audit.json --out .\\dist\\native-source-mapping.json
       - name: Validate manifest matches executable
         shell: pwsh
         run: |
@@ -93,6 +95,7 @@ jobs:
           path: |
             dist/onefile-manifest.json
             dist/onefile-bundle-audit.json
+            dist/native-source-mapping.json
             dist/license-evidence-not-for-release.zip
           if-no-files-found: error
       - name: Upload private review EXE (not a published release)
