@@ -226,6 +226,8 @@ def smartfit_recommendations(analysis: PdfAnalysis, target_met: bool,
         notes.append("Размер достигнут. Просмотрите страницы перед отправкой.")
     elif analysis.raster_images == 0:
         notes.append("В PDF почти нет встроенных изображений: сжатие может не помочь.")
+    elif analysis.recompressible_images == 0:
+        notes.append("JPEG-сжатие не затронет изображения: они слишком малы или имеют маску прозрачности.")
     elif not allow_downscale:
         notes.append("Размер не достигнут. Можно разрешить уменьшение разрешения изображений.")
     else:
