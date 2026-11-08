@@ -4,7 +4,7 @@ name: Windows onefile release candidate audit
 on:
   pull_request:
     branches:
-      - develop/2.7-smartfit
+      - main
     paths:
       - "release_windows_review.spec"
       - ".github/workflows/onefile-candidate-audit.yml"
@@ -13,6 +13,7 @@ on:
       - "tools/release_manifest.py"
       - "app.pyw"
       - "pdf_engine.py"
+      - "tests/test_271_improvements.py"
       - "requirements.txt"
   workflow_dispatch:
 
