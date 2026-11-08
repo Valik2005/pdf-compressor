@@ -63,3 +63,10 @@ jobs:
             dist/onefile-manifest.json
             dist/onefile-bundle-audit.json
           if-no-files-found: error
+      - name: Upload private review EXE (not a published release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: onefile-candidate-exe-NOT-FOR-RELEASE
+          path: dist/PDF_Compressor_2_7_license_review.exe
+          if-no-files-found: error
+          retention-days: 7
