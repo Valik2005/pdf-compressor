@@ -16,7 +16,7 @@ Do not merge into `main`, create a public GitHub Release, or mark the EXE stable
 
 - [x] Preview EXE SHA-256 and size match its build manifest; source commit `7738001` and clean tree recorded.
 - [x] PyInstaller archive inventoried: 306 entries; Qt Virtual Keyboard (GPLv3 or commercial) and Qt PDF were found.
-- [ ] Build and smoke-test the experimental Virtual Keyboard-free candidate; compare new archive and checksum.
+- [x] Build and smoke-test the experimental Virtual Keyboard-free candidate; compare new archive and checksum.
 - [ ] Resolve required notices, corresponding-source/relinking obligations for all bundled Qt/MuPDF components (see `docs/EXE_BUNDLE_AUDIT_2_7_PREVIEW.md`).
 
 ## Pending before public release
@@ -38,6 +38,7 @@ The successful GitHub Actions runs test source code; they do not build or audit 
 
 - [x] New EXE SHA-256 independently confirmed: `8b65cdaf950b8ca1598ee26791e69194a4979f5dd601738f732224d489b7bdca`.
 - [x] Bundle audit reports 304 archive entries and no Qt Virtual Keyboard; maintainer confirms Windows operation.
-- [ ] Generate the *matching* manifest; existing `build-manifest(1).json` still belongs to old binary.
-- [ ] Run `tools/collect_license_evidence.py` and resolve missing files and corresponding source/relinking proof.
+- [x] Locally generate matching `license-review-build-manifest.json` (command output confirms matching SHA-256); previously uploaded `build-manifest(1).json` still belongs to old binary.
+- [x] Run `tools/collect_license_evidence.py` and inspect resulting 9-file archive.
+- [ ] Obtain full LGPL/GPL/AGPL license texts, complete source and Qt relinking proof; the collected archive is incomplete.
 - [ ] Complete all conditions documented in `docs/RELEASE_LICENSE_EVIDENCE_2_7.md` before publishing.
