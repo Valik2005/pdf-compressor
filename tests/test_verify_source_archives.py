@@ -80,6 +80,8 @@ def test_checked_in_source_catalog_validates():
     module = lib()
     catalog = json.loads((Path(__file__).resolve().parents[1] / "docs" / "source-archives-2_7.json").read_text(encoding="utf-8"))
     module.validate_catalog(catalog)
-    assert sum(bool(entry["required"]) for entry in catalog["entries"]) == 3
+    assert sum(bool(entry["required"]) for entry in catalog["entries"]) == 4
     assert any(entry["id"] == "pymupdf-1.27.2.3" and entry["expected_sha256"] == "7a92faa25129e8bbec5e50eeb9214f187665428c31b05c4ef6e36c58c0b1c6d2" for entry in catalog["entries"])
-    assert any(entry["id"] == "qt-6.12.0-full" and entry["expected_sha256"] is None for entry in catalog["entries"])
+    assert any(entry["id"] == "qt-6.12.0-full" and not entry["required"] for entry in catalog["entries"])
+    assert any(entry["id"] == "qtbase-6.12.0-required" and entry["required"] for entry in catalog["entries"])
+    assert any(entry["id"] == "qtsvg-6.12.0" and entry["required"] for entry in catalog["entries"])
