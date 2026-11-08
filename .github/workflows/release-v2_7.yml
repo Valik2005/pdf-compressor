@@ -3,6 +3,7 @@ name: PDF Compressor 2.7 final release gate
 # Dry-run both assets on PRs; only a successful push to main may publish.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
     branches: [main]
     paths:
       - ".github/workflows/release-v2_7.yml"
@@ -114,6 +115,25 @@ jobs:
           cache: pip
       - name: Freeze installed binary dependencies
         run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Confirm linked runtime versions match required source archives
+        shell: pwsh
+        run: |
+          @'
+          import ssl
+          import pymupdf
+          import PySide6
+          from PySide6.QtCore import qVersion
+          import PIL
+          print("PyMuPDF",pymupdf.__doc__[:130] if pymupdf.__doc__ else "")
+          print("MuPDF engine",getattr(pymupdf, "mupdf_version", "unknown"))
+          print("Qt",qVersion(),"PySide6",PySide6.__version__)
+          print("OpenSSL",ssl.OPENSSL_VERSION)
+          print("Pillow",PIL.__version__)
+          assert qVersion()=="6.12.0"
+          assert PySide6.__version__=="6.12.0"
+          assert PIL.__version__=="12.3.0"
+          assert "OpenSSL 3." in ssl.OPENSSL_VERSION
+          '@ | python -
       - name: Build exact Windows onefile
         run: python -m PyInstaller --clean --noconfirm release_windows_review.spec
       - name: Rename reviewed binary to public release name
