@@ -14,7 +14,7 @@ import re
 import urllib.parse
 import urllib.request
 
-ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org"}
+ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com"}
 SHA256_RE = re.compile(r"SHA-256\s+Hash\s*:\s*([a-fA-F0-9]{64})", re.I)
 MAX_SIZE = 600 * 1024 * 1024
 
