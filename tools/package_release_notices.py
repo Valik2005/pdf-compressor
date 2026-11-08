@@ -16,6 +16,7 @@ import zipfile
 SOURCES = {
     "qtbase-6.12.0-required": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtsvg-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
+    "qtimageformats-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtforpython-6.12.0": [
         "LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt",
         "sources/pyside6/COPYING", "sources/shiboken6/COPYING",
