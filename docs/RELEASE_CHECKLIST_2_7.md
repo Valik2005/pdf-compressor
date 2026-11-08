@@ -61,7 +61,7 @@ The general GitHub Actions test matrix checks source. A separate experimental Wi
 
 - [x] Added schema 2 native inventory recording relative path, byte size and SHA-256 of every DLL/PYD/EXE in the experimental onedir build.
 - [x] Added automated tests for the inventory structure and a Windows workflow assertion step.
-- [ ] Confirm the **latest** Windows Actions run passes with the new schema 2 inventory; older successful runs do not certify newer commits.
+- [x] Windows onedir audit #42474004817 passed on `31e32c7` with schema 2 inventory; after subsequent documentation-only commits, this remains the last verified binary audit, not a rebuild of the new documentation commit.
 - [ ] Review the generated native manifest against the exact PySide6, Qt PDF/PDFium, MuPDF and other bundled native component source/notice evidence.
 - [ ] Independently obtain and verify full Qt 6.12.0 and Qt for Python 6.12.0 source archive hashes; the catalog intentionally marks them unverified.
 - [ ] Validate a real compatible Qt DLL replacement on Windows, not merely that DLLs are stored externally.
@@ -72,11 +72,22 @@ The general GitHub Actions test matrix checks source. A separate experimental Wi
 ## CI checkpoint and scope control (2026-11-08)
 
 - [x] PR #7 commit `13f635e49b67c69a8c52a3e82f951a2575aec7e6`: Windows Tests run [42472689355](https://github.com/Valik2005/pdf-compressor/actions/runs/42472689355) completed successfully on Python 3.13 and 3.14. This includes the new four-file SmartFit engine regression test.
-- [ ] Confirm a **push-triggered** Experimental Windows onedir bundle audit run for the same final head. The commit-workflow-runs API used for PR checks only lists pull-request-triggered runs; a missing onedir entry there is **not** proof of a failed or absent push workflow.
-- [ ] Obtain and inspect the matching `onedir-layout-audit` artifact (schema 2, native DLL/PYD/EXE hashes) from that exact onedir run; do not reuse an older artifact as proof.
+- [x] Confirm push-triggered Experimental Windows onedir audit run [#42474004817](https://github.com/Valik2005/pdf-compressor/actions/runs/42474004817), commit `31e32c760a813b76c1422c38b893ba6e787eac76`: all build, external DLL layout, inventory, headless GUI startup and artifact-upload steps succeeded.
+- [x] Download and inspect matching `onedir-layout-audit` artifact ID `13614118024` (schema 2): 126 native binaries inventoried, 40 external Qt DLL entries, zero Virtual Keyboard files, no missing SHA-256; review EXE SHA-256 `cbe18a425a16ba2641f91f8814b7af1c225186dac65659211d4711ea0dff2a29`. This certifies the inventory report only, not licensing or an actual DLL replacement.
 - [ ] Complete the actual component-to-license/source mapping and LGPL library-replacement demonstration. A successful layout audit or GUI startup alone is insufficient.
 - [ ] Decide whether the requested single-EXE distribution has a demonstrably compliant route; do not silently substitute onedir.
 
 ### Avoid unnecessary retesting
 
 Existing manual PDF stress, cancellation, batch and Windows preview results remain historical evidence. Do not repeat the full functional matrix solely because documentation, inventory tests or packaging audit scripts changed. For a final binary, perform a narrowly scoped packaging regression (startup, native-library loading, and the actual replacement/relinking procedure) plus any checks directly affected by changes since the previous functional test. The final EXE checksum and clean-machine behavior still require verification before release.
+
+## Native component mapping from onedir audit #14 (reviewed 2026-11-08)
+
+The exact report contains Qt PDF (`_internal/PySide6/Qt6Pdf.dll`, `_internal/PySide6/plugins/imageformats/qpdf.dll`), Qt QML/Quick, MuPDF (`_internal/pymupdf/_mupdf.pyd`, `_internal/pymupdf/mupdfcpp64.dll`), OpenSSL (`libcrypto-3*.dll`, `libssl-3*.dll`), and platform/runtime DLLs. These are observed file names, **not** independently established license conclusions or proof of which optional components the app actually needs.
+
+- [x] Inventory the above components in the exact #14 artifact and confirm native SHA-256 fields are present.
+- [ ] Match each native component to its corresponding third-party notice, applicable full license text, version-specific source and source checksum.
+- [ ] Demonstrate the LGPL-compliant replacement/relinking path for the **requested single-file** package (the external-DLL onedir experiment is not a substitute).
+- [ ] If a component is removed to reduce dependencies, rebuild and verify that changed package specifically; do not assume removal from static imports alone proves it is absent.
+
+**Decision:** preserve the existing functional-test evidence and the user's one-EXE requirement. Do not publish, merge into main, or declare license compliance until the unresolved release obligations are addressed.
