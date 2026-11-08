@@ -60,8 +60,6 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
             raise ValueError(f"Source archive SHA-256 mismatch: {component_id}")
         if reported.get("trusted_expected_sha256") != got:
             raise ValueError(f"Source archive lacks matching upstream checksum: {component_id}")
-        if got != expected.lower():
-            raise ValueError(f"Source archive SHA-256 mismatch: {component_id}")
         provenance.append({"component": component_id, "archive": archive.name, "sha256": got})
         with tarfile.open(archive, "r:*") as tar:
             members = {m.name: m for m in tar.getmembers() if m.isfile()}
