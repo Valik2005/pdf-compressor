@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "release": "PDF Compressor 2.7 review; source-provenance candidates, NOT a legal clearance",
+  "entries": [
+    {
+      "id": "pymupdf-1.27.2.3",
+      "version": "1.27.2.3",
+      "filename": "pymupdf-1.27.2.3.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/22/32/708bedc9dde7b328d45abbc076091769d44f2f24ad151ad92d56a6ec142b/pymupdf-1.27.2.3.tar.gz",
+      "expected_sha256": "7a92faa25129e8bbec5e50eeb9214f187665428c31b05c4ef6e36c58c0b1c6d2",
+      "checksum_source": "https://pypi.org/project/pymupdf/1.27.2.3/",
+      "required": true,
+      "review_note": "Source distribution; audit whether it matches bundled MuPDF native components and all transitive sources."
+    },
+    {
+      "id": "qt-6.12.0-full",
+      "version": "6.12.0",
+      "filename": "qt-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": null,
+      "checksum_source": null,
+      "required": true,
+      "review_note": "Full Qt source incl. Qt PDF from qtwebengine; published checksum not yet captured. LARGE (~423MB). Must verify exact native wheel module versions and PDFium."
+    },
+    {
+      "id": "qtforpython-6.12.0",
+      "version": "6.12.0",
+      "filename": "pyside-setup-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": null,
+      "checksum_source": null,
+      "required": true,
+      "review_note": "PySide6/Shiboken sources; checksum not independently captured yet; inspect license texts and wheel correspondence."
+    },
+    {
+      "id": "qtbase-6.12.0-reference",
+      "version": "6.12.0",
+      "filename": "qtbase-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": false,
+      "review_note": "Optional independently hashed subset; never substitutes for complete Qt/Qt PDF/PySide sources."
+    }
+  ]
+}
