@@ -25,6 +25,22 @@ jobs:
         run: python -m PyInstaller --noconfirm --clean release_windows_onedir_review.spec
       - name: Verify external Qt DLL layout and absence of Virtual Keyboard
         run: python tools/verify_onedir_bundle.py --bundle-dir .\dist\PDF_Compressor_2_7_onedir_review --out .\dist\onedir-audit.json
+      - name: Validate hashed native binary inventory
+        shell: pwsh
+        run: |
+          @'
+          import json
+          from pathlib import Path
+          audit = json.loads(Path("dist/onedir-audit.json").read_text(encoding="utf-8"))
+          assert audit["schema_version"] == 2
+          files = audit["native_binary_manifest"]
+          assert len(files) == audit["native_binary_count"]
+          assert len(files) > audit["external_qt_dll_count"]
+          assert all(len(item["sha256"]) == 64 and item["size_bytes"] > 0 for item in files)
+          assert len({item["path"].casefold() for item in files}) == len(files)
+          assert not audit["virtual_keyboard_files"]
+          print("Native-file SHA-256 inventory validated:", len(files), "files")
+          '@ | python -
       - name: GUI startup smoke test (headless; no PDF processed)
         shell: pwsh
         run: |
