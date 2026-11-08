@@ -50,3 +50,14 @@ The JSON manifest records the EXE SHA-256/size, Python version, installed packag
 Run the EXE directly (without invoking Python); load, compress, merge, extract and rotate test PDF files; verify output integrity, cancellation and light/dark themes. A local preview smoke test was reported successful on Windows 11.
 
 **Do not publish the preview as stable v2.7.0 until** the release checklist and third-party license review are satisfied, especially AGPL obligations for PyMuPDF and LGPL obligations for Qt / PySide6 `--onefile` distribution. See [release checklist](docs/RELEASE_CHECKLIST_2_7.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_2_7.md).
+
+## 6. Experimental bundle audit (not release-approved)
+
+The November 8 preview included unused Qt Virtual Keyboard components with GPLv3/commercial terms. The new **experimental** `release_windows_review.spec` excludes that library/plugin for evaluation:
+
+```powershell
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean release_windows_review.spec
+.\.venv\Scripts\python.exe tools\audit_pyinstaller_bundle.py --exe .\dist\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\dist\bundle-audit.json
+```
+
+This separate build must be smoke-tested on Windows and examined for further license requirements; it is NOT an approved public release, and the single-file Qt LGPL replacement/rebuild compliance question remains. See [EXE bundle audit](docs/EXE_BUNDLE_AUDIT_2_7_PREVIEW.md).

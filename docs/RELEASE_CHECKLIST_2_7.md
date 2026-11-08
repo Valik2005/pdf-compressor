@@ -12,6 +12,13 @@ Do not merge into `main`, create a public GitHub Release, or mark the EXE stable
 - [x] GitHub Actions CI on merged UI-fix commit `4424feef`: 40 tests passed for each of Python 3.13 and 3.14.
 - [x] SHA-256 independently verified for **that preview file only**: `D9495B8D6C6D4EDD1C5EC952DD0E65D59EED78A785C1635621B13CCB3483D985`.
 
+## Preview EXE bundle findings (2026-11-08)
+
+- [x] Preview EXE SHA-256 and size match its build manifest; source commit `7738001` and clean tree recorded.
+- [x] PyInstaller archive inventoried: 306 entries; Qt Virtual Keyboard (GPLv3 or commercial) and Qt PDF were found.
+- [ ] Build and smoke-test the experimental Virtual Keyboard-free candidate; compare new archive and checksum.
+- [ ] Resolve required notices, corresponding-source/relinking obligations for all bundled Qt/MuPDF components (see `docs/EXE_BUNDLE_AUDIT_2_7_PREVIEW.md`).
+
 ## Pending before public release
 
 - [ ] Merge and re-test all pending PRs with the **final** source commit, then re-run Windows CI on the resulting head.
