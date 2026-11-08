@@ -71,10 +71,10 @@
       "version": "6.12.0",
       "filename": "qtimageformats-everywhere-src-6.12.0.tar.xz",
       "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtimageformats-everywhere-src-6.12.0.tar.xz",
-      "expected_sha256": null,
+      "expected_sha256": "0943132b5db8de6b6a7f1d162682173e8763c7ed94e80fd39113292845f67762",
       "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtimageformats-everywhere-src-6.12.0.tar.xz.mirrorlist",
       "required": true,
-      "review_note": "Qt image format plugins qicns, qtga, qtiff, qwbmp, qwebp included in reviewed EXE. Corresponding QtImageFormats source required."
+      "review_note": "Required for qicns/qtga/qtiff/qwbmp/qwebp plugins. SHA-256 checked against official Qt mirrorlist by Windows source-evidence run #42479642466."
     }
   ]
 }
