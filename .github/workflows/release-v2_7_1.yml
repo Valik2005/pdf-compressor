@@ -249,7 +249,7 @@ jobs:
             --source-sha "$EXPECTED_SOURCE_COMMIT" \
             --out release-assets
           test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
-          sha256sum -c release-assets/SHA256SUMS.txt --ignore-missing --status || exit 1
+          ( cd release-assets && sha256sum -c SHA256SUMS.txt --status )
           echo "Exact three-file 2.7.1 release packing passed (not published)."
 
   publish:
