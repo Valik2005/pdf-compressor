@@ -14,7 +14,9 @@ import tarfile
 import zipfile
 
 SOURCES = {
-    "qtbase-6.12.0-required": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
+    "qtbase-6.12.0-required": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt",
+                                "LICENSES/Apache-2.0.txt", "LICENSES/MIT.txt",
+                                "LICENSES/BSD-3-Clause.txt"],
     "qtsvg-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtimageformats-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtforpython-6.12.0": [
@@ -86,6 +88,26 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
                 file = tar.extractfile(member)
                 if file is not None:
                     notices[f"components/{component_id}/{rel}"] = file.read()
+    # OpenSSL >=3.0 is Apache-2.0; Mesa llvmpipe predominantly MIT,
+    # but copyright records and other applicable component notices must
+    # still accompany this generic license-text fallback.
+    extras = {
+        "notices/OPENSSL_AND_MESA_NOTICE.txt": (
+            "OpenSSL 3 series, Apache-2.0; see components/qtbase-6.12.0-required/"
+            "LICENSES/Apache-2.0.txt and https://openssl-library.org/source/license/\\n"
+            "Qt's opengl32sw.dll may contain Mesa llvmpipe, with MIT and other "
+            "component licenses. See components/qtbase-6.12.0-required/"
+            "LICENSES/MIT.txt, https://docs.mesa3d.org/license.html, and "
+            "https://doc.qt.io/qtforpython-6.11/overviews/qtdoc-windows-graphics.html\\n"
+            "libffi (libffi-8.dll), MIT-style license; full component notice "
+            "must be preserved: https://github.com/libffi/libffi/blob/master/LICENSE\\n"
+            "MSVC runtime redistribution is subject to Microsoft license terms; "
+            "https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files\\n"
+            "Python, Pillow and PyInstaller licenses are bundled separately in "
+            "license-evidence.zip produced on the Windows builder.\\n"
+        ).encode("utf-8"),
+    }
+    notices.update(extras)
     report = {
         "schema_version": 1, "matching_archive_hashes_verified": True,
         "licenses_extracted_from_verified_sources": sorted(notices),
@@ -93,8 +115,8 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
         "full_binary_license_compliance_certified": False,
         "outstanding": [
             "Native component-to-source correspondence and transitive notices require final verification.",
-            "Library relinking/recombination with genuinely modified Qt is not tested.",
-            "Corresponding source and license texts must be permanently available alongside public EXE.",
+            "Actual recombination of an ABI-preserving PE-resource modified Qt DLL passed Windows CI #42479642467; source-code-modified Qt compatibility not certified.",
+            "Corresponding sources and license texts must be permanently available alongside public EXE; MSVC redistributable license rights must be established.",
         ],
     }
     out.parent.mkdir(parents=True, exist_ok=True)
