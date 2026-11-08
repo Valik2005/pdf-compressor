@@ -28,7 +28,7 @@ The only notice-like filename in the archive was `pymupdf-1.27.2.3.dist-info/COP
 ```powershell
 git switch release/2.7-bundle-audit
 .\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean release_windows_review.spec
-.\.venv\Scripts\python.exe tools\\audit_pyinstaller_bundle.py --exe .\dist\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\dist\bundle-audit.json
+.\.venv\Scripts\python.exe tools\audit_pyinstaller_bundle.py --exe .\dist\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\dist\bundle-audit.json
 ```
 
 The spec only removes Qt Virtual Keyboard library/plugin assets and leaves other dependencies unchanged. It has **not been Windows-built or runtime-tested**. A successful audit confirms file absence, not runtime or license compliance; smoke-test the new binary separately before accepting the recipe.
