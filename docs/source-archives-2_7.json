@@ -19,8 +19,8 @@
       "url": "https://download.qt.io/archive/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz",
       "expected_sha256": null,
       "checksum_source": null,
-      "required": true,
-      "review_note": "Full Qt source incl. Qt PDF from qtwebengine; published checksum not yet captured. LARGE (~423MB). Must verify exact native wheel module versions and PDFium."
+      "required": false,
+      "review_note": "Optional superset; no Qt PDF/QML/Quick native DLLs are present in audited single-EXE 94eb41b. May be needed if future build reintroduces modules; do not automatically require a 423 MB full Qt archive for this trimmed candidate."
     },
     {
       "id": "qtforpython-6.12.0",
@@ -33,14 +33,24 @@
       "review_note": "PySide6/Shiboken sources; checksum not independently captured yet; inspect license texts and wheel correspondence."
     },
     {
-      "id": "qtbase-6.12.0-reference",
+      "id": "qtbase-6.12.0-required",
       "version": "6.12.0",
       "filename": "qtbase-everywhere-src-6.12.0.tar.xz",
       "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz",
       "expected_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
       "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz.mirrorlist",
-      "required": false,
-      "review_note": "Optional independently hashed subset; never substitutes for complete Qt/Qt PDF/PySide sources."
+      "required": true,
+      "review_note": "Required for currently bundled Qt6Core/Gui/Widgets/Network/OpenGL and base plugins. Complete sources must also match wheel build options and transitive native dependencies."
+    },
+    {
+      "id": "qtsvg-6.12.0",
+      "version": "6.12.0",
+      "filename": "qtsvg-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": null,
+      "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": true,
+      "review_note": "Qt6Svg.dll and qsvg/qsvgicon plugins are bundled; upstream checksum must be obtained and source archive acquired."
     }
   ]
 }
