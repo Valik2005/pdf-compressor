@@ -214,10 +214,48 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+
+  package-preflight:
+    # Exercise the actual 300 MB three-asset packager on PRs, without
+    # attaching or publishing a public executable.
+    needs: [sources-and-notices, windows-onefile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-sources
+          path: release-input/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-7-1-verified-windows-onefile
+          path: release-input/windows
+      - name: Verify exact onefile, six corresponding sources and assembled release assets
+        shell: bash
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python tools/assemble_patch_release.py \
+            --sources release-input/sources \
+            --windows release-input/windows \
+            --catalog docs/source-archives-2_7.json \
+            --exe-name PDF_Compressor_2_7_1.exe \
+            --source-sha "$EXPECTED_SOURCE_COMMIT" \
+            --out release-assets
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          sha256sum -c release-assets/SHA256SUMS.txt --ignore-missing --status || exit 1
+          echo "Exact three-file 2.7.1 release packing passed (not published)."
+
   publish:
     # Never publish from pull requests or manual dry-runs.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [windows-tests, sources-and-notices, windows-onefile]
+    needs: [windows-tests, sources-and-notices, windows-onefile, package-preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
