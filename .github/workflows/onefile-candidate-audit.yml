@@ -2,9 +2,18 @@ name: Windows onefile release candidate audit
 
 # Candidate-only. Never publishes a GitHub Release or distributes an EXE.
 on:
-  push:
+  pull_request:
     branches:
-      - release/2.7-bundle-audit
+      - develop/2.7-smartfit
+    paths:
+      - "release_windows_review.spec"
+      - ".github/workflows/onefile-candidate-audit.yml"
+      - "tools/collect_license_evidence.py"
+      - "tools/audit_pyinstaller_bundle.py"
+      - "tools/release_manifest.py"
+      - "app.pyw"
+      - "pdf_engine.py"
+      - "requirements.txt"
   workflow_dispatch:
 
 permissions:
@@ -15,6 +24,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.14'
@@ -27,6 +38,20 @@ jobs:
         run: python tools/release_manifest.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --out .\\dist\\onefile-manifest.json
       - name: Inspect PyInstaller archive and reject Virtual Keyboard
         run: python tools/audit_pyinstaller_bundle.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\\dist\\onefile-bundle-audit.json
+      - name: Assert unused Qt PDF, QML and Quick binaries excluded
+        shell: pwsh
+        run: |
+          @'
+          import json
+          from pathlib import Path
+          audit = json.loads(Path("dist/onefile-bundle-audit.json").read_text(encoding="utf-8"))
+          dlls = [v.replace(chr(92), "/").lower() for v in audit["qt_dlls"]]
+          blocked = [v for v in dlls if v.endswith("/qt6pdf.dll") or "/qt6qml" in v or "/qt6quick" in v]
+          files = [e["name"].replace(chr(92), "/").lower() for e in audit["all_entries"]]
+          blocked += [v for v in files if v.endswith("/qpdf.dll") or v.endswith("/qpdfium.dll")]
+          if blocked: raise AssertionError(f"Unexpected optional Qt module files: {blocked}")
+          print("Unused Qt PDF, QML, Quick DLL/plugin files excluded")
+          '@ | python -
       - name: Validate manifest matches executable
         shell: pwsh
         run: |
