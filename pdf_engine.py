@@ -586,20 +586,26 @@ def merge_pdfs(inputs: Iterable[str | Path], out_folder: str | Path, name: str =
     if len(sources) < 2:
         raise ValueError("Для объединения нужно минимум два PDF")
     output = make_output(Path(out_folder), name)
-    with TemporaryDirectory(prefix="pdfmerge2_") as work:
-        tmp = Path(work) / "merged.pdf"
-        with pymupdf.open() as result:
-            for i, source in enumerate(sources):
+    try:
+        with TemporaryDirectory(prefix="pdfmerge2_") as work:
+            tmp = Path(work) / "merged.pdf"
+            with pymupdf.open() as result:
+                for i, source in enumerate(sources):
+                    check_cancel(cancel)
+                    with pymupdf.open(source) as part:
+                        validate_doc(part)
+                        result.insert_pdf(part, links=True, annots=True)
+                    emit(progress, "Объединение файлов", i + 1, len(sources))
                 check_cancel(cancel)
-                with pymupdf.open(source) as part:
-                    validate_doc(part)
-                    result.insert_pdf(part, links=True, annots=True)
-                emit(progress, "Объединение файлов", i + 1, len(sources))
+                _save_pdf(result, tmp)
             check_cancel(cancel)
-            _save_pdf(result, tmp)
-        check_cancel(cancel)
-        shutil.copyfile(tmp, output)
-    return output
+            shutil.copyfile(tmp, output)
+            check_cancel(cancel)
+        return output
+    except Exception:
+        # The final copy can fail after creating an incomplete destination.
+        output.unlink(missing_ok=True)
+        raise
 
 
 def split_pdf(source: str | Path, out_folder: str | Path, pages: str = "все",
@@ -617,11 +623,18 @@ def split_pdf(source: str | Path, out_folder: str | Path, pages: str = "все",
                 check_cancel(cancel)
                 stem = f"{source.stem}_стр_{segment[0] + 1}" if each_page else f"{source.stem}_страницы"
                 dest = make_output(Path(out_folder), stem, reserved=reserved)
-                with pymupdf.open() as part:
-                    for pno in segment:
-                        check_cancel(cancel)
-                        part.insert_pdf(doc, from_page=pno, to_page=pno, links=False, annots=True)
-                    _save_pdf(part, dest)
+                try:
+                    with pymupdf.open() as part:
+                        for pno in segment:
+                            check_cancel(cancel)
+                            part.insert_pdf(doc, from_page=pno, to_page=pno, links=False, annots=True)
+                        _save_pdf(part, dest)
+                    check_cancel(cancel)
+                except Exception:
+                    # The current PDF may be only partly written and is not
+                    # yet present in the completed-output list.
+                    dest.unlink(missing_ok=True)
+                    raise
                 outputs.append(dest)
                 emit(progress, "Извлечение страниц", i + 1, len(segments))
             return outputs
@@ -646,5 +659,10 @@ def rotate_pdf(source: str | Path, out_folder: str | Path, degrees: int = 90, pa
             emit(progress, "Поворот страниц", i + 1, len(indexes))
         check_cancel(cancel)
         output = make_output(Path(out_folder), f"{source.stem}_поворот_{degrees}")
-        _save_pdf(doc, output)
+        try:
+            _save_pdf(doc, output)
+            check_cancel(cancel)
+        except Exception:
+            output.unlink(missing_ok=True)
+            raise
     return output
