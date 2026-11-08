@@ -511,7 +511,7 @@ class MainWindow(QMainWindow):
             self.language = "ru"
         self._original_texts = []
         self._status_ru = "Готов к работе · исходные файлы не изменяются"
-        self.setWindowTitle("PDF Compressor 2.7  •  Локальная обработка")
+        self.setWindowTitle(f"PDF Compressor {APP_VERSION}  •  Локальная обработка")
         asset_folder = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
         icon_path = asset_folder / "app_icon.ico"
         if icon_path.exists():
