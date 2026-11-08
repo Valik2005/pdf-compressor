@@ -10,6 +10,10 @@ on:
       - .github/workflows/source-evidence.yml
   workflow_dispatch:
 
+concurrency:
+  group: source-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
