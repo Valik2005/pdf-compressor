@@ -61,3 +61,12 @@ The November 8 preview included unused Qt Virtual Keyboard components with GPLv3
 ```
 
 This separate build must be smoke-tested on Windows and examined for further license requirements; it is NOT an approved public release, and the single-file Qt LGPL replacement/rebuild compliance question remains. See [EXE bundle audit](docs/EXE_BUNDLE_AUDIT_2_7_PREVIEW.md).
+
+## 7. Collect license evidence for the exact review executable
+
+```powershell
+.\.venv\Scripts\python.exe tools\release_manifest.py --exe .\dist\PDF_Compressor_2_7_license_review.exe --out .\dist\license-review-build-manifest.json
+.\.venv\Scripts\python.exe tools\collect_license_evidence.py --exe .\dist\PDF_Compressor_2_7_license_review.exe --manifest .\dist\license-review-build-manifest.json --out .\dist\license-evidence-not-for-release.zip
+```
+
+This is an **incomplete evidence pack, not an approved distribution pack**. Its hash gate rejects the older manifest. See [remaining obligations](docs/RELEASE_LICENSE_EVIDENCE_2_7.md).

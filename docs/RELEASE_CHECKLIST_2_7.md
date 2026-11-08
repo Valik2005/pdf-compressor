@@ -33,3 +33,11 @@ Do not merge into `main`, create a public GitHub Release, or mark the EXE stable
 - [ ] Explicit maintainer approval to merge `develop/2.7-smartfit` into `main` and publish the release.
 
 The successful GitHub Actions runs test source code; they do not build or audit the executable. The preview test does not validate a future rebuild.
+
+## Virtual Keyboard-free preview verification (2026-11-08)
+
+- [x] New EXE SHA-256 independently confirmed: `8b65cdaf950b8ca1598ee26791e69194a4979f5dd601738f732224d489b7bdca`.
+- [x] Bundle audit reports 304 archive entries and no Qt Virtual Keyboard; maintainer confirms Windows operation.
+- [ ] Generate the *matching* manifest; existing `build-manifest(1).json` still belongs to old binary.
+- [ ] Run `tools/collect_license_evidence.py` and resolve missing files and corresponding source/relinking proof.
+- [ ] Complete all conditions documented in `docs/RELEASE_LICENSE_EVIDENCE_2_7.md` before publishing.
