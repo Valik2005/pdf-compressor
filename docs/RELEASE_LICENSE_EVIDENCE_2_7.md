@@ -50,3 +50,7 @@ The commercial reference file does **not** prove that these pip wheels require a
 5. **Final build:** freeze builder packages, rebuild on approved final source commit, capture SHA-256 and Windows smoke tests, and secure explicit approval before merging into `main` or publishing a GitHub Release.
 
 **Status:** Virtual Keyboard removal is verified, but license compliance remains **unverified**. Do not label this release ready.
+
+## Corresponding-source provenance audit (2026-11-08)
+
+The release branch includes `docs/source-archives-2_7.json`, `tools/verify_source_archives.py` and [corresponding source instructions](SOURCE_ARCHIVES_2_7.md). The published PyMuPDF 1.27.2.3 sdist checksum is pinned; the QtBase 6.12.0 subset checksum is pinned as optional reference. Full Qt 6.12.0 and PySide6 6.12.0 source archive checksums are not yet independently pinned, and none of the complete source archives has been acquired under the maintainer's control. This remains a **release blocker**, regardless of successful onedir build or GUI smoke tests.
