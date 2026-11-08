@@ -1,25 +1,7 @@
-name: PDF Compressor 2.7.1 maintenance release gate
+name: PDF Compressor 2.7.1 historical verification (manual only)
 
-# Dry-run both assets on PRs; only a successful push to main may publish.
+# v2.7.1 is published. Do not automatically attempt to republish it.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
-    branches: [main]
-    paths:
-      - ".github/workflows/release-v2_7_1.yml"
-      - "tools/**"
-      - "docs/**"
-      - "release_windows_review.spec"
-      - "app.pyw"
-      - "pdf_engine.py"
-      - "requirements*.txt"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/release-v2_7_1.yml"
-      - "release_windows_review.spec"
-      - "app.pyw"
-      - "pdf_engine.py"
   workflow_dispatch:
 
 concurrency:
@@ -320,7 +302,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.7.1" > release-record.json
+          draft_id="$(gh release view v2.7.1 --json databaseId --jq .databaseId)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$draft_id" > release-record.json
           python - <<'PY'
           import hashlib,json,pathlib
           release=json.loads(pathlib.Path('release-record.json').read_text())
