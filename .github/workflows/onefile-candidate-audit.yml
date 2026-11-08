@@ -55,6 +55,8 @@ jobs:
             $p.Refresh()
             if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
           }
+      - name: Collect exact-build license evidence (incomplete by design)
+        run: python tools/collect_license_evidence.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --manifest .\\dist\\onefile-manifest.json --out .\\dist\\license-evidence-not-for-release.zip
       - name: Upload audit JSON only, NOT EXE
         uses: actions/upload-artifact@v4
         with:
@@ -62,6 +64,7 @@ jobs:
           path: |
             dist/onefile-manifest.json
             dist/onefile-bundle-audit.json
+            dist/license-evidence-not-for-release.zip
           if-no-files-found: error
       - name: Upload private review EXE (not a published release)
         uses: actions/upload-artifact@v4
