@@ -108,6 +108,10 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
         ).encode("utf-8"),
     }
     notices.update(extras)
+    ffi_notice = Path(__file__).resolve().parents[1] / "docs" / "third_party_libffi_license.txt"
+    if not ffi_notice.is_file() or ffi_notice.stat().st_size < 500:
+        raise ValueError("Full libffi MIT-style notice missing")
+    notices["notices/libffi-LICENSE.txt"] = ffi_notice.read_bytes()
     report = {
         "schema_version": 1, "matching_archive_hashes_verified": True,
         "licenses_extracted_from_verified_sources": sorted(notices),
