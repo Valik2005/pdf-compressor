@@ -30,5 +30,5 @@ As of 2026-11-08, notices have been **drafted**, but complete distribution-ready
 
 ## Verified preview-bundle observations (2026-11-08)
 
-The exact preview EXE SHA-256 `06c4a7fb17bf8747c7294cb9de5029cb9b430444d9adc0124d848f5ef81ce7fc` contains **Qt6VirtualKeyboard.dll**, **qtvirtualkeyboardplugin.dll** (Qt Virtual Keyboard: GPLv3/commercial), and **Qt6Pdf.dll** (PDFium and additional third-party notices). The only embedded notice-like filename observed is `pymupdf-1.27.2.3.dist-info/COPYING`; this is NOT a complete license inventory. See [actual binary audit](docs/EXE_BUNDLE_AUDIT_2_7_PREVIEW.md) for technical evidence and release blockers.
+The exact preview EXE SHA-256 `06c4a7fb17bf8747c7294cb9de5029cb9b430444d9adc0124d848f5ef81ce7fc` contains **Qt6VirtualKeyboard.dll**, **qtvirtualkeyboardplugin.dll** (Qt Virtual Keyboard: GPLv3/commercial), and **Qt6Pdf.dll** (PDFium and additional third-party notices). The only embedded notice-like filename observed is `pymupdf-1.27.2.3.dist-info/COPYING`; this is NOT a complete license inventory. See [actual binary audit](EXE_BUNDLE_AUDIT_2_7_PREVIEW.md) for technical evidence and release blockers.
 
