@@ -2,6 +2,7 @@
 """PDF Compressor 2.7.1 SmartFit - offline desktop GUI (Qt6)."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import threading
@@ -19,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 import pymupdf
-from pdf_quality import audit_pdf
+from pdf_quality import audit_pdf, report_html
 from pdf_engine import (
     Cancelled, compress_pdf, file_info, human_size, merge_pdfs,
     rotate_pdf, split_pdf
@@ -75,6 +76,8 @@ I18N_EN = {
     "Целевой размер в мегабайтах, например 1 или 0,5": "Target size in megabytes, for example 1 or 0.5",
     "Разрешить уменьшение разрешения при необходимости": "Allow image downscaling if necessary",
     "Проверять качество после сжатия (дополнительное время)": "Check quality after compression (takes longer)",
+    "Сохранить отчёт проверки": "Save quality report",
+    "Отчёт проверки": "Quality report",
     "Проверка качества: без замечаний": "Quality review: no issues detected",
     "Проверка качества: требуется просмотр": "Quality review: manual inspection recommended",
     "Проверка качества: обнаружена проблема": "Quality review: possible integrity problem",
@@ -781,7 +784,14 @@ class MainWindow(QMainWindow):
         self.open_btn = QPushButton("Открыть готовый PDF")
         self.open_btn.setObjectName("Quiet")
         self.open_btn.clicked.connect(self.open_selected_result)
-        left_outer.addWidget(self.open_btn)
+        result_actions = QHBoxLayout()
+        result_actions.addWidget(self.open_btn, 3)
+        self.export_quality_btn = QPushButton("Сохранить отчёт проверки")
+        self.export_quality_btn.setObjectName("Quiet")
+        self.export_quality_btn.setEnabled(False)
+        self.export_quality_btn.clicked.connect(self.save_quality_report)
+        result_actions.addWidget(self.export_quality_btn, 2)
+        left_outer.addLayout(result_actions)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0, 100)
         self.progressbar.setValue(0)
@@ -1423,6 +1433,8 @@ class MainWindow(QMainWindow):
 
     def on_selection_changed(self):
         entry = self.selected_entry()
+        self.export_quality_btn.setEnabled(
+            bool(entry and hasattr(entry.get("quality_report"), "as_dict")))
         if entry:
             self.selected_source = entry["path"]
             self.page_number.blockSignals(True)
@@ -1445,6 +1457,30 @@ class MainWindow(QMainWindow):
             open_file(path)
         else:
             self.info("Результат", "Пока нет обработанного PDF.")
+
+    def save_quality_report(self):
+        """Export reviewed results on demand; never add extra files silently."""
+        entry = self.selected_entry()
+        report = entry.get("quality_report") if entry else None
+        if not hasattr(report, "as_dict"):
+            return
+        suggested = str(Path(entry["result_path"]).with_suffix(".quality.html"))
+        destination, chosen_filter = QFileDialog.getSaveFileName(
+            self, self.t("Сохранить отчёт проверки"), suggested,
+            "HTML (*.html);;JSON (*.json)")
+        if not destination:
+            return
+        path = Path(destination)
+        if path.suffix.lower() not in (".json", ".html"):
+            path = path.with_suffix(".json" if "JSON" in chosen_filter else ".html")
+        try:
+            content = (json.dumps(report.as_dict(), ensure_ascii=False, indent=2) + "\n"
+                       if path.suffix.lower() == ".json" else report_html(report))
+            path.write_text(content, encoding="utf-8")
+        except OSError as error:
+            self.warn(self.t("Отчёт проверки"), str(error))
+            return
+        self.set_status(f"Отчёт сохранён: {path}")
 
     def change_page(self, delta: int):
         if not self.selected_entry():
