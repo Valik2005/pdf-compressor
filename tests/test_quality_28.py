@@ -192,3 +192,42 @@ def test_issue_collection_is_bounded_for_large_damaged_documents(tmp_path):
     assert report.status == "error"
     assert len(report.issues) <= pdf_quality.MAX_REPORTED_ISSUES
     assert report.suppressed_issues > 0
+
+
+def test_html_report_escapes_filename_and_contains_sampled_metrics():
+    from pdf_quality import QualityReport, QualityIssue, PageVisualCheck, report_html
+    report = QualityReport(
+        source='source <script>alert("x")</script>.pdf',
+        result='output & "result".pdf',
+        source_bytes=4500, result_bytes=3000,
+        source_pages=3, result_pages=3,
+        text_checked_pages=3, rendered_pages=(1, 3),
+        issues=[QualityIssue("warning", "visual_difference", 3,
+                             "Review image & color")],
+        visual_checks=[PageVisualCheck(3, 0.12, 0.3, 0.25, 0.2)],
+    )
+    document = report_html(report)
+    assert '<script>alert("x")</script>' not in document
+    assert '&lt;script&gt;' in document
+    assert "Review image &amp; color" in document
+    assert "Среднее отличие RGB" in document
+    assert "12.00%" in document
+    assert "output &amp; &quot;result&quot;.pdf" in document
+    assert "<script" not in document
+
+
+def test_cli_writes_local_html_and_json_reports(tmp_path, monkeypatch):
+    import sys
+    from pdf_quality import main
+
+    source = text_pdf(tmp_path / "source.pdf")
+    html_output = tmp_path / "report.html"
+    json_output = tmp_path / "report.json"
+    monkeypatch.setattr(sys, "argv",
+                        ["pdf_quality.py", str(source), str(source),
+                         "--html", str(html_output), "--json", str(json_output)])
+    assert main() == 0
+    summary = json.loads(json_output.read_text(encoding="utf-8"))
+    assert summary["status"] == "no_issues_detected"
+    assert summary["text_checked_pages"] == 2
+    assert "<html" in html_output.read_text(encoding="utf-8")
