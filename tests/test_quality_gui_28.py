@@ -19,7 +19,7 @@ APP = Path(__file__).resolve().parents[1] / "app.pyw"
 
 
 @pytest.mark.parametrize("enabled", [False, True])
-def test_gui_quality_review_is_explicit_and_does_not_damage_output(tmp_path, enabled):
+def test_gui_quality_review_is_explicit_and_does_not_damage_output(tmp_path, enabled, monkeypatch):
     app = QApplication.instance() or QApplication([])
     ui = runpy.run_path(str(APP), run_name="qa_preview")
     win = ui["MainWindow"]()
@@ -54,9 +54,23 @@ def test_gui_quality_review_is_explicit_and_does_not_damage_output(tmp_path, ena
             assert isinstance(entry["quality_report"], QualityReport)
             assert entry["quality_report"].text_checked_pages == 1
             assert "Проверка качества: без замечаний" in entry["result"]
+            assert win.export_quality_btn.isEnabled()
+            html_path = tmp_path / "manual-quality.html"
+            monkeypatch.setattr(ui["QFileDialog"], "getSaveFileName",
+                                lambda *_args: (str(html_path), "HTML (*.html)"))
+            win.export_quality_btn.click()
+            assert html_path.is_file()
+            assert "PDF Compressor 2.8" in html_path.read_text(encoding="utf-8")
+            json_path = tmp_path / "manual-quality.json"
+            monkeypatch.setattr(ui["QFileDialog"], "getSaveFileName",
+                                lambda *_args: (str(json_path), "JSON (*.json)"))
+            win.export_quality_btn.click()
+            assert json_path.is_file()
+            assert "\"no_issues_detected\"" in json_path.read_text(encoding="utf-8")
         else:
             assert entry["quality_report"] is None
             assert "Проверка качества" not in entry["result"]
+            assert not win.export_quality_btn.isEnabled()
     finally:
         win.close()
         app.processEvents()
