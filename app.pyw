@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 import pymupdf
+from pdf_quality import audit_pdf
 from pdf_engine import (
     Cancelled, compress_pdf, file_info, human_size, merge_pdfs,
     rotate_pdf, split_pdf
@@ -73,6 +74,12 @@ I18N_EN = {
     "МБ": "MB",
     "Целевой размер в мегабайтах, например 1 или 0,5": "Target size in megabytes, for example 1 or 0.5",
     "Разрешить уменьшение разрешения при необходимости": "Allow image downscaling if necessary",
+    "Проверять качество после сжатия (дополнительное время)": "Check quality after compression (takes longer)",
+    "Проверка качества: без замечаний": "Quality review: no issues detected",
+    "Проверка качества: требуется просмотр": "Quality review: manual inspection recommended",
+    "Проверка качества: обнаружена проблема": "Quality review: possible integrity problem",
+    "Проверка качества: не выполнена": "Quality review: could not be completed",
+    "Проверьте PDF": "Review PDF",
     "Если размер недостижим без изменения числа пикселей, можно уменьшить разрешение изображений.": "Allow lower image resolution when the target cannot otherwise be reached.",
     "Сохранение результата": "Save results",
     "Папка для результатов": "Output folder",
@@ -400,6 +407,7 @@ class PreviewPane(QScrollArea):
 class JobWorker(QObject):
     progress = Signal(str, int, int)
     result = Signal(int, object)
+    quality = Signal(int, object)
     timing = Signal(int, float)
     finished = Signal(str)
 
@@ -435,6 +443,23 @@ class JobWorker(QObject):
                         self.timing.emit(idx, perf_counter() - started_at)
                         self.result.emit(idx, result)
                         completed += 1
+                        # 2.8 preview: opt-in, sampled low-resolution review.
+                        # The completed PDF is still delivered when review is
+                        # interrupted or raises a non-fatal diagnostics error.
+                        if self.options.get("quality_check", False):
+                            try:
+                                review = audit_pdf(
+                                    src, result.output,
+                                    max_render_pages=4, max_thumbnail_edge=256,
+                                    cancel=self.cancel,
+                                    progress=lambda stage, cur, total, idx=idx:
+                                        self.progress.emit(
+                                            f"{idx + 1}/{len(self.inputs)} • {stage}", cur, total))
+                            except Cancelled:
+                                raise
+                            except Exception as error:
+                                review = error
+                            self.quality.emit(idx, review)
                     except Cancelled:
                         raise
                     except Exception as e:
@@ -705,6 +730,9 @@ class MainWindow(QMainWindow):
         self.downscale = QCheckBox("Разрешить уменьшение разрешения при необходимости")
         self.downscale.setToolTip("Если размер недостижим без изменения числа пикселей, можно уменьшить разрешение изображений.")
         cl.addWidget(self.downscale)
+        self.quality_check = QCheckBox("Проверять качество после сжатия (дополнительное время)")
+        self.quality_check.setChecked(False)  # Opt in until CPU/RAM benchmarks are verified.
+        cl.addWidget(self.quality_check)
         self.smartfit_note = QLabel("SmartFit анализирует тип PDF и подбирает сжатие. После обработки проверьте документ в предпросмотре.")
         self.smartfit_note.setObjectName("Muted")
         self.smartfit_note.setWordWrap(True)
@@ -1152,6 +1180,7 @@ class MainWindow(QMainWindow):
         saved_target = float(self.settings.value("target", 1.0))
         self.target.setText(f"{saved_target:.2f}".replace(".", ","))
         self.downscale.setChecked(str(self.settings.value("downscale", "false")).lower() == "true")
+        self.quality_check.setChecked(str(self.settings.value("quality_check", "false")).lower() == "true")
         wanted = str(self.settings.value("mode", "smartfit"))
         index = self.mode.findData(wanted)
         self.mode.setCurrentIndex(max(0, index))
@@ -1166,6 +1195,7 @@ class MainWindow(QMainWindow):
             target = 1.0
         self.settings.setValue("target", target)
         self.settings.setValue("downscale", self.downscale.isChecked())
+        self.settings.setValue("quality_check", self.quality_check.isChecked())
         self.settings.setValue("mode", self.mode.currentData())
         self.settings.setValue("dark", self.dark)
         self.settings.setValue("language", self.language)
@@ -1346,7 +1376,7 @@ class MainWindow(QMainWindow):
                         item.setForeground(QBrush(QColor("#71d1a4" if self.dark else "#147a53")))
                     elif summary == "Ошибка":
                         item.setForeground(QBrush(QColor("#ff8795" if self.dark else "#b83248")))
-                    elif summary == "Цель не достигнута":
+                    elif summary in ("Цель не достигнута", "Проверьте PDF"):
                         item.setForeground(QBrush(QColor("#eac17e" if self.dark else "#99600f")))
                 self.table.setItem(idx, col, item)
         if self.entries:
@@ -1511,6 +1541,7 @@ class MainWindow(QMainWindow):
         self.save_settings()
         return {"folder": folder, "mode": self.mode.currentData(),
                 "target": target, "downscale": self.downscale.isChecked(),
+                "quality_check": self.quality_check.isChecked(),
                 "template": self.template.text().strip() or "{name}_сжатый"}
 
     def begin(self, action: str, paths: list[str], opts: dict):
@@ -1546,6 +1577,7 @@ class MainWindow(QMainWindow):
         self.worker.progress.connect(self.update_progress)
         self.worker.timing.connect(self.record_timing)
         self.worker.result.connect(self.record_result)
+        self.worker.quality.connect(self.record_quality)
         self.worker.finished.connect(self.receive_end_message)
         self.worker.finished.connect(self.thread.quit)
         self.thread.finished.connect(self.worker.deleteLater)
@@ -1563,7 +1595,8 @@ class MainWindow(QMainWindow):
             self.warn("Настройки", str(error))
             return
         for entry in self.entries:
-            entry.update(status="В очереди", result="", result_path="", elapsed_seconds=None)
+            entry.update(status="В очереди", result="", result_path="",
+                         elapsed_seconds=None, quality_report=None)
         self.refresh_table()
         self.begin("compress", [e["path"] for e in self.entries], opts)
 
@@ -1714,6 +1747,27 @@ class MainWindow(QMainWindow):
                 self.entries[row_idx]["result_path"] = str(files[0])
             self.last_created_path = str(files[0])
             self.set_status("Созданы: " + "; ".join(Path(p).name for p in files[:4]))
+        self.refresh_table()
+
+    def record_quality(self, index: int, review):
+        """Show opt-in 2.8 QA findings without deleting a valid output PDF."""
+        source = self.active_paths[index] if 0 <= index < len(self.active_paths) else None
+        entry = next((item for item in self.entries if item["path"] == source), None)
+        if entry is None:
+            return
+        entry["quality_report"] = review
+        if isinstance(review, Exception):
+            detail = "Проверка качества: не выполнена"
+            entry["status"] = "Проверьте PDF"
+        elif review.status == "error":
+            detail = "Проверка качества: обнаружена проблема"
+            entry["status"] = "Проверьте PDF"
+        elif review.status == "review":
+            detail = "Проверка качества: требуется просмотр"
+            entry["status"] = "Проверьте PDF"
+        else:
+            detail = "Проверка качества: без замечаний"
+        entry["result"] += f" · {detail}"
         self.refresh_table()
 
     def receive_end_message(self, message: str):
