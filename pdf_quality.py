@@ -120,7 +120,7 @@ def _thumbnail(page: pymupdf.Page, max_edge: int) -> Image.Image:
 def _ink_fraction(image: Image.Image) -> float:
     histogram = image.convert("L").histogram()
     # 'Ink' includes drawings and images, not just selectable text.
-    return sum(histogram[:221]) / max(1, gray.width * gray.height)
+    return sum(histogram[:221]) / max(1, image.width * image.height)
 
 
 def _visual_difference(before: Image.Image, after: Image.Image,
