@@ -59,10 +59,11 @@ class QualityReport:
     issues: list[QualityIssue]
     visual_checks: list[PageVisualCheck]
     suppressed_issues: int = 0
+    suppressed_errors: int = 0
 
     @property
     def status(self) -> str:
-        if any(issue.severity == "error" for issue in self.issues):
+        if self.suppressed_errors or any(issue.severity == "error" for issue in self.issues):
             return "error"
         if any(issue.severity == "warning" for issue in self.issues):
             return "review"
@@ -83,6 +84,8 @@ def _add_issue(report: QualityReport, severity: Severity, code: str,
         report.issues.append(QualityIssue(severity, code, page, message))
     else:
         report.suppressed_issues += 1
+        if severity == "error":
+            report.suppressed_errors += 1
 
 
 def _sample_indexes(total: int, limit: int) -> tuple[int, ...]:
@@ -111,11 +114,11 @@ def _thumbnail(page: pymupdf.Page, max_edge: int) -> Image.Image:
     )
     if pixmap.width > max_edge + 2 or pixmap.height > max_edge + 2:
         raise ValueError("Rendering exceeded expected bounded thumbnail dimensions")
-    return Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples).convert("L")
+    return Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
 
 
-def _ink_fraction(gray: Image.Image) -> float:
-    histogram = gray.histogram()
+def _ink_fraction(image: Image.Image) -> float:
+    histogram = image.convert("L").histogram()
     # 'Ink' includes drawings and images, not just selectable text.
     return sum(histogram[:221]) / max(1, gray.width * gray.height)
 
@@ -126,8 +129,14 @@ def _visual_difference(before: Image.Image, after: Image.Image,
         # Keep the scan stable under minor PDF page dimension rounding.
         after = after.resize(before.size, Image.Resampling.BILINEAR)
     delta = ImageChops.difference(before, after)
-    difference = ImageStat.Stat(delta).mean[0] / 255
-    histogram = delta.histogram()
+    # Compare RGB rather than grayscale alone: drastic hue changes can
+    # preserve grayscale luminance and must still be reported.
+    difference = sum(ImageStat.Stat(delta).mean) / (3 * 255)
+    channels = delta.split()
+    max_channel_difference = ImageChops.lighter(
+        ImageChops.lighter(channels[0], channels[1]), channels[2]
+    )
+    histogram = max_channel_difference.histogram()
     changed = sum(histogram[33:]) / max(1, before.width * before.height)
     return PageVisualCheck(
         page_number, round(difference, 6), round(changed, 6),
