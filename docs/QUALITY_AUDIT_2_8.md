@@ -14,6 +14,7 @@ After compression, offer an **optional automatic quality review** for each resul
 - `app.pyw` — an opt-in checkbox labelled **«Проверять качество после сжатия (дополнительное время)»**, off by default until the CPU/RAM cost is measured on low-end hardware. The analysis runs in the existing worker thread after successful compression and does not freeze the GUI.
 - In the GUI the automatic review examines all pages for selectable-text and page-geometry integrity and renders **at most four pages** at **256-pixel maximum edge** to flag large color/content changes. A completed PDF is retained even when its quality review is cancelled or fails.
 - The full standalone command-line review can sample at most 32 pages with thumbnails up to 640 pixels along the longest edge. Default is eight pages at 320 pixels, sampled evenly including first and last.
+- The GUI includes **«Сохранить отчёт проверки»** for the selected compressed PDF after an opt-in check. The button exports a readable, locally generated **HTML** document or machine-readable **JSON** without creating extra files automatically. It is disabled until a review is available.
 - Reports include page and file counts, results of selectable text/geometry checks, sampled page numbers and color-sensitive difference metrics, issues grouped into `error` or `warning`, and counts of suppressed issues.
 
 ## Checks
@@ -39,7 +40,7 @@ After compression, offer an **optional automatic quality review** for each resul
 
 ```powershell
 python -m pip install -r requirements.txt
-python pdf_quality.py "original.pdf" "compressed.pdf" --json "quality-report.json"
+python pdf_quality.py "original.pdf" "compressed.pdf" --json "quality-report.json" --html "quality-report.html"
 ```
 
 For faster structure/text-only checks:
@@ -67,7 +68,7 @@ Exit code **1** means potentially serious integrity problems. A visual warning a
 
 ## Future work
 
-- Local HTML and CSV reports suitable for non-technical users.
+- Optional CSV export suitable for spreadsheet comparisons across a batch.
 - Optional side-by-side visualization for suspicious sampled pages in the GUI.
 - Tune visual thresholds against the user's test-pack PDF outputs, rather than guessing universal quality scores.
 - Explicit final confirmation before stable 2.8 release.
