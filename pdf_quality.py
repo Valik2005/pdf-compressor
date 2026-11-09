@@ -9,6 +9,7 @@ The module does not alter either PDF and uses no network or OCR.
 from __future__ import annotations
 
 import argparse
+import html
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
@@ -236,6 +237,86 @@ def audit_pdf(source: str | Path, result: str | Path, *,
         return report
 
 
+
+def report_html(report: QualityReport) -> str:
+    """Return a fully offline, escaped human-readable summary (no scripts)."""
+    esc = lambda value: html.escape(str(value), quote=True)
+    status_ru = {"error": "Обнаружены возможные нарушения",
+                 "review": "Нужна визуальная проверка",
+                 "no_issues_detected": "Замечаний в проверенных данных не найдено"}
+    issue_rows = "\n".join(
+        "<tr><td>" + esc(issue.page if issue.page is not None else "—") +
+        "</td><td>" + esc(issue.severity) +
+        "</td><td>" + esc(issue.code) +
+        "</td><td>" + esc(issue.message) + "</td></tr>"
+        for issue in report.issues
+    ) or '<tr><td colspan="4">Замечаний не найдено.</td></tr>'
+    sample_rows = "\n".join(
+        f"<tr><td>{int(check.page)}</td>"
+        f"<td>{check.mean_difference * 100:.2f}%</td>"
+        f"<td>{check.changed_fraction * 100:.2f}%</td>"
+        f"<td>{check.before_ink_fraction * 100:.2f}%</td>"
+        f"<td>{check.after_ink_fraction * 100:.2f}%</td></tr>"
+        for check in report.visual_checks
+    ) or '<tr><td colspan="5">Визуальная проверка не проводилась.</td></tr>'
+    return f"""<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Compressor 2.8 — отчёт качества</title>
+<style>
+body {{ font: 15px/1.5 system-ui, Segoe UI, sans-serif;
+       max-width: 980px; margin: 36px auto; padding: 0 20px;
+       background: #f8fafc; color: #172033; }}
+h1 {{ font-size: 25px; margin: 0 0 6px; }}
+h2 {{ margin-top: 34px; font-size: 19px; }}
+p {{ overflow-wrap: anywhere; }}
+table {{ width: 100%; border-collapse: collapse; background: white; }}
+td, th {{ padding: 9px 12px; border-bottom: 1px solid #e2e8f0;
+          text-align: left; vertical-align: top; }}
+th {{ background: #eef2f7; }}
+small, .muted {{ color: #475569; }}
+footer {{ border-top: 1px solid #d8dfe8; padding-top: 16px;
+          margin-top: 30px; color: #475569; }}
+</style>
+</head>
+<body>
+<h1>PDF Compressor 2.8 — проверка качества</h1>
+<p class="muted">Предварительный автоматический отчёт, без OCR и подключения к сети.</p>
+<p><strong>Результат: {esc(status_ru[report.status])}</strong></p>
+<p><strong>Исходный PDF:</strong> {esc(report.source)}<br>
+<strong>Результат:</strong> {esc(report.result)}</p>
+<table><thead><tr><th>Показатель</th><th>До</th><th>После</th></tr></thead>
+<tbody>
+<tr><td>Размер файла</td><td>{report.source_bytes:,} Б</td>
+<td>{report.result_bytes:,} Б</td></tr>
+<tr><td>Страницы</td><td>{report.source_pages}</td>
+<td>{report.result_pages}</td></tr>
+<tr><td>Текст и геометрия проверены на страницах</td>
+<td colspan="2">{report.text_checked_pages}</td></tr>
+<tr><td>Визуально проверенные страницы (эскизы)</td>
+<td colspan="2">{esc(", ".join(map(str, report.rendered_pages)) or "нет")}</td></tr>
+</tbody></table>
+<h2>Замечания</h2>
+<table><thead><tr><th>Страница</th><th>Тип</th><th>Код</th><th>Описание</th></tr></thead>
+<tbody>{issue_rows}</tbody></table>
+<p class="muted">Дополнительных замечаний, не показанных в таблице: {report.suppressed_issues}.</p>
+<h2>Сравнение небольших изображений страниц</h2>
+<table><thead><tr><th>Стр.</th><th>Среднее отличие RGB</th>
+<th>Изменённых пикселей</th><th>Чернила до</th><th>После</th></tr></thead>
+<tbody>{sample_rows}</tbody></table>
+<footer>
+<strong>Важно:</strong> это не гарантия идентичности PDF и не оценка OCR.
+Непроверенные визуально страницы, мелкий текст, печати, цветовые нюансы и
+детали сканов требуют ручной проверки. JPEG может закономерно менять пиксели.
+Исходные документы не изменялись этим анализом.
+</footer>
+</body></html>
+"""
+
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Offline PDF 2.8 quality audit (not a certification)")
     parser.add_argument("original", type=Path)
@@ -243,6 +324,7 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=DEFAULT_RENDER_PAGES)
     parser.add_argument("--max-edge", type=int, default=DEFAULT_MAX_EDGE)
     parser.add_argument("--json", dest="output_json", type=Path)
+    parser.add_argument("--html", dest="output_html", type=Path)
     args = parser.parse_args()
     report = audit_pdf(args.original, args.result,
                        max_render_pages=args.samples, max_thumbnail_edge=args.max_edge)
@@ -253,6 +335,10 @@ def main() -> int:
         print(f"Report written: {args.output_json}")
     else:
         print(content, end="")
+    if args.output_html:
+        args.output_html.parent.mkdir(parents=True, exist_ok=True)
+        args.output_html.write_text(report_html(report), encoding="utf-8")
+        print(f"HTML report written: {args.output_html}")
     # Exit status 1 means possible damage; warnings are reviewed by a human.
     return int(report.status == "error")
 
