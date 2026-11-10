@@ -1817,15 +1817,22 @@ class MainWindow(QMainWindow):
         if entry is None:
             return
         entry["quality_report"] = review
+        # Do not hide the more concrete "target not reached" outcome when a
+        # PDF also needs a manual quality review. Both findings stay in the
+        # row tooltip and detailed result text.
+        target_missed = entry.get("status") == "Цель не достигнута"
         if isinstance(review, Exception):
             detail = "Проверка качества: не выполнена"
-            entry["status"] = "Проверьте PDF"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
         elif review.status == "error":
             detail = "Проверка качества: обнаружена проблема"
-            entry["status"] = "Проверьте PDF"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
         elif review.status == "review":
             detail = "Проверка качества: требуется просмотр"
-            entry["status"] = "Проверьте PDF"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
         else:
             detail = "Проверка качества: без замечаний"
         entry["result"] += f" · {detail}"
