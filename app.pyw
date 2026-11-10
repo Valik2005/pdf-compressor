@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.7.1 SmartFit - offline desktop GUI (Qt6)."""
+"""PDF Compressor 2.8 Preview — offline PDF quality review (Qt6)."""
 from __future__ import annotations
 
 import json
@@ -26,7 +26,7 @@ from pdf_engine import (
     rotate_pdf, split_pdf
 )
 
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.8-preview"
 
 
 # Text is keyed by the original Russian UI copy. No external translation file is
