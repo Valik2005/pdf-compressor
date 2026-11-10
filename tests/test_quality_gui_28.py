@@ -168,3 +168,41 @@ def test_gui_flags_small_scan_detail_risk_without_discarding_output(tmp_path):
     finally:
         win.close()
         app.processEvents()
+
+
+
+def test_quality_warning_must_not_hide_failed_target_status(tmp_path):
+    from pdf_quality import QualityIssue
+    app = QApplication.instance() or QApplication([])
+    ui = runpy.run_path(str(APP), run_name="target_warning_gui")
+    win = ui["MainWindow"]()
+    source = tmp_path / "source.pdf"
+    with pymupdf.open() as document:
+        document.new_page().insert_text((50, 50), "Test target and QA status")
+        document.save(source)
+    try:
+        win.show()
+        app.processEvents()
+        win.add_files([str(source)])
+        win.active_paths = [str(source.resolve())]
+        entry = win.entries[0]
+        entry["status"] = "Цель не достигнута"
+        entry["result"] = "Выше лимита на 200 КБ"
+        entry["result_path"] = str(source)
+        review = QualityReport(
+            source=str(source), result=str(source),
+            source_bytes=900000, result_bytes=700000,
+            source_pages=1, result_pages=1,
+            text_checked_pages=1, rendered_pages=(1,),
+            issues=[QualityIssue("warning", "low_jpeg_detail_risk", None,
+                                 "Check fine scanned text at 200%")],
+            visual_checks=[],
+        )
+        win.record_quality(0, review)
+        assert entry["status"] == "Цель не достигнута"
+        assert "Проверка качества: требуется просмотр" in entry["result"]
+        assert win.table.item(0, 2).text() == "Выше лимита"
+        assert "Проверка качества: требуется просмотр" in win.table.item(0, 2).toolTip()
+    finally:
+        win.close()
+        app.processEvents()
