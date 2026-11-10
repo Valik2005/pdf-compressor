@@ -111,6 +111,11 @@ def test_target_miss_uses_short_status_and_exact_overage_tooltip(tmp_path):
         assert "выше лимита на" in entry["result"]
         assert "выше лимита на" in win.table.item(0, 2).toolTip()
         assert "выше лимита на" in win.compare_status.toolTip()
+        win.language_box.setCurrentIndex(win.language_box.findData("en"))
+        app.processEvents()
+        assert win.table.item(0, 2).text() == "Over target"
+        assert "over target by" in win.table.item(0, 2).toolTip()
+        assert win.folder_edit.toolTip() == str(folder)
     finally:
         win.close()
         app.processEvents()
