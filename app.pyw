@@ -241,6 +241,7 @@ ENGINE_PARTS_EN = (
     ("Операция отменена. Успешно завершено:", "Cancelled. Completed:"),
     ("Оригинал:", "Original:"),
     ("Цель не достигнута", "Target not reached"),
+    ("выше лимита на", "over target by"),
     ("Готово", "Done"),
     ("В очереди", "Queued"),
     ("Инструмент: готово", "Tool completed"),
@@ -1139,6 +1140,8 @@ class MainWindow(QMainWindow):
         if self.merge_name.text() in ("объединённый", "merged"):
             self.merge_name.setText("merged" if self.language == "en" else "объединённый")
         self.setWindowTitle(f"PDF Compressor {APP_VERSION}  •  {self.t('Локальная обработка')}")
+        # The output path should remain readable after switching languages.
+        self.folder_edit.setToolTip(self.folder_edit.text())
         self.set_status(self._status_ru)
         if self._tool_feedback_state is not None:
             self.render_tool_feedback()
