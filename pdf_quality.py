@@ -41,7 +41,7 @@ class QualityIssue:
 @dataclass(frozen=True)
 class PageVisualCheck:
     page: int  # 1-based
-    mean_difference: float  # normalized 0..1, grayscale pixel mean absolute error
+    mean_difference: float  # normalized 0..1, mean RGB absolute pixel error
     changed_fraction: float  # fraction of pixels differing by more than 32/255
     before_ink_fraction: float
     after_ink_fraction: float
@@ -61,6 +61,9 @@ class QualityReport:
     visual_checks: list[PageVisualCheck]
     suppressed_issues: int = 0
     suppressed_errors: int = 0
+    raster_only_pages: int = 0
+    jpeg_quality_hint: int | None = None
+    images_downscaled_hint: bool = False
 
     @property
     def status(self) -> str:
@@ -149,13 +152,18 @@ def _visual_difference(before: Image.Image, after: Image.Image,
 def audit_pdf(source: str | Path, result: str | Path, *,
               max_render_pages: int = DEFAULT_RENDER_PAGES,
               max_thumbnail_edge: int = DEFAULT_MAX_EDGE,
+              jpeg_quality_hint: int | None = None,
+              images_downscaled_hint: bool = False,
               cancel: threading.Event | None = None,
               progress: Progress | None = None) -> QualityReport:
     """Check document integrity and sample visual changes after compression.
 
     * Page count, page geometry, rotation and selectable text: every paired page.
     * Pixel analysis: evenly spaced preview thumbnails, at most 32 by default.
-    * Large visual changes are warnings, never automatic corruption verdicts.
+    * Raster-only changed pages warrant human review: thumbnail statistics
+      cannot determine whether tiny scanned text, seals or signatures survive.
+    * Compression hints, when supplied, help identify risks that pixel
+      thumbnails miss (e.g. JPEG 27 or downscaled images).
     * No OCR, no source writes, and no permanent preview images.
     """
     if isinstance(max_render_pages, bool) or not isinstance(max_render_pages, int):
@@ -166,6 +174,13 @@ def audit_pdf(source: str | Path, result: str | Path, *,
         raise ValueError("max_thumbnail_edge must be an integer")
     if not 96 <= max_thumbnail_edge <= 640:
         raise ValueError("max_thumbnail_edge must be 96..640")
+    if (jpeg_quality_hint is not None and
+            (isinstance(jpeg_quality_hint, bool)
+             or not isinstance(jpeg_quality_hint, int)
+             or not 1 <= jpeg_quality_hint <= 100)):
+        raise ValueError("jpeg_quality_hint must be 1..100 or None")
+    if not isinstance(images_downscaled_hint, bool):
+        raise ValueError("images_downscaled_hint must be boolean")
 
     before_path, after_path = Path(source).resolve(), Path(result).resolve()
     for path in (before_path, after_path):
@@ -186,6 +201,8 @@ def audit_pdf(source: str | Path, result: str | Path, *,
             before_path.stat().st_size, after_path.stat().st_size,
             original_pages, output_pages, 0,
             tuple(index + 1 for index in sampled), [], [],
+            jpeg_quality_hint=jpeg_quality_hint,
+            images_downscaled_hint=images_downscaled_hint,
         )
         if original_pages != output_pages:
             _add_issue(report, "error", "page_count_changed", None,
@@ -198,6 +215,8 @@ def audit_pdf(source: str | Path, result: str | Path, *,
                        "Visual sampling disabled; no page pixels were compared.")
 
         indexes_to_render = set(sampled)
+        raster_changed_page: int | None = None
+        image_pages = 0
         for index in range(total):
             check_cancel(cancel)
             page_no = index + 1
@@ -209,6 +228,14 @@ def audit_pdf(source: str | Path, result: str | Path, *,
                            "Page dimensions or rotation changed.")
 
             text_before, text_after = src.get_text("text"), dst.get_text("text")
+            # Metadata-only: do not decode the full page images to classify
+            # raster-only pages. Their "text" may be pixels, invisible to
+            # normal selectable-text comparison and to low-res thumbnails.
+            contains_raster = bool(src.get_images(full=True))
+            if contains_raster:
+                image_pages += 1
+                if not text_before.strip():
+                    report.raster_only_pages += 1
             report.text_checked_pages += 1
             if text_before != text_after:
                 code = "selectable_text_lost" if text_before.strip() and not text_after.strip() \
@@ -221,6 +248,10 @@ def audit_pdf(source: str | Path, result: str | Path, *,
                 image_after = _thumbnail(dst, max_thumbnail_edge)
                 metrics = _visual_difference(image_before, image_after, page_no)
                 report.visual_checks.append(metrics)
+                if (contains_raster and not text_before.strip()
+                        and metrics.mean_difference > 0.002
+                        and raster_changed_page is None):
+                    raster_changed_page = page_no
                 if metrics.before_ink_fraction >= 0.015 and metrics.after_ink_fraction < 0.002:
                     _add_issue(report, "error", "possibly_blank_output", page_no,
                                "Page had visible content but now appears almost blank.")
@@ -234,6 +265,32 @@ def audit_pdf(source: str | Path, result: str | Path, *,
 
             if progress is not None:
                 progress("Проверка качества", page_no, total)
+
+        # One informational warning per document, not per scanned page.
+        # The user's real 2.7.1 test pack showed 256px thumbnail RGB MAE
+        # around 0.005 on JPEG-compressed scans, even when small text became
+        # visibly softer: structural + preview checks alone are insufficient.
+        if raster_changed_page is not None:
+            _add_issue(
+                report, "warning", "raster_detail_needs_review",
+                raster_changed_page,
+                "A raster-only page changed after compression. Its small "
+                "printed characters, stamps and signatures cannot be "
+                "verified without OCR or zoomed manual inspection.")
+        if image_pages and images_downscaled_hint:
+            _add_issue(
+                report, "warning", "image_resolution_reduced", None,
+                "Images were downscaled: check fine print, seals and tiny "
+                "details at 200% zoom.")
+        if (image_pages and jpeg_quality_hint is not None
+                and report.result_bytes <= report.source_bytes * 0.8
+                and (jpeg_quality_hint <= 35
+                     or (report.raster_only_pages > 0 and jpeg_quality_hint <= 55))):
+            _add_issue(
+                report, "warning", "low_jpeg_detail_risk", None,
+                f"JPEG quality {jpeg_quality_hint}% with substantial size "
+                "reduction may blur fine image detail. Manually inspect "
+                "scanned text, colors and seals at 200% zoom.")
         return report
 
 
