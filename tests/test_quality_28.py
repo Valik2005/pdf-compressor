@@ -311,3 +311,42 @@ def test_invalid_quality_metadata_rejected(tmp_path):
     for flag in (None, "false", 1):
         with pytest.raises(ValueError, match="images_downscaled_hint"):
             audit_pdf(src, src, images_downscaled_hint=flag)
+
+
+
+def test_raster_only_pages_not_sampled_must_not_be_certified(tmp_path):
+    src = noisy_scan(tmp_path / "many-scans.pdf", pages=6)
+    compressed = compress_pdf(src, tmp_path / "out", mode="balanced")
+    assert compressed.result_bytes < compressed.original_bytes * 0.9
+    review = audit_pdf(src, compressed.output, max_render_pages=2)
+    assert review.text_checked_pages == 6
+    assert review.raster_only_pages == 6
+    assert review.rendered_pages == (1, 6)
+    assert review.status == "review"
+    assert any(issue.code == "unreviewed_raster_pages" for issue in review.issues)
+
+
+def test_identical_multi_page_scans_not_flagged_as_unreviewed_damage(tmp_path):
+    source = noisy_scan(tmp_path / "same.pdf", pages=5)
+    reviewed = audit_pdf(source, source, max_render_pages=2)
+    assert reviewed.raster_only_pages == 5
+    assert reviewed.rendered_pages == (1, 5)
+    assert reviewed.status == "no_issues_detected"
+    assert not any(issue.code == "unreviewed_raster_pages"
+                   for issue in reviewed.issues)
+
+
+def test_html_report_discloses_jpeg_and_raster_risk_evidence(tmp_path):
+    src = noisy_scan(tmp_path / "scan.pdf", pages=3)
+    reduced = compress_pdf(src, tmp_path / "out", mode="smallest")
+    from pdf_quality import report_html
+    report = audit_pdf(src, reduced.output, max_render_pages=1,
+                       jpeg_quality_hint=reduced.quality,
+                       images_downscaled_hint=reduced.downscaled)
+    html = report_html(report)
+    assert "Растровые страницы без выделяемого текста" in html
+    assert "<td colspan=\"2\">3</td>" in html
+    assert "JPEG качество, переданное компрессором" in html
+    assert "48%" in html
+    assert "unreviewed_raster_pages" in html
+    assert "raster_detail_needs_review" in html
