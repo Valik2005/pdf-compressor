@@ -231,3 +231,83 @@ def test_cli_writes_local_html_and_json_reports(tmp_path, monkeypatch):
     assert summary["status"] == "no_issues_detected"
     assert summary["text_checked_pages"] == 2
     assert "<html" in html_output.read_text(encoding="utf-8")
+
+
+
+def noisy_scan(path: Path, pages: int = 2) -> Path:
+    stream = BytesIO()
+    # Real-world scan-like high-frequency content: PIL-generated grayscale
+    # texture makes JPEG 48% meaningfully different from the original PNG.
+    Image.effect_noise((650, 850), 80).convert("RGB").save(stream, "PNG")
+    with pymupdf.open() as doc:
+        for _ in range(pages):
+            page = doc.new_page(width=595, height=842)
+            page.insert_image(page.rect, stream=stream.getvalue(),
+                              keep_proportion=False)
+        doc.save(path)
+    return path
+
+
+def test_raster_only_scan_after_jpeg_compression_requires_review(tmp_path):
+    src = noisy_scan(tmp_path / "scan.pdf", pages=2)
+    result = compress_pdf(src, tmp_path / "out", mode="smallest")
+    assert result.quality == 48
+    assert result.result_bytes < result.original_bytes * 0.8
+    report = audit_pdf(src, result.output, jpeg_quality_hint=result.quality,
+                       images_downscaled_hint=result.downscaled)
+    assert report.status == "review"
+    assert report.text_checked_pages == 2
+    assert report.raster_only_pages == 2
+    assert len(report.visual_checks) == 2
+    assert any(item.code == "raster_detail_needs_review" for item in report.issues)
+    assert any(item.code == "low_jpeg_detail_risk" for item in report.issues)
+    assert all(item.severity != "error" for item in report.issues)
+    assert not result.downscaled
+
+
+def test_identical_scan_without_recompression_has_no_false_warning(tmp_path):
+    src = noisy_scan(tmp_path / "unchanged-scan.pdf", pages=1)
+    report = audit_pdf(src, src)
+    assert report.status == "no_issues_detected"
+    assert report.raster_only_pages == 1
+    assert report.issues == []
+
+
+def test_low_jpeg_quality_warns_even_with_selectable_text(tmp_path):
+    src = tmp_path / "mixed.pdf"
+    stream = BytesIO()
+    Image.effect_noise((650, 850), 90).convert("RGB").save(stream, "PNG")
+    with pymupdf.open() as doc:
+        page = doc.new_page()
+        page.insert_text((50, 40), "Searchable small text")
+        page.insert_image(pymupdf.Rect(30, 60, 550, 760), stream=stream.getvalue())
+        doc.save(src)
+    candidate = tmp_path / "jpeg27.pdf"
+    from pdf_engine import build_candidate
+    candidate_size, scaled, changes = build_candidate(src, candidate, quality=27)
+    assert changes == 1 and not scaled
+    assert candidate_size < src.stat().st_size * 0.8
+    report = audit_pdf(src, candidate, jpeg_quality_hint=27)
+    assert report.status == "review"
+    assert report.raster_only_pages == 0
+    assert any(item.code == "low_jpeg_detail_risk" for item in report.issues)
+    assert not any(item.code == "raster_detail_needs_review" for item in report.issues)
+    assert [item.severity for item in report.issues] == ["warning"]
+
+
+def test_downscaled_images_need_zoomed_review_even_when_text_preserved(tmp_path):
+    src = noisy_scan(tmp_path / "scan.pdf", pages=1)
+    report = audit_pdf(src, src, images_downscaled_hint=True)
+    assert report.status == "review"
+    assert any(item.code == "image_resolution_reduced" for item in report.issues)
+    assert all(item.severity != "error" for item in report.issues)
+
+
+def test_invalid_quality_metadata_rejected(tmp_path):
+    src = text_pdf(tmp_path / "source.pdf")
+    for quality in (True, False, -1, 0, 101, 27.0, "27"):
+        with pytest.raises(ValueError, match="jpeg_quality_hint"):
+            audit_pdf(src, src, jpeg_quality_hint=quality)
+    for flag in (None, "false", 1):
+        with pytest.raises(ValueError, match="images_downscaled_hint"):
+            audit_pdf(src, src, images_downscaled_hint=flag)
