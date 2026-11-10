@@ -119,3 +119,52 @@ def test_target_miss_uses_short_status_and_exact_overage_tooltip(tmp_path):
     finally:
         win.close()
         app.processEvents()
+
+
+
+def test_gui_flags_small_scan_detail_risk_without_discarding_output(tmp_path):
+    from io import BytesIO
+    from PIL import Image
+
+    app = QApplication.instance() or QApplication([])
+    ui = runpy.run_path(str(APP), run_name="scan_quality_gui")
+    win = ui["MainWindow"]()
+    source = tmp_path / "scan-source.pdf"
+    image = Image.effect_noise((650, 850), 80).convert("RGB")
+    buffer = BytesIO()
+    image.save(buffer, "PNG")
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=595, height=842)
+        page.insert_image(page.rect, stream=buffer.getvalue())
+        doc.save(source)
+    unchanged = source.read_bytes()
+
+    try:
+        win.show()
+        app.processEvents()
+        win.quality_check.setChecked(True)
+        win.folder_edit.setText(str(tmp_path / "results"))
+        win.mode.setCurrentIndex(win.mode.findData("smallest"))
+        win.add_files([str(source)])
+        win.start_btn.click()
+        deadline = time.monotonic() + 60
+        while win.busy and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.02)
+        assert not win.busy
+        app.processEvents()
+        entry = win.entries[0]
+        assert entry["status"] == "Проверьте PDF"
+        assert Path(entry["result_path"]).is_file()
+        assert source.read_bytes() == unchanged
+        report = entry["quality_report"]
+        assert isinstance(report, QualityReport)
+        assert report.status == "review"
+        assert report.raster_only_pages == 1
+        assert report.jpeg_quality_hint == 48
+        assert any(issue.code == "raster_detail_needs_review" for issue in report.issues)
+        assert any(issue.code == "low_jpeg_detail_risk" for issue in report.issues)
+        assert win.export_quality_btn.isEnabled()
+    finally:
+        win.close()
+        app.processEvents()
