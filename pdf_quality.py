@@ -216,6 +216,7 @@ def audit_pdf(source: str | Path, result: str | Path, *,
 
         indexes_to_render = set(sampled)
         raster_changed_page: int | None = None
+        raster_sampled_pages = 0
         image_pages = 0
         for index in range(total):
             check_cancel(cancel)
@@ -244,6 +245,8 @@ def audit_pdf(source: str | Path, result: str | Path, *,
                            "Selectable text disappeared or changed; inspect original and result.")
 
             if index in indexes_to_render:
+                if contains_raster and not text_before.strip():
+                    raster_sampled_pages += 1
                 image_before = _thumbnail(src, max_thumbnail_edge)
                 image_after = _thumbnail(dst, max_thumbnail_edge)
                 metrics = _visual_difference(image_before, image_after, page_no)
@@ -277,6 +280,13 @@ def audit_pdf(source: str | Path, result: str | Path, *,
                 "A raster-only page changed after compression. Its small "
                 "printed characters, stamps and signatures cannot be "
                 "verified without OCR or zoomed manual inspection.")
+        if (report.raster_only_pages > raster_sampled_pages
+                and report.result_bytes < report.source_bytes * 0.9):
+            _add_issue(
+                report, "warning", "unreviewed_raster_pages", None,
+                f"Only {raster_sampled_pages} of {report.raster_only_pages} "
+                "raster-only pages were visually sampled. Compressed scan "
+                "text on other pages cannot be checked at this resolution.")
         if image_pages and images_downscaled_hint:
             _add_issue(
                 report, "warning", "image_resolution_reduced", None,
@@ -352,6 +362,12 @@ footer {{ border-top: 1px solid #d8dfe8; padding-top: 16px;
 <td>{report.result_pages}</td></tr>
 <tr><td>Текст и геометрия проверены на страницах</td>
 <td colspan="2">{report.text_checked_pages}</td></tr>
+<tr><td>Растровые страницы без выделяемого текста</td>
+<td colspan="2">{report.raster_only_pages}</td></tr>
+<tr><td>JPEG качество, переданное компрессором</td>
+<td colspan="2">{esc(str(report.jpeg_quality_hint) + '%' if report.jpeg_quality_hint is not None else 'не указано')}</td></tr>
+<tr><td>Уменьшено разрешение изображений</td>
+<td colspan="2">{'да' if report.images_downscaled_hint else 'нет / неизвестно'}</td></tr>
 <tr><td>Визуально проверенные страницы (эскизы)</td>
 <td colspan="2">{esc(", ".join(map(str, report.rendered_pages)) or "нет")}</td></tr>
 </tbody></table>
