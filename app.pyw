@@ -79,6 +79,7 @@ I18N_EN = {
     "Сохранить отчёт проверки": "Save quality report",
     "Отчёт проверки": "Quality report",
     "Проверка качества: без замечаний": "Quality review: no issues detected",
+    "Выше лимита": "Over target",
     "Проверка качества: требуется просмотр": "Quality review: manual inspection recommended",
     "Проверка качества: обнаружена проблема": "Quality review: possible integrity problem",
     "Проверка качества: не выполнена": "Quality review: could not be completed",
@@ -749,6 +750,9 @@ class MainWindow(QMainWindow):
         self.folder_edit = QLineEdit()
         self.folder_edit.setPlaceholderText("Папка для результатов")
         self.folder_edit.setToolTip("Новые PDF сохраняются сюда, оригиналы не изменяются")
+        # QLineEdit scrolls long paths; hovering reveals the exact location
+        # instead of only showing a cropped middle/tail fragment.
+        self.folder_edit.textChanged.connect(self.folder_edit.setToolTip)
         folder_line.addWidget(self.folder_edit, 1)
         browse = QPushButton("Обзор…")
         browse.setObjectName("Quiet")
@@ -1374,7 +1378,13 @@ class MainWindow(QMainWindow):
         for idx, entry in enumerate(self.entries):
             summary = entry["status"]
             detail = summary + (" · " + entry["result"] if entry["result"] else "")
-            values = [Path(entry["path"]).name, display_size(entry["size"], self.language), self.translated(summary)]
+            # The full "Цель не достигнута" label is truncated in the narrow
+            # status column on small screens. Keep the detailed tooltip,
+            # but show a short, readable status in the table.
+            short_status = "Выше лимита" if summary == "Цель не достигнута" else summary
+            values = [Path(entry["path"]).name,
+                      display_size(entry["size"], self.language),
+                      self.translated(short_status)]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setToolTip(entry["path"] if col == 0 else self.translated(detail))
@@ -1560,7 +1570,10 @@ class MainWindow(QMainWindow):
             new_size = Path(result).stat().st_size
             saved = 100.0 * (old_size - new_size) / old_size if old_size else 0.0
             self.result_metric.setText(f"{display_size(old_size, self.language)}  →  {display_size(new_size, self.language)}  ·  {saved:.1f}%")
-            self.compare_status.setText(self.translated(entry.get("result", "Сжатие завершено. Откройте результат, чтобы проверить качество.")))
+            details = self.translated(entry.get(
+                "result", "Сжатие завершено. Откройте результат, чтобы проверить качество."))
+            self.compare_status.setText(details)
+            self.compare_status.setToolTip(details)
         else:
             self.result_metric.setText(f"{self.t('Оригинал:')} {display_size(entry['size'], self.language)}")
             self.compare_status.setText(self.t("Выберите режим и нажмите «Сжать все PDF». Для скана боком используйте кнопку «Повернуть» — только для просмотра."))
@@ -1764,7 +1777,14 @@ class MainWindow(QMainWindow):
             if row_idx >= 0:
                 e = self.entries[row_idx]
                 e["status"] = "Готово" if outcome.target_met is not False else "Цель не достигнута"
-                suffix = " · цель не достигнута" if outcome.target_met is False else ""
+                if outcome.target_met is False:
+                    difference = (outcome.result_bytes - outcome.target_bytes
+                                  if outcome.target_bytes is not None else None)
+                    suffix = (f" · выше лимита на {human_size(difference)}"
+                              if difference is not None and difference > 0
+                              else " · цель не достигнута")
+                else:
+                    suffix = ""
                 elapsed = e.get("elapsed_seconds")
                 timing_text = (f" · Время: {elapsed:.1f} с" if elapsed is not None else "")
                 e["result"] = (f"{human_size(outcome.result_bytes)}  (−{outcome.saving_percent:.1f}%)"
