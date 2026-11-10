@@ -74,3 +74,43 @@ def test_gui_quality_review_is_explicit_and_does_not_damage_output(tmp_path, ena
     finally:
         win.close()
         app.processEvents()
+
+
+
+def test_target_miss_uses_short_status_and_exact_overage_tooltip(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    ui = runpy.run_path(str(APP), run_name="target_overage_gui")
+    win = ui["MainWindow"]()
+    source = tmp_path / "large-text.pdf"
+    with pymupdf.open() as document:
+        for i in range(120):
+            page = document.new_page()
+            page.insert_text((60, 70), f"Repeated text page {i:04d} with details", fontsize=12)
+        document.save(source)
+    try:
+        win.show()
+        app.processEvents()
+        folder = tmp_path / "very" / "long" / "output" / "folder"
+        win.folder_edit.setText(str(folder))
+        assert win.folder_edit.toolTip() == str(folder)
+        win.mode.setCurrentIndex(win.mode.findData("target"))
+        win.target.setText("0,01")
+        win.quality_check.setChecked(False)
+        win.add_files([str(source)])
+        win.start_btn.click()
+        deadline = time.monotonic() + 45
+        while win.busy and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.02)
+        assert not win.busy
+        app.processEvents()
+        entry = win.entries[0]
+        assert entry["status"] == "Цель не достигнута"
+        assert entry["result_path"] and Path(entry["result_path"]).is_file()
+        assert win.table.item(0, 2).text() == "Выше лимита"
+        assert "выше лимита на" in entry["result"]
+        assert "выше лимита на" in win.table.item(0, 2).toolTip()
+        assert "выше лимита на" in win.compare_status.toolTip()
+    finally:
+        win.close()
+        app.processEvents()
