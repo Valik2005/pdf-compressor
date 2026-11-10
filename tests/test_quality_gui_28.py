@@ -176,6 +176,9 @@ def test_quality_warning_must_not_hide_failed_target_status(tmp_path):
     app = QApplication.instance() or QApplication([])
     ui = runpy.run_path(str(APP), run_name="target_warning_gui")
     win = ui["MainWindow"]()
+    # Another GUI test switches the persisted language to English.
+    # Explicitly select the language under test to avoid order-dependence.
+    win.language_box.setCurrentIndex(win.language_box.findData("ru"))
     source = tmp_path / "source.pdf"
     with pymupdf.open() as document:
         document.new_page().insert_text((50, 50), "Test target and QA status")
