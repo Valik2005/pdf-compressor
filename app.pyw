@@ -456,6 +456,8 @@ class JobWorker(QObject):
                                 review = audit_pdf(
                                     src, result.output,
                                     max_render_pages=4, max_thumbnail_edge=256,
+                                    jpeg_quality_hint=result.quality,
+                                    images_downscaled_hint=result.downscaled,
                                     cancel=self.cancel,
                                     progress=lambda stage, cur, total, idx=idx:
                                         self.progress.emit(
