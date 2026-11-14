@@ -88,8 +88,9 @@ jobs:
           SIGNPATH_ORG: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           SIGNPATH_PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           SIGNPATH_POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          SIGNPATH_ARTIFACT_CONFIG: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
         run: |
-          foreach ($name in @('SIGNPATH_TOKEN','SIGNPATH_ORG','SIGNPATH_PROJECT','SIGNPATH_POLICY')) {
+          foreach ($name in @('SIGNPATH_TOKEN','SIGNPATH_ORG','SIGNPATH_PROJECT','SIGNPATH_POLICY','SIGNPATH_ARTIFACT_CONFIG')) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               throw "$name is not configured. Apply to SignPath Foundation first; no signing performed."
             }
@@ -167,7 +168,9 @@ jobs:
       # Configure SignPath's artifact configuration root as <zip-file>:
       # upload-artifact@v4 wraps the EXE in a ZIP by default.
       # The SignPath Foundation policy must require manual approval.
-      # Configure artifact-config ProductName/FileVersion restrictions in SignPath.
+      # Artifact configuration must constrain ProductName='PDF Compressor by Valik2005',
+      # FileVersion/ProductVersion 2.8.0.0, and ONLY PDF_Compressor_2_8.exe.
+      # Bind its approved slug explicitly to SIGNPATH_ARTIFACT_CONFIGURATION_SLUG.
       - name: Submit only this GitHub-hosted artifact to SignPath Foundation
         uses: signpath/github-action-submit-signing-request@v3
         with:
@@ -175,6 +178,7 @@ jobs:
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
           github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: '1800'
