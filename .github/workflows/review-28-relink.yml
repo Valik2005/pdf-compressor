@@ -1,0 +1,77 @@
+name: v2.8 Qt relinking proof (NO RELEASE)
+
+# Verify the actual final v2.8 PyInstaller spec can bundle an ABI-preserving,
+# resource-modified Qt DLL instead of merely relying on historical v2.7 proof.
+# Does not claim all LGPL legal obligations or arbitrary source changes are verified.
+on:
+  push:
+    branches: [chore/2.8-signpath-release-prep]
+    paths:
+      - tools/rebuild_onefile_with_qt.py
+      - tools/modify_qt_binary_resource.py
+      - tools/verify_relinked_onefile.py
+      - release_windows_2_8.spec
+      - .github/workflows/review-28-relink.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v28-relink-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  relink-28:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Install matching Qt 6.12.0
+        run: python -m pip install "PySide6==6.12.0"
+      - name: Resource-modify Qt6Widgets.dll in an override directory
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import PySide6
+          from tools.modify_qt_binary_resource import add_resource
+          stock = Path(PySide6.__file__).resolve().parent / "Qt6Widgets.dll"
+          print(add_resource(stock, Path("qt-overrides/Qt6Widgets.dll")))
+          '@ | python -
+      - name: Rebuild v2.8 onefile with replaced Qt DLL
+        run: python tools/rebuild_onefile_with_qt.py --release-version 2.8 --qt-overrides .\qt-overrides --work-dir .\qt-relink-work
+      - name: Check actual onefile archive carries overridden DLL SHA-256
+        run: python tools/verify_relinked_onefile.py --exe .\qt-relink-work\dist\PDF_Compressor_2_8.exe --dll .\qt-overrides\Qt6Widgets.dll
+      - name: Windows GUI smoke with modified Qt DLL
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $exe = (Resolve-Path '.\qt-relink-work\dist\PDF_Compressor_2_8.exe').Path
+          $v = (Get-Item $exe).VersionInfo
+          if ($v.FileVersion -ne '2.8.0.0') { throw "Wrong VERSIONINFO" }
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 10
+            $p.Refresh()
+            if ($p.HasExited) { throw "Qt-relinked 2.8 exited early: $($p.ExitCode)" }
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload audit reports only, never rebuilt EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-Qt-relink-verification-NOT-FOR-RELEASE
+          path: |
+            qt-relink-work/dist/qt-relink-build-report.json
+            qt-relink-work/dist/build-manifest.json
+            qt-relink-work/dist/bundle-audit.json
+          if-no-files-found: error
+          retention-days: 7

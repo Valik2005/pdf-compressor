@@ -1,0 +1,31 @@
+# Windows Version resource for the *approved final* PDF Compressor 2.8 EXE.
+# Used by release_windows_2_8.spec only, never by 2.8-preview or Testing.
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(2, 8, 0, 0),
+    prodvers=(2, 8, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [
+          StringStruct('CompanyName', 'Valik2005'),
+          StringStruct('FileDescription', 'PDF Compressor for Windows'),
+          StringStruct('FileVersion', '2.8.0.0'),
+          StringStruct('InternalName', 'PDF_Compressor_2_8'),
+          StringStruct('OriginalFilename', 'PDF_Compressor_2_8.exe'),
+          StringStruct('ProductName', 'PDF Compressor by Valik2005'),
+          StringStruct('ProductVersion', '2.8.0.0'),
+          StringStruct('LegalCopyright', 'Copyright (c) PDF Compressor contributors; AGPL-3.0')
+        ])
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)
