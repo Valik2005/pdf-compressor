@@ -22,8 +22,8 @@ The release includes the `native-source-mapping.json` inventory, which classifie
 
 ## Specific to the v2.8 release
 
-The v2.8 release must be audited against the **exact final unsigned EXE** before signing. The signed EXE will retain the same embedded native components but have a *different* outer SHA-256. The third-party sources, version-pinned source hashes, and native inventory/notice evidence must come from the same source commit and reviewed Windows builder; all are assembled into the combined third-party asset. The published source tag is part of the corresponding-source offer.
+The unsigned v2.8 release must be audited against the **exact final EXE**. Its SHA-256 is computed after the final Windows build and must match the same-run native inventory, installed-package notices, version-pinned sources and cross-audit evidence. No code-signing key, publisher certificate or Authenticode verification is claimed. The published source tag is part of the corresponding-source offer.
 
-The main application performs all PDF work locally. No SignPath credentials or user PDF documents are included in the signed EXE. The SignPath service only handles the project's built application executable and origin metadata during code signing.
+The main application processes PDF content locally. The unsigned release is not sent to SignPath; it contains no signing credentials or users' PDF documents. Users can compare the published SHA-256, but a checksum is not a certificate of publisher identity.
 
-**Compliance gate:** verification of six source archive hashes, license notices and Qt relinking instructions provides useful evidence but is not a legal conclusion about all upstream binary components, embedded codecs, supplier-specific notices, LGPL rights, or Microsoft redistributables. Unresolved obligations block release even when the digital signature succeeds.
+**Compliance gate:** verification of six source archive hashes, license notices and Qt relinking instructions provides useful evidence but is not a legal conclusion about all upstream binary components, embedded codecs, supplier-specific notices, LGPL rights, or Microsoft redistributables. Unresolved obligations block release **whether signed or unsigned**.
