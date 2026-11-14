@@ -1,0 +1,83 @@
+name: EXPERIMENT ONLY - remove ambient MySQL OpenSSL Qt TLS
+
+on:
+  push:
+    branches:
+      - experiment/2.8-remove-ambient-mysql-openssl
+
+permissions:
+  contents: read
+
+jobs:
+  reject-ambient-openssl:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install pinned candidate dependencies
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3" "pytest>=8,<11"
+      - name: Run all application regression tests
+        run: python -m pytest -q
+      - name: Build isolated onefile EXE without optional Qt OpenSSL TLS
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+      - name: Check byte origin and exclude MySQL-linked binaries
+        shell: pwsh
+        run: |
+          python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
+          @'
+          import json
+          from pathlib import Path
+          from tools.audit_native_binary_origin_28 import embedded_native_members
+          exe = Path("dist/PDF_Compressor_2_8.exe")
+          names = [name for name, raw in embedded_native_members(exe)]
+          assert len(names) == 115, (len(names), sorted(names))
+          forbidden = ("libssl-3-x64.dll", "libcrypto-3-x64.dll",
+                       "pyside6/plugins/tls/qopensslbackend.dll")
+          assert not [name for name in names if name.lower() in forbidden]
+          assert "_ssl.pyd" in names and "libssl-3.dll" in names and "libcrypto-3.dll" in names
+          collection = json.loads(Path("dist/native-collection-sources.json").read_text())
+          assert collection["native_file_count"] == 115
+          assert {record["path"] for record in collection["entries"]} == set(names)
+          assert collection["source_scope_counts"].get("installed-program", 0) == 0
+          provenance = json.loads(Path("dist/native-binary-origin.json").read_text())
+          assert not provenance["unmatched_wheel_entries"]
+          assert not provenance["installed_wheel_record_mismatches"]
+          assert provenance["native_file_count"] == 115
+          print("115 native members audited; 2 accidental MySQL libraries and unused Qt TLS backend absent")
+          '@ | python -
+      - name: Verify unsigned Windows metadata and GUI launch
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $v = (Get-Item $exe).VersionInfo
+          if ($v.ProductName -ne "PDF Compressor by Valik2005" -or $v.FileVersion -ne "2.8.0.0") { throw "Version mismatch" }
+          if ((Get-AuthenticodeSignature -FilePath $exe).Status.ToString() -ne "NotSigned") { throw "Unexpected Authenticode status" }
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Candidate GUI terminated early ($($p.ExitCode))" }
+            Write-Host "Offline Qt GUI works without the optional OpenSSL TLS backend"
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload JSON inventory only; no public EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-no-mysql-openssl-${{ matrix.os }}-NOT-FOR-RELEASE
+          path: |
+            dist/native-collection-sources.json
+            dist/native-binary-origin.json
+          retention-days: 7
+          if-no-files-found: error
