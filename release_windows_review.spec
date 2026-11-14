@@ -57,7 +57,7 @@ print("Unused Qt PDF/QML/Quick and Virtual Keyboard items filtered:", removed)
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, a.binaries, a.datas, [],
-    name="PDF_Compressor_2_8_preview_NOT_FOR_RELEASE",
+    name="PDF_Compressor_2_8_1_testing_NOT_FOR_RELEASE",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
