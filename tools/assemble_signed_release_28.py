@@ -15,9 +15,11 @@ import shutil
 import zipfile
 
 from tools.assemble_patch_release import (
-    SOURCES, RELEASE_DOCS, SOURCE_REPORTS, BUNDLE_NAME,
+    SOURCES, SOURCE_REPORTS, BUNDLE_NAME,
     check_zip, digest, require_file,
 )
+RELEASE_DOCS = ("LGPL_RELINKING_2_8.md", "THIRD_PARTY_NOTICES_2_8.md",
+                "libffi-LICENSE.txt", "THIRD_PARTY_NOTICES_2_8.zip")
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 AUDIT_FILES = (
@@ -117,7 +119,7 @@ def assemble_signed_28(sources_dir: Path, windows_dir: Path, catalog_path: Path,
         records["reports/" + name] = require_file(sources_dir, name)
     for name in AUDIT_FILES:
         records["reports/" + name] = require_file(windows_dir, name)
-    check_zip(records["licenses/THIRD_PARTY_NOTICES_2_7.zip"], minimum_entries=65)
+    check_zip(records["licenses/THIRD_PARTY_NOTICES_2_8.zip"], minimum_entries=65)
 
     if destination.exists():
         raise ValueError("Destination already exists: refusing overwrite")
@@ -166,7 +168,7 @@ def main() -> None:
     parser.add_argument("--sources", required=True, type=Path)
     parser.add_argument("--windows", required=True, type=Path)
     parser.add_argument("--catalog", type=Path,
-                        default=Path("docs/source-archives-2_7.json"))
+                        default=Path("docs/source-archives-2_8.json"))
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--source-sha", required=True)
     args = parser.parse_args()
