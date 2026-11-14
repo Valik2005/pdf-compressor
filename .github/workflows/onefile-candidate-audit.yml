@@ -13,6 +13,9 @@ on:
       - "tools/release_manifest.py"
       - "app.pyw"
       - "pdf_engine.py"
+      - "pdf_quality.py"
+      - "tests/test_quality_28.py"
+      - "tests/test_quality_gui_28.py"
       - "tests/test_271_improvements.py"
       - "requirements.txt"
   workflow_dispatch:
@@ -40,9 +43,9 @@ jobs:
       - name: Build actual onefile candidate
         run: python -m PyInstaller --noconfirm --clean release_windows_review.spec
       - name: Generate exact candidate manifest
-        run: python tools/release_manifest.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --out .\\dist\\onefile-manifest.json
+        run: python tools/release_manifest.py --exe .\\dist\\PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe --out .\\dist\\onefile-manifest.json
       - name: Inspect PyInstaller archive and reject Virtual Keyboard
-        run: python tools/audit_pyinstaller_bundle.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --reject-virtual-keyboard --out .\\dist\\onefile-bundle-audit.json
+        run: python tools/audit_pyinstaller_bundle.py --exe .\\dist\\PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe --reject-virtual-keyboard --out .\\dist\\onefile-bundle-audit.json
       - name: Assert unused Qt PDF, QML and Quick binaries excluded
         shell: pwsh
         run: |
@@ -65,7 +68,7 @@ jobs:
           @'
           import hashlib, json
           from pathlib import Path
-          exe = Path("dist/PDF_Compressor_2_7_license_review.exe")
+          exe = Path("dist/PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe")
           manifest = json.loads(Path("dist/onefile-manifest.json").read_text(encoding="utf-8"))
           digest = hashlib.sha256(exe.read_bytes()).hexdigest()
           assert manifest["exe_sha256"].lower() == digest
@@ -76,7 +79,7 @@ jobs:
         shell: pwsh
         run: |
           $env:QT_QPA_PLATFORM = "offscreen"
-          $exe = (Resolve-Path ".\\dist\\PDF_Compressor_2_7_license_review.exe").Path
+          $exe = (Resolve-Path ".\\dist\\PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe").Path
           $p = Start-Process -FilePath $exe -PassThru
           try {
             Start-Sleep -Seconds 12
@@ -88,7 +91,7 @@ jobs:
             if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
           }
       - name: Collect exact-build license evidence (incomplete by design)
-        run: python tools/collect_license_evidence.py --exe .\\dist\\PDF_Compressor_2_7_license_review.exe --manifest .\\dist\\onefile-manifest.json --out .\\dist\\license-evidence-not-for-release.zip
+        run: python tools/collect_license_evidence.py --exe .\\dist\\PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe --manifest .\\dist\\onefile-manifest.json --out .\\dist\\license-evidence-not-for-release.zip
       - name: Upload audit JSON only, NOT EXE
         uses: actions/upload-artifact@v4
         with:
@@ -103,6 +106,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: onefile-candidate-exe-NOT-FOR-RELEASE
-          path: dist/PDF_Compressor_2_7_license_review.exe
+          path: dist/PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe
           if-no-files-found: error
           retention-days: 7

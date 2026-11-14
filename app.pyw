@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.7.1 SmartFit - offline desktop GUI (Qt6)."""
+"""PDF Compressor 2.8 Preview — offline PDF quality review (Qt6)."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import threading
@@ -19,12 +20,13 @@ from PySide6.QtWidgets import (
 )
 
 import pymupdf
+from pdf_quality import audit_pdf, report_html
 from pdf_engine import (
     Cancelled, compress_pdf, file_info, human_size, merge_pdfs,
     rotate_pdf, split_pdf
 )
 
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.8-preview"
 
 
 # Text is keyed by the original Russian UI copy. No external translation file is
@@ -73,6 +75,15 @@ I18N_EN = {
     "МБ": "MB",
     "Целевой размер в мегабайтах, например 1 или 0,5": "Target size in megabytes, for example 1 or 0.5",
     "Разрешить уменьшение разрешения при необходимости": "Allow image downscaling if necessary",
+    "Проверять качество после сжатия (дополнительное время)": "Check quality after compression (takes longer)",
+    "Сохранить отчёт проверки": "Save quality report",
+    "Отчёт проверки": "Quality report",
+    "Проверка качества: без замечаний": "Quality review: no issues detected",
+    "Выше лимита": "Over target",
+    "Проверка качества: требуется просмотр": "Quality review: manual inspection recommended",
+    "Проверка качества: обнаружена проблема": "Quality review: possible integrity problem",
+    "Проверка качества: не выполнена": "Quality review: could not be completed",
+    "Проверьте PDF": "Review PDF",
     "Если размер недостижим без изменения числа пикселей, можно уменьшить разрешение изображений.": "Allow lower image resolution when the target cannot otherwise be reached.",
     "Сохранение результата": "Save results",
     "Папка для результатов": "Output folder",
@@ -230,6 +241,7 @@ ENGINE_PARTS_EN = (
     ("Операция отменена. Успешно завершено:", "Cancelled. Completed:"),
     ("Оригинал:", "Original:"),
     ("Цель не достигнута", "Target not reached"),
+    ("выше лимита на", "over target by"),
     ("Готово", "Done"),
     ("В очереди", "Queued"),
     ("Инструмент: готово", "Tool completed"),
@@ -400,6 +412,7 @@ class PreviewPane(QScrollArea):
 class JobWorker(QObject):
     progress = Signal(str, int, int)
     result = Signal(int, object)
+    quality = Signal(int, object)
     timing = Signal(int, float)
     finished = Signal(str)
 
@@ -435,6 +448,25 @@ class JobWorker(QObject):
                         self.timing.emit(idx, perf_counter() - started_at)
                         self.result.emit(idx, result)
                         completed += 1
+                        # 2.8 preview: opt-in, sampled low-resolution review.
+                        # The completed PDF is still delivered when review is
+                        # interrupted or raises a non-fatal diagnostics error.
+                        if self.options.get("quality_check", False):
+                            try:
+                                review = audit_pdf(
+                                    src, result.output,
+                                    max_render_pages=4, max_thumbnail_edge=256,
+                                    jpeg_quality_hint=result.quality,
+                                    images_downscaled_hint=result.downscaled,
+                                    cancel=self.cancel,
+                                    progress=lambda stage, cur, total, idx=idx:
+                                        self.progress.emit(
+                                            f"{idx + 1}/{len(self.inputs)} • {stage}", cur, total))
+                            except Cancelled:
+                                raise
+                            except Exception as error:
+                                review = error
+                            self.quality.emit(idx, review)
                     except Cancelled:
                         raise
                     except Exception as e:
@@ -705,6 +737,9 @@ class MainWindow(QMainWindow):
         self.downscale = QCheckBox("Разрешить уменьшение разрешения при необходимости")
         self.downscale.setToolTip("Если размер недостижим без изменения числа пикселей, можно уменьшить разрешение изображений.")
         cl.addWidget(self.downscale)
+        self.quality_check = QCheckBox("Проверять качество после сжатия (дополнительное время)")
+        self.quality_check.setChecked(False)  # Opt in until CPU/RAM benchmarks are verified.
+        cl.addWidget(self.quality_check)
         self.smartfit_note = QLabel("SmartFit анализирует тип PDF и подбирает сжатие. После обработки проверьте документ в предпросмотре.")
         self.smartfit_note.setObjectName("Muted")
         self.smartfit_note.setWordWrap(True)
@@ -718,6 +753,9 @@ class MainWindow(QMainWindow):
         self.folder_edit = QLineEdit()
         self.folder_edit.setPlaceholderText("Папка для результатов")
         self.folder_edit.setToolTip("Новые PDF сохраняются сюда, оригиналы не изменяются")
+        # QLineEdit scrolls long paths; hovering reveals the exact location
+        # instead of only showing a cropped middle/tail fragment.
+        self.folder_edit.textChanged.connect(self.folder_edit.setToolTip)
         folder_line.addWidget(self.folder_edit, 1)
         browse = QPushButton("Обзор…")
         browse.setObjectName("Quiet")
@@ -753,7 +791,14 @@ class MainWindow(QMainWindow):
         self.open_btn = QPushButton("Открыть готовый PDF")
         self.open_btn.setObjectName("Quiet")
         self.open_btn.clicked.connect(self.open_selected_result)
-        left_outer.addWidget(self.open_btn)
+        result_actions = QHBoxLayout()
+        result_actions.addWidget(self.open_btn, 3)
+        self.export_quality_btn = QPushButton("Сохранить отчёт проверки")
+        self.export_quality_btn.setObjectName("Quiet")
+        self.export_quality_btn.setEnabled(False)
+        self.export_quality_btn.clicked.connect(self.save_quality_report)
+        result_actions.addWidget(self.export_quality_btn, 2)
+        left_outer.addLayout(result_actions)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0, 100)
         self.progressbar.setValue(0)
@@ -1097,6 +1142,8 @@ class MainWindow(QMainWindow):
         if self.merge_name.text() in ("объединённый", "merged"):
             self.merge_name.setText("merged" if self.language == "en" else "объединённый")
         self.setWindowTitle(f"PDF Compressor {APP_VERSION}  •  {self.t('Локальная обработка')}")
+        # The output path should remain readable after switching languages.
+        self.folder_edit.setToolTip(self.folder_edit.text())
         self.set_status(self._status_ru)
         if self._tool_feedback_state is not None:
             self.render_tool_feedback()
@@ -1152,6 +1199,7 @@ class MainWindow(QMainWindow):
         saved_target = float(self.settings.value("target", 1.0))
         self.target.setText(f"{saved_target:.2f}".replace(".", ","))
         self.downscale.setChecked(str(self.settings.value("downscale", "false")).lower() == "true")
+        self.quality_check.setChecked(str(self.settings.value("quality_check", "false")).lower() == "true")
         wanted = str(self.settings.value("mode", "smartfit"))
         index = self.mode.findData(wanted)
         self.mode.setCurrentIndex(max(0, index))
@@ -1166,6 +1214,7 @@ class MainWindow(QMainWindow):
             target = 1.0
         self.settings.setValue("target", target)
         self.settings.setValue("downscale", self.downscale.isChecked())
+        self.settings.setValue("quality_check", self.quality_check.isChecked())
         self.settings.setValue("mode", self.mode.currentData())
         self.settings.setValue("dark", self.dark)
         self.settings.setValue("language", self.language)
@@ -1334,7 +1383,13 @@ class MainWindow(QMainWindow):
         for idx, entry in enumerate(self.entries):
             summary = entry["status"]
             detail = summary + (" · " + entry["result"] if entry["result"] else "")
-            values = [Path(entry["path"]).name, display_size(entry["size"], self.language), self.translated(summary)]
+            # The full "Цель не достигнута" label is truncated in the narrow
+            # status column on small screens. Keep the detailed tooltip,
+            # but show a short, readable status in the table.
+            short_status = "Выше лимита" if summary == "Цель не достигнута" else summary
+            values = [Path(entry["path"]).name,
+                      display_size(entry["size"], self.language),
+                      self.translated(short_status)]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setToolTip(entry["path"] if col == 0 else self.translated(detail))
@@ -1346,7 +1401,7 @@ class MainWindow(QMainWindow):
                         item.setForeground(QBrush(QColor("#71d1a4" if self.dark else "#147a53")))
                     elif summary == "Ошибка":
                         item.setForeground(QBrush(QColor("#ff8795" if self.dark else "#b83248")))
-                    elif summary == "Цель не достигнута":
+                    elif summary in ("Цель не достигнута", "Проверьте PDF"):
                         item.setForeground(QBrush(QColor("#eac17e" if self.dark else "#99600f")))
                 self.table.setItem(idx, col, item)
         if self.entries:
@@ -1393,6 +1448,8 @@ class MainWindow(QMainWindow):
 
     def on_selection_changed(self):
         entry = self.selected_entry()
+        self.export_quality_btn.setEnabled(
+            bool(entry and hasattr(entry.get("quality_report"), "as_dict")))
         if entry:
             self.selected_source = entry["path"]
             self.page_number.blockSignals(True)
@@ -1415,6 +1472,30 @@ class MainWindow(QMainWindow):
             open_file(path)
         else:
             self.info("Результат", "Пока нет обработанного PDF.")
+
+    def save_quality_report(self):
+        """Export reviewed results on demand; never add extra files silently."""
+        entry = self.selected_entry()
+        report = entry.get("quality_report") if entry else None
+        if not hasattr(report, "as_dict"):
+            return
+        suggested = str(Path(entry["result_path"]).with_suffix(".quality.html"))
+        destination, chosen_filter = QFileDialog.getSaveFileName(
+            self, self.t("Сохранить отчёт проверки"), suggested,
+            "HTML (*.html);;JSON (*.json)")
+        if not destination:
+            return
+        path = Path(destination)
+        if path.suffix.lower() not in (".json", ".html"):
+            path = path.with_suffix(".json" if "JSON" in chosen_filter else ".html")
+        try:
+            content = (json.dumps(report.as_dict(), ensure_ascii=False, indent=2) + "\n"
+                       if path.suffix.lower() == ".json" else report_html(report))
+            path.write_text(content, encoding="utf-8")
+        except OSError as error:
+            self.warn(self.t("Отчёт проверки"), str(error))
+            return
+        self.set_status(f"Отчёт сохранён: {path}")
 
     def change_page(self, delta: int):
         if not self.selected_entry():
@@ -1494,7 +1575,10 @@ class MainWindow(QMainWindow):
             new_size = Path(result).stat().st_size
             saved = 100.0 * (old_size - new_size) / old_size if old_size else 0.0
             self.result_metric.setText(f"{display_size(old_size, self.language)}  →  {display_size(new_size, self.language)}  ·  {saved:.1f}%")
-            self.compare_status.setText(self.translated(entry.get("result", "Сжатие завершено. Откройте результат, чтобы проверить качество.")))
+            details = self.translated(entry.get(
+                "result", "Сжатие завершено. Откройте результат, чтобы проверить качество."))
+            self.compare_status.setText(details)
+            self.compare_status.setToolTip(details)
         else:
             self.result_metric.setText(f"{self.t('Оригинал:')} {display_size(entry['size'], self.language)}")
             self.compare_status.setText(self.t("Выберите режим и нажмите «Сжать все PDF». Для скана боком используйте кнопку «Повернуть» — только для просмотра."))
@@ -1511,6 +1595,7 @@ class MainWindow(QMainWindow):
         self.save_settings()
         return {"folder": folder, "mode": self.mode.currentData(),
                 "target": target, "downscale": self.downscale.isChecked(),
+                "quality_check": self.quality_check.isChecked(),
                 "template": self.template.text().strip() or "{name}_сжатый"}
 
     def begin(self, action: str, paths: list[str], opts: dict):
@@ -1546,6 +1631,7 @@ class MainWindow(QMainWindow):
         self.worker.progress.connect(self.update_progress)
         self.worker.timing.connect(self.record_timing)
         self.worker.result.connect(self.record_result)
+        self.worker.quality.connect(self.record_quality)
         self.worker.finished.connect(self.receive_end_message)
         self.worker.finished.connect(self.thread.quit)
         self.thread.finished.connect(self.worker.deleteLater)
@@ -1563,7 +1649,8 @@ class MainWindow(QMainWindow):
             self.warn("Настройки", str(error))
             return
         for entry in self.entries:
-            entry.update(status="В очереди", result="", result_path="", elapsed_seconds=None)
+            entry.update(status="В очереди", result="", result_path="",
+                         elapsed_seconds=None, quality_report=None)
         self.refresh_table()
         self.begin("compress", [e["path"] for e in self.entries], opts)
 
@@ -1695,7 +1782,14 @@ class MainWindow(QMainWindow):
             if row_idx >= 0:
                 e = self.entries[row_idx]
                 e["status"] = "Готово" if outcome.target_met is not False else "Цель не достигнута"
-                suffix = " · цель не достигнута" if outcome.target_met is False else ""
+                if outcome.target_met is False:
+                    difference = (outcome.result_bytes - outcome.target_bytes
+                                  if outcome.target_bytes is not None else None)
+                    suffix = (f" · выше лимита на {human_size(difference)}"
+                              if difference is not None and difference > 0
+                              else " · цель не достигнута")
+                else:
+                    suffix = ""
                 elapsed = e.get("elapsed_seconds")
                 timing_text = (f" · Время: {elapsed:.1f} с" if elapsed is not None else "")
                 e["result"] = (f"{human_size(outcome.result_bytes)}  (−{outcome.saving_percent:.1f}%)"
@@ -1714,6 +1808,34 @@ class MainWindow(QMainWindow):
                 self.entries[row_idx]["result_path"] = str(files[0])
             self.last_created_path = str(files[0])
             self.set_status("Созданы: " + "; ".join(Path(p).name for p in files[:4]))
+        self.refresh_table()
+
+    def record_quality(self, index: int, review):
+        """Show opt-in 2.8 QA findings without deleting a valid output PDF."""
+        source = self.active_paths[index] if 0 <= index < len(self.active_paths) else None
+        entry = next((item for item in self.entries if item["path"] == source), None)
+        if entry is None:
+            return
+        entry["quality_report"] = review
+        # Do not hide the more concrete "target not reached" outcome when a
+        # PDF also needs a manual quality review. Both findings stay in the
+        # row tooltip and detailed result text.
+        target_missed = entry.get("status") == "Цель не достигнута"
+        if isinstance(review, Exception):
+            detail = "Проверка качества: не выполнена"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
+        elif review.status == "error":
+            detail = "Проверка качества: обнаружена проблема"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
+        elif review.status == "review":
+            detail = "Проверка качества: требуется просмотр"
+            if not target_missed:
+                entry["status"] = "Проверьте PDF"
+        else:
+            detail = "Проверка качества: без замечаний"
+        entry["result"] += f" · {detail}"
         self.refresh_table()
 
     def receive_end_message(self, message: str):
