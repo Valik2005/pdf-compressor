@@ -3,6 +3,13 @@ name: Verify v2.8 final EXE metadata (NOT FOR RELEASE)
 # Verify PyInstaller spec and PE VERSIONINFO without a signing token or
 # publishing a candidate. App may still be 2.8-preview on this PR.
 on:
+  push:
+    branches: [chore/2.8-signpath-release-prep]
+    paths:
+      - release_windows_2_8.spec
+      - tools/windows_version_info_2_8.txt
+      - .github/workflows/review-28-metadata.yml
+      - .github/workflows/sign-v2_8.yml
   pull_request:
     branches: [develop/2.8-quality-audit]
     paths:
