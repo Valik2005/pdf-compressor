@@ -22,6 +22,15 @@ This report is a technical bill-of-materials and obligations review, **not a leg
 - The verified unsigned run [#43618672798](https://github.com/Valik2005/pdf-compressor/actions/runs/43618672798) included **71 entries**; after adding original OpenSSL 3.5.9 LICENSE and AUTHORS, the same-commit run [#43619807237](https://github.com/Valik2005/pdf-compressor/actions/runs/43619807237) included **73 entries**, including full project **AGPLv3**, MuPDF `COPYING`, full Qt/PySide6 **LGPLv3 and GPLv3** texts, QtBase/QtSvg/QtImageFormats third-party texts, and libffi notice. `license-evidence.zip` separately contains Windows-builder installed-wheel documentation for Pillow, Python, PyInstaller, PyMuPDF and PySide6/Shiboken. For the Qt wheels, only `LicenseRef-Qt-Commercial.txt` was directly extractable from the installed wheel metadata: the Qt **open-source** full-text licenses are in the **other** notice archive, not in those wheel metadata records.
 - Exact original→compressed sample PDFs #04 and #10 retain their original Creator metadata, but both original and result PDF `Producer` values were empty. This **does not by itself prove an AGPL violation**; Artifex producer/copyright notice requirements should be confirmed and guarded by a dedicated test before changing the compression pipeline.
 
+## Exact Windows library byte-origin results (new audit)
+
+The dedicated [six-job review-only run #43628766396](https://github.com/Valik2005/pdf-compressor/actions/runs/43628766396) independently read **all 118 DLL/PYD members from the EXE** and compared their uncompressed SHA-256 values with the Windows builder's installed wheels/CPython:
+- **73/118** native members are *byte-identical* to installed PySide6 Essentials 6.12.0, Shiboken6 6.12.0, Pillow 12.3.0, PyMuPDF 1.27.2.3 and/or CPython 3.14.10. **No wheel mismatch and no wheel RECORD hash failure.**
+- All ten PySide6/Shiboken/CPython **MSVCP/VCRUNTIME copies** match the builder's installed package/runtime bytes. This answers *where those bytes came from*, not *whether the maintainer has permission to redistribute the runtime*.
+- The **exact remaining 45** unmatched names consist of **42** Windows `api-ms-win-*.dll` compatibility/API-set DLLs, `ucrtbase.dll` and **two** `libcrypto-3-x64.dll`/`libssl-3-x64.dll` OpenSSL DLLs. The plain `libcrypto-3.dll` and `libssl-3.dll` match installed CPython. The -x64 DLLs report OpenSSL 3.5.9 in earlier binary inspection but exact supplier path is not yet established.
+- `PySide6/opengl32sw.dll` (Qt software Mesa) is byte-identical to **PySide6 Essentials 6.12.0**, and its upstream copyright/Boost/MIT notices have been added. Source-built-binary identity and all transitive LLVM notices remain a separate question.
+- See `reports/native-binary-origin.json` in the corresponding review bundle and `docs/NATIVE_BINARY_ORIGIN_2_8.md`. The build now **rejects mismatching wheel DLL/PYD bytes**; technical hashes are not an OSS licensing certificate.
+
 ## Obligation matrix
 
 | Component | Evidence established | Remains before distribution |
