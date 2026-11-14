@@ -39,10 +39,10 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
         "packages": {}, "documents": [], "missing": [],
         "status": "INCOMPLETE EVIDENCE ONLY; NOT approved for redistribution",
         "mandatory_review": [
-            "Inventory every Qt DLL/plugin, PDFium and all transitive native code in the final EXE.",
+            "Inventory each Qt DLL/plugin and transitive native code actually present; absent Qt PDF/Chromium modules need not be treated as bundled.",
             "Provide corresponding library source, notices, and rights to relink/rebuild modified LGPL Qt.",
             "Review AGPL source/producer-notice requirements for PyMuPDF and other covered code.",
-            "Verify Qt PDF/PDFium/Chromium/codec/OpenSSL third-party licenses individually."
+            "Verify licenses for actual included Qt plugins/codecs/OpenSSL; confirm separately that Qt PDF/PDFium/Chromium were excluded."
         ],
     }
     collected = {}
@@ -110,9 +110,9 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
                 "PyMuPDF: package COPYING is only a dual-license summary, not full AGPL text or corresponding source"
             )
     report["missing"].extend([
-        "Full corresponding sources for bundled Qt and MuPDF have not been verified",
-        "Practical LGPL-compatible library replacement/relinking process has not been verified",
-        "Qt PDF/PDFium and other transitive native license notices are not completely inventoried",
+        "Matching Qt/MuPDF source archives are not contained in this installed-package license ZIP; verify the separate six-source release archive",
+        "LGPL Qt onefile relinking is not evidenced by this license ZIP; verify the separate Windows v2.8 relink test and instructions",
+        "Verify absent Qt PDF/PDFium/Chromium modules in final native inventory and review all actually included transitive codecs and notices",
     ])
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as z:
