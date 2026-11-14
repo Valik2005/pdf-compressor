@@ -118,7 +118,7 @@ jobs:
         run: |
           $exe = Get-Item -LiteralPath dist/PDF_Compressor_2_8.exe
           $v = $exe.VersionInfo
-          if ($v.ProductName -ne 'PDF Compressor') { throw "Wrong PE ProductName: $($v.ProductName)" }
+          if ($v.ProductName -ne 'PDF Compressor by Valik2005') { throw "Wrong PE ProductName: $($v.ProductName)" }
           if ($v.FileVersion -ne '2.8.0.0') { throw "Wrong PE FileVersion: $($v.FileVersion)" }
           if ($v.ProductVersion -ne '2.8.0.0') { throw "Wrong PE ProductVersion: $($v.ProductVersion)" }
           if ($v.OriginalFilename -ne 'PDF_Compressor_2_8.exe') { throw "Wrong OriginalFilename: $($v.OriginalFilename)" }
