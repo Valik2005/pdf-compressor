@@ -14,7 +14,7 @@ English and Russian UI · Windows 10/11 · Free and open source
 </p>
 
 <a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
-  <img alt="⬇ Download PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+  <img alt="⬇ Download PDF Compressor 2.8 UNSIGNED EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **One EXE · No Python installation · ≈70 MB**
@@ -116,7 +116,7 @@ README_RU.md                  Русская инструкция
 
 ## 📜 Licensing note
 
-The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.7.1 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) groups the applicable upstream sources, license notices, build reports and Qt onefile relinking instructions into **`Third_Party_Sources_and_Licenses.zip`**. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
+The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.8 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) groups the applicable upstream sources, license notices, build reports and Qt onefile relinking instructions into **`Third_Party_Sources_and_Licenses.zip`**. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
 
 ## ℹ️ Disclaimer
 
