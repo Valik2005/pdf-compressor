@@ -111,7 +111,7 @@ def collect(exe: Path, app_license: Path, manifest: Path | None, output: Path) -
             )
     report["missing"].extend([
         "Matching Qt/MuPDF source archives are not contained in this installed-package license ZIP; verify the separate six-source release archive",
-        "LGPL Qt onefile relinking is not evidenced by this license ZIP; verify the separate Windows v2.8 relink test and instructions",
+        "Practical LGPL-compatible library replacement/relinking CI proof is not contained in this wheel-license ZIP; verify the separate Windows v2.8 relink test and instructions",
         "Verify absent Qt PDF/PDFium/Chromium modules in final native inventory and review all actually included transitive codecs and notices",
     ])
     output.parent.mkdir(parents=True, exist_ok=True)
