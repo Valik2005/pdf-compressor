@@ -156,6 +156,24 @@ jobs:
           print("Unsigned SHA-256:",actual)
           '@ | python -
 
+      - name: Download verified source artifacts from THIS workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: release-2-8-verified-source-input-NOT-FOR-PUBLICATION
+          path: dist/source-candidates
+
+      - name: Cross-verify Windows EXE against sources and installed license evidence
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/pre-sign-check | Out-Null
+          Copy-Item dist/PDF_Compressor_2_8.exe dist/pre-sign-check/
+          Copy-Item dist/unsigned-build-manifest.json dist/pre-sign-check/build-manifest.json
+          Copy-Item dist/unsigned-bundle-audit.json dist/pre-sign-check/bundle-audit.json
+          Copy-Item dist/native-source-mapping.json dist/pre-sign-check/
+          Copy-Item dist/license-evidence.zip dist/pre-sign-check/
+          python -m tools.verify_presign_evidence_28 --windows dist/pre-sign-check --sources dist/source-candidates --catalog docs/source-archives-2_8.json --source-sha $env:GITHUB_SHA --out dist/presign-technical-evidence.json
+          if ($LASTEXITCODE -ne 0) { throw "Presign technical integrity audit failed; refuse SignPath request" }
+
       - name: Upload unsigned onefile for SignPath origin verification
         id: unsigned
         uses: actions/upload-artifact@v4
@@ -257,6 +275,7 @@ jobs:
           Copy-Item dist/unsigned-bundle-audit.json dist/verified-signed/
           Copy-Item dist/native-source-mapping.json dist/verified-signed/
           Copy-Item dist/license-evidence.zip dist/verified-signed/
+          Copy-Item dist/presign-technical-evidence.json dist/verified-signed/
 
       - name: Upload verified signed candidate only; DO NOT publish
         uses: actions/upload-artifact@v4
