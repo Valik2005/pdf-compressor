@@ -146,3 +146,27 @@ def test_windows_and_posix_basename_and_allowlist():
     assert obj["source_name"] == "sample.pdf"
     assert obj["result_name"] == "compressed.pdf"
     assert "_private_internal_input_path" not in obj
+
+
+
+def test_excel_formula_filename_is_neutralized_in_csv_but_json_unmodified(tmp_path):
+    store = TestReportStore(tmp_path)
+    store.append(fake_record(source_name="=SUM(1,2).pdf",
+                             result_name="@malicious.pdf"))
+    store.export(tmp_path / "formula.zip")
+    with zipfile.ZipFile(tmp_path / "formula.zip") as archive:
+        csv_rows = list(csv.DictReader(
+            StringIO(archive.read("test_report.csv").decode("utf-8-sig"))))
+        assert csv_rows[0]["source_name"] == "'=SUM(1,2).pdf"
+        assert csv_rows[0]["result_name"] == "'@malicious.pdf"
+        data = json.loads(archive.read("test_report.json"))
+        assert data["runs"][0]["source_name"] == "=SUM(1,2).pdf"
+
+
+def test_new_entry_after_interrupted_jsonl_write_survives(tmp_path):
+    store = TestReportStore(tmp_path)
+    store.append(fake_record(run_id="first"))
+    with store.journal.open("a", encoding="utf-8") as stream:
+        stream.write('{"run_id":"damaged",')
+    store.append(fake_record(run_id="second"))
+    assert [item["run_id"] for item in store.records()] == ["first", "second"]
