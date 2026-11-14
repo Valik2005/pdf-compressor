@@ -54,6 +54,13 @@ def inputs(tmp_path: Path):
         "signer_subject": "CN=SignPath Foundation",
         "timestamp_certificate_subject": "CN=Trusted TSA",
     }), encoding="utf-8")
+    (windows / "presign-technical-evidence.json").write_text(json.dumps({
+        "technical_integrity_checks_passed": True,
+        "license_compliance_certified": False,
+        "source_git_commit": sha,
+        "unsigned_exe_sha256": unsigned_sha,
+        "source_archives_verified": 6
+    }), encoding="utf-8")
     (windows / "authenticode-verification.json").write_text(json.dumps({
         "signature_status": "Valid",
         "signtool_verified": True,
