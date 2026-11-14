@@ -3,7 +3,7 @@
 **This document is a practical technical route, not a legal-compliance certificate.**
 It applies to the *public v2.8* Windows one-file EXE only after that release is approved and built from the reviewed, public source commit.
 
-PDF Compressor v2.8 uses Qt 6.12.0 and PySide6/Shiboken 6.12.0 through LGPL/GPL licensing alternatives. A PyInstaller one-file EXE unpacks its native Qt binaries at runtime, but ordinary side-by-side DLL replacement may not work. Instead, the recipient can **rebuild the one-file EXE** with their own ABI-compatible Qt DLLs using this project's public source and the exact same versioned build recipe. This does not require the publisher's digital-signing key; the *modified EXE is expected to be unsigned*.
+PDF Compressor v2.8 uses Qt 6.12.0 and PySide6/Shiboken 6.12.0 through LGPL/GPL licensing alternatives. A PyInstaller one-file EXE unpacks its native Qt binaries at runtime, but ordinary side-by-side DLL replacement may not work. Instead, the recipient can **rebuild the one-file EXE** with their own ABI-compatible Qt DLLs using this project's public source and the exact same versioned build recipe. This does not require a code-signing key; **both the planned official 2.8 release and user-rebuilt EXEs are unsigned**.
 
 ## Requirements
 
@@ -22,7 +22,7 @@ py -3.14 tools\rebuild_onefile_with_qt.py --release-version 2.8 --work-dir .\reb
 
 The script creates an isolated virtual environment, pins `PyMuPDF==1.27.2.3`, `PySide6==6.12.0`, `Pillow==12.3.0`, `pyinstaller==6.22.3`, and runs `release_windows_2_8.spec`. The rebuilt EXE is `rebuild-28\dist\PDF_Compressor_2_8.exe`. Audit files `bundle-audit.json`, `build-manifest.json` and `qt-relink-build-report.json` are created next to it.
 
-A locally rebuilt binary is not expected to have a byte-identical SHA-256 to the SignPath-signed official release; signing and timestamping alter bytes, and build environments can vary.
+A locally rebuilt binary is not guaranteed to have an identical SHA-256 to the official **unsigned** build because compiler, packaging environment and embedded build metadata may differ. The official release SHA-256 refers only to the published build, not to all compatible rebuilt copies.
 
 ## Rebuild with modified Qt libraries
 
