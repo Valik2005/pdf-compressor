@@ -1,0 +1,177 @@
+name: Publish verified signed PDF Compressor v2.8 (manual only)
+
+# No runs on pushes/PRs. This workflow requires a verified SignPath signing
+# workflow run from exactly the current main commit, and the owner's separate
+# explicit typed authorization before any GitHub Release operation.
+on:
+  workflow_dispatch:
+    inputs:
+      signing_run_id:
+        description: 'Successful v2.8 SignPath signing workflow run ID from main'
+        type: string
+        required: true
+      confirmation:
+        description: 'Type RELEASE_V2_8_SIGNED to authorize publication'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-v2-8-once
+  cancel-in-progress: false
+
+jobs:
+  publish-signed-28:
+    if: github.ref == 'refs/heads/main' && github.actor == 'Valik2005'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Require final owner authorization and matching signed workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_RUN_ID: ${{ inputs.signing_run_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "RELEASE_V2_8_SIGNED" || { echo "Publication not explicitly authorized" >&2; exit 1; }
+          [[ "$SIGNING_RUN_ID" =~ ^[0-9]{7,15}$ ]] || { echo "Invalid GitHub Actions run id" >&2; exit 1; }
+          python - <<'PY'
+          from pathlib import Path
+          app=Path("app.pyw").read_text(encoding="utf-8")
+          assert 'APP_VERSION = "2.8"' in app
+          assert not Path("test_report.py").exists()
+          assert Path("docs/RELEASE_NOTES_2_8.md").is_file()
+          PY
+          gh api "repos/$REPOSITORY/actions/runs/$SIGNING_RUN_ID" > signed-run.json
+          python - <<'PY'
+          import json,os
+          run=json.load(open("signed-run.json",encoding="utf-8"))
+          assert run["conclusion"]=="success" and run["status"]=="completed", "SignPath workflow did not pass"
+          assert run["name"]=="PDF Compressor 2.8 - SignPath Foundation (manual, no publishing)"
+          assert run["event"]=="workflow_dispatch" and run["head_branch"]=="main"
+          assert run["head_sha"]==os.environ["EXPECTED_COMMIT"], "Different source commit: refuse publication"
+          print("Verified signed origin workflow:",run["html_url"])
+          PY
+          if gh release view v2.8 >/dev/null 2>&1; then
+            echo "v2.8 release already exists. Refusing overwrite." >&2; exit 1
+          fi
+          if git ls-remote --exit-code --tags origin refs/tags/v2.8 >/dev/null 2>&1; then
+            echo "v2.8 tag exists. Refusing overwrite." >&2; exit 1
+          fi
+
+      - name: Download only the verified three-file artifact from the approved run
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-8-exact-three-files-REVIEW-NOT-PUBLISHED
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.signing_run_id }}
+          path: release-assets
+
+      - name: Verify three files, final signed hashes and source/license evidence
+        shell: bash
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          (cd release-assets && sha256sum --check SHA256SUMS.txt --status)
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          from zipfile import ZipFile
+          base=Path("release-assets")
+          exe=base/"PDF_Compressor_2_8.exe"
+          archive=base/"Third_Party_Sources_and_Licenses.zip"
+          sums=base/"SHA256SUMS.txt"
+          expected={exe.name,archive.name,sums.name}
+          assert {p.name for p in base.iterdir()}==expected
+          assert exe.stat().st_size>1_000_000 and archive.stat().st_size>100_000
+          digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          sha=digest(exe)
+          with ZipFile(archive) as z:
+            assert z.testzip() is None
+            members=set(z.namelist())
+            assert len([n for n in members if n.startswith("sources/")])==6
+            required={
+              "reports/signature-verification.json",
+              "reports/authenticode-verification.json",
+              "reports/unsigned-build-manifest.json",
+              "reports/unsigned-bundle-audit.json",
+              "reports/native-source-mapping.json",
+              "reports/source-archive-audit.json",
+              "reports/source-download-report.json",
+              "licenses/LGPL_RELINKING_2_8.md",
+              "licenses/THIRD_PARTY_NOTICES_2_8.zip",
+              "SOURCES_SHA256SUMS.txt"
+            }
+            assert required.issubset(members), sorted(required-members)
+            data=json.loads(z.read("reports/signature-verification.json"))
+            trust=json.loads(z.read("reports/authenticode-verification.json").decode("utf-8-sig"))
+            source=json.loads(z.read("reports/source-archive-audit.json"))
+            downloads=json.loads(z.read("reports/source-download-report.json"))
+            unsigned=json.loads(z.read("reports/unsigned-build-manifest.json"))
+            assert data["version"]=="2.8" and data["source_git_commit"]==os.environ["EXPECTED_COMMIT"]
+            assert unsigned["source_git_commit"]==data["source_git_commit"]
+            assert data["signed_sha256"]==sha and data["authenticode_verified"] is True
+            assert data["signed_sha256"]!=data["unsigned_sha256"]
+            assert "SignPath Foundation" in data["signer_subject"]
+            assert data["timestamp_certificate_subject"]
+            assert trust["signature_status"]=="Valid" and trust["signtool_verified"] is True
+            assert trust["signed_sha256"]==sha
+            assert source["all_required_with_published_hashes"] is True
+            assert downloads["all_required_archives_verified"] is True
+          print("Signed EXE and six-source license evidence verified for exact main commit")
+          PY
+
+      - name: Create draft release with only the three checked assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create v2.8 release-assets/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "PDF Compressor 2.8" \
+            --notes-file docs/RELEASE_NOTES_2_8.md --draft
+
+      - name: Confirm GitHub uploaded SHA256 matches local bytes before publication
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" > uploaded-release.json
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          r=json.load(open("uploaded-release.json",encoding="utf-8"))
+          assert r["draft"] is True and r["prerelease"] is False
+          expected={"PDF_Compressor_2_8.exe","Third_Party_Sources_and_Licenses.zip","SHA256SUMS.txt"}
+          files={x["name"]:x for x in r["assets"]}
+          assert set(files)==expected
+          for name in expected:
+            h=hashlib.sha256((Path("release-assets")/name).read_bytes()).hexdigest()
+            assert files[name]["digest"]=="sha256:"+h, name
+          print("All three uploaded release assets independently match SHA-256")
+          PY
+
+      - name: Publish the verified stable v2.8 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release edit v2.8 --draft=false --latest
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" |
+          python -c "import json,sys; d=json.load(sys.stdin); assert not d['draft'] and not d['prerelease'] and len(d['assets'])==3; print(d['html_url'])"

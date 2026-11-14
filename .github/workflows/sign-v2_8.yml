@@ -1,0 +1,307 @@
+name: PDF Compressor 2.8 - SignPath Foundation (manual, no publishing)
+
+# This workflow becomes usable only AFTER the maintainer has accepted
+# SignPath Foundation's terms, registered the project, and merged a
+# separately approved 2.8 release candidate into main.
+# It NEVER creates a tag, release, or public download.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: signpath-2-8-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-tests:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  sources-and-notices:
+    needs: windows-tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Acquire six required sources and validate exact upstream SHA-256
+        run: |
+          python tools/fetch_required_sources.py --catalog docs/source-archives-2_8.json --out-dir dist/source-candidates --require-all
+          python tools/verify_source_archives.py --catalog docs/source-archives-2_8.json --source-dir dist/source-candidates --out dist/source-candidates/source-archive-audit.json --require-all-verified
+      - name: Package third-party notices and source/relinking instructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/package_release_notices.py --catalog docs/source-archives-2_8.json --release-version 2.8 --sources dist/source-candidates --out dist/source-candidates/THIRD_PARTY_NOTICES_2_8.zip
+          cp docs/LGPL_RELINKING_2_8.md dist/source-candidates/
+          cp docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md dist/source-candidates/THIRD_PARTY_NOTICES_2_8.md
+          cp docs/third_party_libffi_license.txt dist/source-candidates/libffi-LICENSE.txt
+      - name: Stage verified source evidence for unsigned/signed release assembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-2-8-verified-source-input-NOT-FOR-PUBLICATION
+          path: dist/source-candidates/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  sign-reviewed-main:
+    needs: [windows-tests, sources-and-notices]
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+
+      - name: Fail closed if SignPath Foundation has not approved/configured signing
+        shell: pwsh
+        env:
+          SIGNPATH_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORG: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+        run: |
+          foreach ($name in @('SIGNPATH_TOKEN','SIGNPATH_ORG','SIGNPATH_PROJECT','SIGNPATH_POLICY')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "$name is not configured. Apply to SignPath Foundation first; no signing performed."
+            }
+          }
+          Write-Host "SignPath settings present (values not printed)."
+
+      - name: Prevent preview, test branch, or test reporter from being signed
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          app = Path("app.pyw").read_text(encoding="utf-8")
+          assert 'APP_VERSION = "2.8"' in app, "Only final public v2.8 can be signed"
+          assert not Path("test_report.py").exists(), "Internal testing reporter must not ship"
+          assert "from test_report import" not in app, "Testing reporter leaked into stable app"
+          '@ | python -
+
+      - name: Install pinned reviewed build dependencies
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+
+      - name: Build final Windows x64 onefile with exact PE version metadata
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+
+      - name: Validate PE product and file version against signing policy
+        shell: pwsh
+        run: |
+          $exe = Get-Item -LiteralPath dist/PDF_Compressor_2_8.exe
+          $v = $exe.VersionInfo
+          if ($v.ProductName -ne 'PDF Compressor by Valik2005') { throw "Wrong PE ProductName: $($v.ProductName)" }
+          if ($v.FileVersion -ne '2.8.0.0') { throw "Wrong PE FileVersion: $($v.FileVersion)" }
+          if ($v.ProductVersion -ne '2.8.0.0') { throw "Wrong PE ProductVersion: $($v.ProductVersion)" }
+          if ($v.OriginalFilename -ne 'PDF_Compressor_2_8.exe') { throw "Wrong OriginalFilename: $($v.OriginalFilename)" }
+          Write-Host "PE product and version metadata verified for SignPath."
+
+      - name: Audit native components, provenance, and unsigned EXE
+        shell: pwsh
+        run: |
+          python tools/release_manifest.py --exe dist/PDF_Compressor_2_8.exe --out dist/unsigned-build-manifest.json
+          python tools/audit_pyinstaller_bundle.py --exe dist/PDF_Compressor_2_8.exe --reject-virtual-keyboard --out dist/unsigned-bundle-audit.json
+          python tools/audit_onefile_native_sources.py --audit dist/unsigned-bundle-audit.json --out dist/native-source-mapping.json
+          python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_8.exe --manifest dist/unsigned-build-manifest.json --out dist/license-evidence.zip
+
+      - name: Verify exact unsigned bytes originate from clean main HEAD
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, json, os
+          from pathlib import Path
+          exe = Path("dist/PDF_Compressor_2_8.exe")
+          manifest = json.loads(Path("dist/unsigned-build-manifest.json").read_text())
+          native = json.loads(Path("dist/native-source-mapping.json").read_text())
+          audit = json.loads(Path("dist/unsigned-bundle-audit.json").read_text())
+          actual = hashlib.sha256(exe.read_bytes()).hexdigest()
+          assert manifest["source_git_commit"] == os.environ["GITHUB_SHA"]
+          assert manifest["source_has_local_changes"] is False
+          assert actual == manifest["exe_sha256"] == audit["sha256"] == native["exe_sha256"]
+          assert manifest["exe_size_bytes"] == exe.stat().st_size
+          assert not native["unmapped_native_files"] and not native["missing_required_source_entries"]
+          assert not audit["included_virtual_keyboard_files"]
+          assert manifest["builder_os"] == "Windows"
+          assert manifest["builder_python"].startswith("3.14.")
+          assert manifest["installed_builder_package_versions"]["PySide6"] == "6.12.0"
+          print("Unsigned SHA-256:",actual)
+          '@ | python -
+
+      - name: Upload unsigned onefile for SignPath origin verification
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: signpath-2-8-unsigned-input-NOT-FOR-RELEASE
+          path: dist/PDF_Compressor_2_8.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      # Configure SignPath's artifact configuration root as <zip-file>:
+      # upload-artifact@v4 wraps the EXE in a ZIP by default.
+      # The SignPath Foundation policy must require manual approval.
+      # Configure artifact-config ProductName/FileVersion restrictions in SignPath.
+      - name: Submit only this GitHub-hosted artifact to SignPath Foundation
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: '1800'
+          output-artifact-directory: dist/signpath-signed
+
+      - name: Require the authentic signed EXE and trusted timestamp
+        shell: pwsh
+        run: |
+          $candidates = @(Get-ChildItem dist/signpath-signed -Filter PDF_Compressor_2_8.exe -Recurse -File)
+          if ($candidates.Count -ne 1) { throw "Expected exactly one signed PDF_Compressor_2_8.exe" }
+          New-Item -ItemType Directory -Path dist/verified-signed -Force | Out-Null
+          Copy-Item -LiteralPath $candidates[0].FullName -Destination dist/verified-signed/PDF_Compressor_2_8.exe
+          $exe = (Resolve-Path dist/verified-signed/PDF_Compressor_2_8.exe).Path
+          $signature = Get-AuthenticodeSignature -LiteralPath $exe
+          if ($signature.Status -ne 'Valid') { throw "Authenticode is invalid: $($signature.Status)" }
+          if ($signature.SignerCertificate.Subject -notlike '*SignPath Foundation*') {
+            throw "Unexpected publisher, refusing release candidate"
+          }
+          if (-not $signature.TimeStamperCertificate) { throw "Missing trusted timestamp" }
+          $kit = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $tools = @(Get-ChildItem -LiteralPath $kit -Filter signtool.exe -Recurse -File |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName)
+          if ($tools.Count -eq 0) { throw "Windows SDK signtool.exe not found" }
+          & $tools[-1].FullName verify /pa /tw /v $exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool verification failed ($LASTEXITCODE)" }
+          # Record actual Windows evidence for the later three-asset release gate.
+          $proof = [ordered]@{
+            signature_status = "$($signature.Status)"
+            signer_subject = "$($signature.SignerCertificate.Subject)"
+            timestamper_subject = "$($signature.TimeStamperCertificate.Subject)"
+            signtool_verified = $true
+            signed_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $proof | ConvertTo-Json | Set-Content -Encoding utf8 dist/verified-signed/authenticode-verification.json
+
+      - name: Record signed and unsigned SHA-256 independently
+        shell: pwsh
+        run: |
+          @'
+          import hashlib, json, os
+          from pathlib import Path
+          signed = Path("dist/verified-signed/PDF_Compressor_2_8.exe")
+          unsigned = json.loads(Path("dist/unsigned-build-manifest.json").read_text())
+          h = hashlib.sha256(signed.read_bytes()).hexdigest()
+          proof = json.loads(Path("dist/verified-signed/authenticode-verification.json").read_text(encoding="utf-8-sig"))
+          assert proof["signature_status"] == "Valid"
+          assert "SignPath Foundation" in proof["signer_subject"]
+          assert proof["timestamper_subject"] and proof["signtool_verified"] is True
+          assert proof["signed_sha256"] == h
+          if h == unsigned["exe_sha256"]:
+              raise ValueError("Signing did not modify the EXE")
+          report = {
+              "version": "2.8",
+              "source_git_commit": os.environ["GITHUB_SHA"],
+              "signature_policy": "SignPath Foundation approved, independently checked by Authenticode and signtool",
+              "unsigned_sha256": unsigned["exe_sha256"],
+              "signed_sha256": h,
+              "signed_size_bytes": signed.stat().st_size,
+              "signer_subject": proof["signer_subject"],
+              "timestamp_certificate_subject": proof["timestamper_subject"],
+              "authenticode_verified": True,
+              "public_release_created": False,
+          }
+          Path("dist/verified-signed/signature-verification.json").write_text(
+              json.dumps(report, indent=2), encoding="utf-8")
+          Path("dist/verified-signed/SHA256SUMS-EXE-ONLY.txt").write_text(
+              f"{h}  PDF_Compressor_2_8.exe\n", encoding="utf-8")
+          print("Signed SHA-256:",h)
+          '@ | python -
+
+      - name: Keep source, native and license audits alongside signed candidate
+        shell: pwsh
+        run: |
+          Copy-Item dist/unsigned-build-manifest.json dist/verified-signed/
+          Copy-Item dist/unsigned-bundle-audit.json dist/verified-signed/
+          Copy-Item dist/native-source-mapping.json dist/verified-signed/
+          Copy-Item dist/license-evidence.zip dist/verified-signed/
+
+      - name: Upload verified signed candidate only; DO NOT publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-2-8-candidate-NOT-YET-RELEASED
+          path: dist/verified-signed/
+          if-no-files-found: error
+          retention-days: 14
+
+  package-three-files-for-review:
+    needs: [sources-and-notices, sign-reviewed-main]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-8-verified-source-input-NOT-FOR-PUBLICATION
+          path: release-input/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-2-8-candidate-NOT-YET-RELEASED
+          path: release-input/windows
+      - name: Verify exact v2.8 source revision and three release assets
+        shell: bash
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python -m tools.assemble_signed_release_28 \
+            --sources release-input/sources \
+            --windows release-input/windows \
+            --catalog docs/source-archives-2_8.json \
+            --source-sha "$EXPECTED_SOURCE_COMMIT" \
+            --out release-assets
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          ( cd release-assets && sha256sum --check SHA256SUMS.txt --status )
+          echo "Verified 2.8: exact signed EXE, third-party source ZIP, SHA-256."
+      - name: Upload only for maintainer review (never create public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-exact-three-files-REVIEW-NOT-PUBLISHED
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "release": "PDF Compressor 2.8 proposed matching dependency sources; upstream hashes independently checked, but complete binary correspondence and legal compliance require review",
+  "entries": [
+    {
+      "id": "pymupdf-1.27.2.3",
+      "version": "1.27.2.3",
+      "filename": "pymupdf-1.27.2.3.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/22/32/708bedc9dde7b328d45abbc076091769d44f2f24ad151ad92d56a6ec142b/pymupdf-1.27.2.3.tar.gz",
+      "expected_sha256": "7a92faa25129e8bbec5e50eeb9214f187665428c31b05c4ef6e36c58c0b1c6d2",
+      "checksum_source": "https://pypi.org/project/pymupdf/1.27.2.3/",
+      "required": true,
+      "review_note": "Source distribution; audit whether it matches bundled MuPDF native components and all transitive sources."
+    },
+    {
+      "id": "mupdf-1.27.2-native",
+      "version": "1.27.2",
+      "filename": "mupdf-1.27.2-source.tar.gz",
+      "url": "https://mupdf.com/downloads/archive/mupdf-1.27.2-source.tar.gz",
+      "expected_sha256": "553867b135303dc4c25ab67c5f234d8e900a0e36e66e8484d99adc05fe1e8737",
+      "checksum_source": "https://fossies.org/linux/misc/mupdf-1.27.2-source.tar.gz/",
+      "required": true,
+      "review_note": "Required separate native MuPDF source. PyMuPDF setup.py hard-codes version_mupdf=1.27.2 and downloads this archive; PyMuPDF sdist alone does not include native MuPDF source. SHA-256 cross-referenced with FreeBSD ports and Fossies.",
+      "alternate_urls": [
+        "https://casper.mupdf.com/downloads/archive/mupdf-1.27.2-source.tar.gz",
+        "https://mse.uk.distfiles.macports.org/mupdf/mupdf-1.27.2-source.tar.gz"
+      ]
+    },
+    {
+      "id": "qt-6.12.0-full",
+      "version": "6.12.0",
+      "filename": "qt-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": null,
+      "checksum_source": null,
+      "required": false,
+      "review_note": "Optional superset; no Qt PDF/QML/Quick native DLLs are present in audited single-EXE 94eb41b. May be needed if future build reintroduces modules; do not automatically require a 423 MB full Qt archive for this trimmed candidate."
+    },
+    {
+      "id": "qtforpython-6.12.0",
+      "version": "6.12.0",
+      "filename": "pyside-setup-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": "099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751",
+      "checksum_source": "https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": true,
+      "review_note": "Required binding and shiboken sources. Attempt to validate against official Qt mirrorlist SHA-256; if unavailable, keep this source unverified until an authoritative checksum is established."
+    },
+    {
+      "id": "qtbase-6.12.0-required",
+      "version": "6.12.0",
+      "filename": "qtbase-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": true,
+      "review_note": "Required for currently bundled Qt6Core/Gui/Widgets/Network/OpenGL and base plugins. Complete sources must also match wheel build options and transitive native dependencies."
+    },
+    {
+      "id": "qtsvg-6.12.0",
+      "version": "6.12.0",
+      "filename": "qtsvg-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": "e4ab39534ec97987b1b9b60ef7f4d3253d5912a69f8c713a01753174a4029331",
+      "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": true,
+      "review_note": "Qt6Svg.dll and qsvg/qsvgicon plugins are bundled; upstream checksum must be obtained and source archive acquired."
+    },
+    {
+      "id": "qtimageformats-6.12.0",
+      "version": "6.12.0",
+      "filename": "qtimageformats-everywhere-src-6.12.0.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtimageformats-everywhere-src-6.12.0.tar.xz",
+      "expected_sha256": "0943132b5db8de6b6a7f1d162682173e8763c7ed94e80fd39113292845f67762",
+      "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtimageformats-everywhere-src-6.12.0.tar.xz.mirrorlist",
+      "required": true,
+      "review_note": "Required for qicns/qtga/qtiff/qwbmp/qwebp plugins. SHA-256 checked against official Qt mirrorlist by Windows source-evidence run #42479642466."
+    }
+  ],
+  "source_catalog_reused_from": "docs/source-archives-2_7.json",
+  "reference_versions": {
+    "PyMuPDF": "1.27.2.3",
+    "MuPDF": "1.27.2",
+    "PySide6": "6.12.0",
+    "Qt": "6.12.0",
+    "Pillow": "12.3.0",
+    "PyInstaller": "6.22.3"
+  }
+}
