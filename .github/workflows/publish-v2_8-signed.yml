@@ -52,7 +52,7 @@ jobs:
           app=Path("app.pyw").read_text(encoding="utf-8")
           assert 'APP_VERSION = "2.8"' in app
           assert not Path("test_report.py").exists()
-          assert Path("docs/RELEASE_NOTES_2_8.md").is_file()
+          assert Path("docs/RELEASE_NOTES_2_8_SIGNED.md").is_file()
           PY
           gh api "repos/$REPOSITORY/actions/runs/$SIGNING_RUN_ID" > signed-run.json
           python - <<'PY'
@@ -144,7 +144,7 @@ jobs:
           gh release create v2.8 release-assets/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "PDF Compressor 2.8" \
-            --notes-file docs/RELEASE_NOTES_2_8.md --draft
+            --notes-file docs/RELEASE_NOTES_2_8_SIGNED.md --draft
 
       - name: Confirm GitHub uploaded SHA256 matches local bytes before publication
         shell: bash
