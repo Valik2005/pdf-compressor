@@ -2,9 +2,9 @@
 
 ## Status
 
-**Application submitted (14 November 2026); awaiting SignPath Foundation review.** The project owner received the form confirmation (“Form submitted”). **No approval, certificate, or trusted signature has been granted.** The publicly available PDF Compressor releases v2.6.0, v2.7.0, and v2.7.1 are **unsigned**.
+**SignPath Foundation application declined (14 November 2026).** The Foundation replied that the project does not yet demonstrate enough independent public recognition and community trust (such as GitHub stars, forks, contributors, independent coverage or sustained public engagement). The Foundation explicitly said this is **not an assessment of project quality or potential**, and invited a new application after greater public adoption. **No approval, certificate, or trusted signature has been granted.** The publicly available PDF Compressor releases v2.6.0, v2.7.0, and v2.7.1 are **unsigned**.
 
-**Planned provider, subject to approval:** Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+**Signing status:** No trusted code-signing provider is currently approved for this project. The **free** [SignPath Foundation](https://signpath.org/) route is unavailable following the declined application; it can be reconsidered only after stronger independent community signals and a new successful application. The maintainer does **not** plan to pay for a signing subscription.
 
 ## Source and project ownership
 
@@ -20,7 +20,13 @@ The application processes users' PDF content locally on their computers. **It do
 
 The application does not require a user account or background network data collection. Local application preferences may be stored on the user's computer. This statement applies to the app's own behavior, not third-party websites opened at a user's request.
 
-## Signing and release rules (after approval)
+## Publication while unsigned
+
+The existing releases are unsigned. **An unsigned v2.8 is a possible alternative, not yet an approved release.** It must be separately authorized by the maintainer **only after** the exact final build passes Windows tests, SHA-256 provenance/source checks and remaining third-party distribution-license requirements. Users must be told clearly that the EXE has no trusted Authenticode signature; SHA-256 proves integrity against the trusted published reference hash, **not publisher identity, malware safety or Microsoft SmartScreen reputation**. No unsigned build may use the signed-only workflow or claim the SignPath Foundation publisher.
+
+The prepared v2.8 SignPath and signed-release workflows remain **dormant** unless a later application is accepted; no automation may publish in response to the denial.
+
+## Signing and release rules (only if a future application is approved)
 
 1. Build the official Windows EXE from reviewed source using the project's GitHub Actions on a protected release revision.
 2. Verify source revision, test results, native dependencies, required notices and artifact integrity. Check the signature's trusted publisher and timestamp, and calculate SHA-256 **after signing**.
