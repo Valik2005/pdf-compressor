@@ -88,6 +88,15 @@ def assemble_signed_28(sources_dir: Path, windows_dir: Path, catalog_path: Path,
             or bundle_audit.get("included_virtual_keyboard_files")):
         raise ValueError("Unmapped native dependency or prohibited Qt module")
 
+    presign = json.loads(require_file(windows_dir, "presign-technical-evidence.json")
+                         .read_text(encoding="utf-8-sig"))
+    if (presign.get("technical_integrity_checks_passed") is not True
+            or presign.get("license_compliance_certified") is not False
+            or presign.get("source_git_commit") != source_sha
+            or presign.get("unsigned_exe_sha256") != unsigned_sha
+            or presign.get("source_archives_verified") != SOURCES):
+        raise ValueError("Cross-platform pre-sign provenance report is inconsistent")
+
     check_zip(require_file(windows_dir, "license-evidence.zip"))
     cat = json.loads(catalog_path.read_text(encoding="utf-8"))
     required = [item for item in cat.get("entries", []) if item.get("required")]
