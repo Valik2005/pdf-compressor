@@ -1,9 +1,10 @@
 # PDF Compressor 2.8 — component license audit (verified artifacts)
 
 **Date:** 14 November 2026  
-**Binary audited:** Windows x64 PyInstaller onefile, UNSIGNED, SHA-256
+**Historical baseline binary (NOT the current release candidate):** Windows x64 PyInstaller onefile, UNSIGNED, SHA-256
 `1c403790119f2ca8389efe360578e963e3f95e3b4b68d7c6e73ecfbaae95c39b`,
 source commit `09e1b73b74c7dbf04fddd8a576f0c78fae50365d`.
+The release candidate has since changed; do **not** use this historical SHA or source commit for publication. The final three release files must be generated and reverified from the exact accepted `main` commit.
 GitHub Actions: [successful same-commit run #43599279025](https://github.com/Valik2005/pdf-compressor/actions/runs/43599279025)
 ([Windows artifact](https://github.com/Valik2005/pdf-compressor/actions/runs/43599279025/artifacts/14116470122),
 [upstream source/notice artifact](https://github.com/Valik2005/pdf-compressor/actions/runs/43599279025/artifacts/14116270695),
@@ -49,7 +50,7 @@ The dedicated [six-job review-only run #43628766396](https://github.com/Valik200
 
 **Update (14 November 2026):** SignPath Foundation declined the free signing application for insufficient independent public recognition, not on the technical license analysis below. The planned 2.8 is **unsigned**; SignPath's proprietary/dual-licensing program conditions do not themselves prevent an independent unsigned GitHub release, but applicable Qt LGPL, MuPDF AGPL and all third-party redistribution obligations still apply.
 
-[SignPath Foundation OSS conditions](https://signpath.org/terms) state that all components must use an OSI-approved license **without commercial dual-licensing**, prohibit proprietary components except qualifying System Libraries, and require a previously released product, active maintenance, controlled authors/reviewers/approvers and MFA. **Both upstream Qt and PyMuPDF advertise commercial as well as open-source licensing alternatives.** It is therefore necessary to ask SignPath whether the specific **open-source distributions of these dual-licensed dependencies** satisfy its stated policy; no assumption or reinterpretation of the rule substitutes for their answer. Separately clarify whether the redistributed MSVC/UCRT files in this exact binary satisfy their System Library exception. This is a potential **signing-eligibility blocker**, not merely a missing certificate.
+[SignPath Foundation OSS conditions](https://signpath.org/terms) state that all components must use an OSI-approved license **without commercial dual-licensing**, prohibit proprietary components except qualifying System Libraries, and require a previously released product, active maintenance, controlled authors/reviewers/approvers and MFA. **Both upstream Qt and PyMuPDF advertise commercial as well as open-source licensing alternatives.** These would have been questions for the **historical signing application**. Because SignPath declined that application and the v2.8 plan is explicitly **unsigned**, further SignPath eligibility correspondence is **not** an acceptance condition for this release. The Microsoft runtime redistribution analysis still applies independently of SignPath; do not confuse certification eligibility with legal distribution rights.
 
 SignPath's approval would authorize *its own signing workflow*, not certify third-party AGPL/LGPL or Microsoft redistribution rights.
 
@@ -60,11 +61,11 @@ SignPath's approval would authorize *its own signing workflow*, not certify thir
 - Provide an obvious, bilingual **Licenses** control inside the application, including GPL/LGPL/AGPL, lack of warranty, Qt user modification/relinking rights and the exact source/license archive path. GUI test verifies both languages.
 - Clarify in license evidence tooling that excluded PDFium/Chromium modules are not falsely treated as shipped; note that source and Qt relinking proofs are separate CI artifacts rather than falsely claiming them missing from the project.
 
-## Unresolved and retained as release gates
+## Unresolved and retained as UNSIGNED release gates
 
-1. Obtain explicit SignPath response about **dual-licensed upstream Qt/PyMuPDF** and **Microsoft runtime exception**; review with an OSS licensing professional if SignPath's answer or applicable license terms remain uncertain.
-2. Document exact copyright/producer metadata behavior of all output code paths using PyMuPDF (compress, merge, split, rotate). Do not silently modify PDF metadata or invalidate signed PDFs to add notices; seek upstream Artifex clarification on producer notice requirements.
-3. Validate the actual licenses/origin of the **four OpenSSL DLLs**, Mesa/LLVM rasterizer, Pillow codecs, and **11 non-API-set Microsoft DLL entries**; provide full corresponding notices and sources as applicable.
-4. Once the changes are merged, rerun *all* Windows GUI/metadata/CI checks on both release and testing branches, repeat same-commit cross-audit for final build, and maintain a verified signed checksum only after SignPath approval.
+1. **Legal/compliance review:** Independently verify the exact shipped native binaries and redistribution obligations for Microsoft UCRT/MSVC (11 non-API-set entries), the remaining two `-x64` OpenSSL DLLs, Qt/Mesa/LLVM and libffi. Review AGPL/MuPDF corresponding-source and output-producer requirements and the practical LGPL Qt relinking rights in the onefile distribution. The exact Pillow 12.3.0 wheel codec/font notices are now included and checked by CI; do not incorrectly list them as still missing. Build/hash checks do not replace this review.
+2. **PDF metadata:** Newly **merged/extracted** PDFs now identify `MuPDF (via PyMuPDF); PDF Compressor 2.8` as Producer (release PR #32); **compression and rotation preserve the original metadata**, including potentially signed PDF content. Confirm with Artifex whether any further producer/copyright notice steps are legally required; do not rewrite user documents just to force a notice.
+3. **Current exact revision:** After the native DLL-byte gate and any other reviewed changes reach the isolated release candidate, rerun Windows 3.13/3.14 tests, real onefile launch, six-source verification and three-file staging on **that same head SHA**. Keep 2.8.1 Testing separate from the public candidate.
+4. **Owner-authorized unsigned publication only:** An explicit owner decision is required **before merging the draft candidate PR #17 to `main`**, and a second separate decision is required before the manual unsigned publish workflow. Verify the resulting **main-SHA** EXE's `NotSigned` status, exact source and release ZIP hashes; publish exactly three SHA-256-checked assets, no signing claim. A checksum detects changes but does not authenticate the publisher. Merge future README links (PR #29) **only after** real v2.8 release assets exist.
 
-**No release, digital signature or replacement of `main` is authorized by this review.**
+**SignPath Foundation declined this application. Its approval or signature is not awaited for the unsigned plan. No v2.8 release, digital signature, or merge into `main` is authorized by this audit.**
