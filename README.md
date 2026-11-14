@@ -29,6 +29,8 @@ English and Russian UI · Windows 10/11 · Free and open source
 
 > 🔒 **Privacy:** all PDF files are processed locally. Documents are never uploaded to a cloud service.
 
+**Code signing policy:** [SignPath Foundation application status and project signing rules](docs/CODE_SIGNING_POLICY.md). **Planned, pending approval:** Free code signing provided by SignPath.io, certificate by SignPath Foundation. **Current releases, including v2.7.1, are unsigned.**
+
 ## ✨ Features
 
 - Compress one or multiple PDFs with four modes: target size (**SmartFit**), highest quality, balanced and maximum compression.
