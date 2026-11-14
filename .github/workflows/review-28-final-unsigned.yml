@@ -1,0 +1,117 @@
+name: Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)
+
+# Pre-sign technical acceptance of the exact public application version.
+# No SignPath credentials, no tags, no GitHub Release, and no public download.
+on:
+  push:
+    branches: [release/2.8-ready-for-signpath]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pre-sign-acceptance-28-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  build-final-unsigned:
+    needs: tests
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Check exact released application version and absence of test reporter
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          app=Path("app.pyw").read_text(encoding="utf-8")
+          assert 'APP_VERSION = "2.8"' in app
+          assert not Path("test_report.py").exists()
+          assert "from test_report import" not in app
+          '@ | python -
+      - name: Install fixed release builder
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Build exact final v2.8 candidate EXE
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+      - name: Audit final unsigned EXE and collect licenses
+        shell: pwsh
+        run: |
+          python tools/release_manifest.py --exe dist/PDF_Compressor_2_8.exe --out dist/build-manifest.json
+          python tools/audit_pyinstaller_bundle.py --exe dist/PDF_Compressor_2_8.exe --reject-virtual-keyboard --out dist/bundle-audit.json
+          python tools/audit_onefile_native_sources.py --audit dist/bundle-audit.json --catalog docs/source-archives-2_8.json --out dist/native-source-mapping.json
+          python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_8.exe --manifest dist/build-manifest.json --out dist/license-evidence.zip
+      - name: Confirm VERSIONINFO, clean source, hashes, and native evidence
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $v = (Get-Item $exe).VersionInfo
+          if ($v.ProductName -ne 'PDF Compressor by Valik2005' -or
+              $v.FileVersion -ne '2.8.0.0' -or $v.ProductVersion -ne '2.8.0.0') {
+            throw 'Incorrect final signed-release metadata'
+          }
+          @'
+          import json,os,hashlib
+          from pathlib import Path
+          exe=Path("dist/PDF_Compressor_2_8.exe")
+          manifest=json.loads(Path("dist/build-manifest.json").read_text())
+          bundle=json.loads(Path("dist/bundle-audit.json").read_text())
+          native=json.loads(Path("dist/native-source-mapping.json").read_text())
+          digest=hashlib.sha256(exe.read_bytes()).hexdigest()
+          assert manifest["source_git_commit"]==os.environ["GITHUB_SHA"]
+          assert manifest["source_has_local_changes"] is False
+          assert digest==manifest["exe_sha256"]==bundle["sha256"]==native["exe_sha256"]
+          assert not native["unmapped_native_files"]
+          assert not native["missing_required_source_entries"]
+          assert not bundle["included_virtual_keyboard_files"]
+          print("Final candidate SHA-256:",digest)
+          '@ | python -
+      - name: Launch actual v2.8 GUI offscreen
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Final EXE terminated early: $($p.ExitCode)" }
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload review-only unsigned candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Compressor-2-8-unsigned-final-candidate-NOT-FOR-RELEASE
+          path: |
+            dist/PDF_Compressor_2_8.exe
+            dist/build-manifest.json
+            dist/bundle-audit.json
+            dist/native-source-mapping.json
+            dist/license-evidence.zip
+          if-no-files-found: error
+          retention-days: 7
