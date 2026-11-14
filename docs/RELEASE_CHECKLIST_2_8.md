@@ -1,6 +1,14 @@
 # PDF Compressor 2.8 — final pre-release checklist
 
 **Public stable version remains 2.7.1. This checklist does NOT authorize publishing 2.8.**
+
+## SignPath Foundation decision — 14 November 2026
+
+**The free OSS signing application was declined.** The Foundation cited insufficient independent recognition/usage (GitHub stars, forks, contributors, third-party discussions/articles and other public trust signals), **not a failed technical/security audit**. It invited reapplication after broader adoption. Do **not** wait for an approval of this completed application, claim the release is signed or use the existing signed-only publication workflow.
+
+**An unsigned v2.8 is an optional release path, not yet authorized.** If the maintainer elects to ship unsigned, a separate unsigned-release gate must explicitly verify the final EXE, matching source/notice archive, SHA-256, Windows tests and all outstanding third-party redistribution obligations; publication and README wording must clearly state that no Authenticode signature is present. The current manual signed-release workflow and PR #18 signed-only wording must NOT be used for an unsigned release.
+
+**The release remains blocked by applicable third-party licensing questions regardless of the signature decision.** See `docs/OSS_LICENSE_AUDIT_2_8.md`. A paid signing subscription is not planned.
 Public release candidate: [draft PR #17](https://github.com/Valik2005/pdf-compressor/pull/17) from `release/2.8-ready-for-signpath` into `main`.
 Normal development: `develop/2.8-quality-audit` (still `2.8-preview`).
 Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testing`, with its own `test_report.py`).
@@ -29,10 +37,12 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 ## Blocking review — not replaceable by an automated test
 
 - [ ] Review all applicable third-party license obligations and individual native/codec attribution, AGPL/MuPDF source/producer notices, Qt LGPL user-relink rights, and the status of Microsoft runtime/system-library exceptions for the exact shipped binary. `docs/THIRD_PARTY_REVIEW_2_8.md` identifies the audit evidence and unanswered questions. **Technical provenance is not legal certification.**
-- [ ] Obtain/confirm SignPath's decision on open-source eligibility, especially its prohibition on non-OSS/proprietary code and terms about dual licensing. The free application was **submitted 14 Nov 2026**, but not yet approved.
+- [x] SignPath Foundation decision received: **declined for insufficient independent public recognition** (14 Nov 2026). No free signing access currently available. A future reapplication requires greater adoption; SignPath-specific license/dual-licensing eligibility remains unresolved until a future approval, and general AGPL/LGPL obligations apply regardless.
 - [ ] After approval, owner configures SignPath GitHub origin, MFA, approved project and manual approver, organization, signing policy and explicit `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`. Its file restrictions must match `ProductName = PDF Compressor by Valik2005`, ProductVersion/FileVersion `2.8.0.0` and the sole EXE `PDF_Compressor_2_8.exe`.
 
-## Steps performed only AFTER approval and final source freeze
+## Signed-release path — dormant until a DIFFERENT future SignPath approval
+
+**Do not execute any of these steps for the declined application.** All conditions below are contingent on a later successful application and separate maintainer release authorization.
 
 1. [ ] Owner authorizes merging **PR #17** (not preview PR #9) into `main`. Re-run required tests at the final main commit.
 2. [ ] Owner explicitly starts `sign-v2_8.yml` on `main`. GitHub-hosted trusted build re-verifies source and licenses **before signing**; each request requires human SignPath approval.
@@ -40,5 +50,12 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 4. [ ] Assemble exactly `PDF_Compressor_2_8.exe`, `Third_Party_Sources_and_Licenses.zip`, `SHA256SUMS.txt` from the **same successful signed run** and validate source/license proof and final hashes. The package is held for review; this workflow alone cannot publish.
 5. [ ] Owner separately authorizes manual `publish-v2_8-signed.yml` using that successful signed run ID and typed confirmation; verify GitHub's asset hashes, publish only after success.
 6. [ ] Only after v2.8 is publicly accessible, merge bilingual README [PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) so direct download links point to real assets.
+
+## Possible unsigned v2.8 path (requires a separate decision)
+
+1. [ ] Finish the exact-binary Qt/PySide6, MuPDF, OpenSSL, Mesa, Microsoft runtime and codec notices/source obligations.
+2. [ ] Review the exact final `main` version and obtain maintainer authorization for a deliberately **unsigned** release.
+3. [ ] Prepare a **separate manual unsigned** packaging/publishing workflow with checks for the three assets, their matching source commit, source/license evidence and SHA-256. Never reuse SignPath attestation or signed-only checks.
+4. [ ] Publish complete, accurate unsigned release notes and README download labels; do not merge signed-only docs PR #18 without revising it.
 
 **Never claim an unsigned EXE is signed, assume SignPath approval, merge 2.8.1 Testing code into stable, or ignore unsatisfied license requirements to meet a deadline.**
