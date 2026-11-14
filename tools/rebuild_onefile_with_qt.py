@@ -16,6 +16,8 @@ import sys
 
 PINS = ("PyMuPDF==1.27.2.3", "PySide6==6.12.0", "Pillow==12.3.0", "pyinstaller==6.22.3")
 EXE_NAME = "PDF_Compressor_2_7_license_review.exe"
+RELEASE_SPECS = {"2.7": ("release_windows_review.spec", EXE_NAME),
+                 "2.8": ("release_windows_2_8.spec", "PDF_Compressor_2_8.exe")}
 
 
 def sha256(path: Path) -> str:
@@ -61,11 +63,14 @@ def run(args: list[str], cwd: Path) -> None:
     subprocess.run(args, cwd=cwd, check=True)
 
 
-def build(work_dir: Path, overrides: Path | None) -> dict:
+def build(work_dir: Path, overrides: Path | None, *, release_version: str = "2.7") -> dict:
     if os.name != "nt":
         raise RuntimeError("Windows is required to build a Windows executable")
     source = Path(__file__).resolve().parents[1]
-    if not (source / "release_windows_review.spec").is_file():
+    if release_version not in RELEASE_SPECS:
+        raise ValueError("Unsupported release version")
+    spec_name, output_name = RELEASE_SPECS[release_version]
+    if not (source / spec_name).is_file():
         raise FileNotFoundError("Required PyInstaller spec missing")
     work_dir = work_dir.resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -88,10 +93,10 @@ def build(work_dir: Path, overrides: Path | None) -> dict:
     run(
         [str(py), "-m", "PyInstaller", "--noconfirm", "--clean",
          "--distpath", str(dist), "--workpath", str(work_dir / "pyinstaller"),
-         "release_windows_review.spec"],
+         spec_name],
         source,
     )
-    exe = dist / EXE_NAME
+    exe = dist / output_name
     if not exe.is_file():
         raise FileNotFoundError(f"No rebuilt EXE: {exe}")
     run(
@@ -105,6 +110,7 @@ def build(work_dir: Path, overrides: Path | None) -> dict:
         source,
     )
     report = {"exe_path": str(exe), "exe_sha256": sha256(exe),
+              "release_version": release_version, "spec_name": spec_name,
               "qt_package_path_in_isolated_venv": str(installed_qt),
               "qt_overrides": applied, "build_pins": list(PINS),
               "note": "Rebuild mechanism, not legal-compliance certification"}
@@ -122,10 +128,12 @@ def main() -> None:
                         help="Folder mirroring PySide6 relative paths, containing replacement DLL/PYD files")
     parser.add_argument("--work-dir", type=Path, default=Path("qt-relink-work"),
                         help="Separate local build directory, outside of source distribution")
+    parser.add_argument("--release-version", choices=tuple(RELEASE_SPECS),
+                        default="2.7", help="Release source/spec for recipient relinking")
     args = parser.parse_args()
     if args.qt_overrides and not args.qt_overrides.is_dir():
         parser.error("--qt-overrides must be an existing directory")
-    build(args.work_dir, args.qt_overrides)
+    build(args.work_dir, args.qt_overrides, release_version=args.release_version)
 
 
 if __name__ == "__main__":
