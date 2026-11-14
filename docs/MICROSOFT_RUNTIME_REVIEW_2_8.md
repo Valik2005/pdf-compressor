@@ -19,6 +19,14 @@ A matching runtime file is evidence of **binary origin**, not proof that the pro
 - [Microsoft's license directory](https://visualstudio.microsoft.com/license-terms/): review the applicable IDE/Build Tools and MSVC runtime EULAs for the toolchain version, plus [Visual Studio redistribution lists](https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution).
 - [Qt 6.12 Windows deployment](https://doc.qt.io/qt-6.12/windows-deployment.html) explicitly notes that Windows deployment may include Microsoft C/C++ runtimes and the optional software OpenGL renderer.
 
+## Official UCRT deployment vs actual redistribution permission
+
+Microsoft's [UCRT deployment guidance](https://learn.microsoft.com/en-us/cpp/porting/upgrade-your-code-to-the-universal-crt) specifically names **`ucrtbase.dll` and `api-ms-win-*.dll`** as Windows SDK app-local UCRT deployable components. This explains why the candidate may contain 42 API-set forwarders and UCRT, but **does not independently authorize the maintainer to distribute a particular copy**: check the exact Windows SDK redist location, official license terms and original file identity. Microsoft's [VS 2022 REDIST list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) explicitly conditions redistribution on valid Visual Studio licensing.
+
+The 2.8 CI now captures `native-collection-sources.json` from PyInstaller Analysis and verifies the *actual collected original bytes* against the EXE. Inspect its sanitized source scopes for all 53 runtime entries and, especially, the previously unmatched 42 API-set forwarders and `ucrtbase.dll`. An `installed-wheel`, `windows-system` or `windows-sdk` label is an origin observation, not redistribution permission.
+
+Avoid blindly deleting 43 UCRT/API-set payloads to avoid an open license question: this could break the standalone app on older supported Windows installations. A true dependency-on-installed-Windows-runtimes variant would require separate compatibility testing and explicit UX guidance.
+
 ## Review required before public distribution
 
 1. Record the **exact relative path and SHA-256** of each root/PySide6/Shiboken MSVC and UCRT binary from the final onefile archive, and determine whether it is copied from Windows, a redistributable package, the Python installer, the Qt Python wheels, or another dependency.

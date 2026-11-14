@@ -32,6 +32,19 @@ The dedicated [six-job review-only run #43628766396](https://github.com/Valik200
 - `PySide6/opengl32sw.dll` (Qt software Mesa) is byte-identical to **PySide6 Essentials 6.12.0**, and its upstream copyright/Boost/MIT notices have been added. Source-built-binary identity and all transitive LLVM notices remain a separate question.
 - See `reports/native-binary-origin.json` in the corresponding review bundle and `docs/NATIVE_BINARY_ORIGIN_2_8.md`. The build now **rejects mismatching wheel DLL/PYD bytes**; technical hashes are not an OSS licensing certificate.
 
+## Current build-stage byte collection audit — 14 November 2026
+
+The [complete six-job unsigned acceptance run #43645438667](https://github.com/Valik2005/pdf-compressor/actions/runs/43645438667) on release-candidate commit `2495e0b40fa77450cdec0691e343fc551a58b545` passed Windows Python 3.13/3.14, actual executable construction, original component source checks, *a second independently compared PyInstaller Analysis source report*, and exact three-file private staging.
+
+The new `native-collection-sources.json` records these **118 actual binary collection sources**, all with exact SHA-256 and byte-size equality to the onefile EXE:
+
+- **51 installed-wheel files**, all with source-relative package location;
+- **22 Python-installation files** (including Python-provided OpenSSL DLLs and some C runtime files);
+- **2 files from an installed program:** `libcrypto-3-x64.dll` and `libssl-3-x64.dll`, which report the OpenSSL 3.5.9 version. Source program scope is known, but the precise vendor/build/redistribution notice chain is **not** yet independently established;
+- **43 unclassified builder source paths**, consisting of the 42 `api-ms-win-*.dll` forwarders and `ucrtbase.dll`. They are hashed and matched exactly to the final EXE, but source folder/license category is **not yet confirmed**. Microsoft's UCRT guidance explains their common app-local deployment role; that does not prove these copies' redistribution permission.
+
+**Technical origin and compliance are different:** matching a builder source file answers where the precise bytes were collected but does not establish that a covered Microsoft file is in an applicable REDIST list, that Qt/MuPDF source obligations are satisfied, or that the maintainer is a validly licensed redistributor.
+
 ## Obligation matrix
 
 | Component | Evidence established | Remains before distribution |

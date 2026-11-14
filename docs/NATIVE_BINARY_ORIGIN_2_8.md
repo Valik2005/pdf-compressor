@@ -6,7 +6,7 @@ CPython installation. The final ZIP contains
 `reports/native-binary-origin.json`.
 
 The GitHub Actions Windows stage runs
-`tools/audit_native_binary_origin_28.py` **after** the public release's
+`tools/audit_native_binary_origin_28.py` **after** the isolated unsigned
 PyInstaller 6.22.3 build and **before** source/archive and publication checks.
 It independently decompresses each native CArchive DLL/PYD (without executing
 it), recomputes SHA-256, then searches installed package distribution records
@@ -27,6 +27,30 @@ a wheel RECORD SHA-256 entry, that hash is checked too.
 - One-commit `verify_presign_evidence_28.py` binds this report to the exact
   release EXE and revision. The unsigned three-file packager and manual-only
   release publisher also demand the report.
+
+## Independent collection-source audit (v2.8 unsigned)
+
+Before packaging the EXE, `release_windows_2_8.spec` runs
+`tools/audit_native_collection_sources_28.py` against **actual PyInstaller
+Analysis records after Qt pruning**. It computes the source bytes' SHA-256
+and size and records whether each source came from a named, versioned wheel
+(with wheel RECORD verification where present), Python installation,
+Windows system, Windows SDK, another installed program or an unclassified
+builder path.
+
+Its `native-collection-sources.json` is shipped within the audited source
+and license evidence ZIP and remains available in private CI artifacts.
+Absolute Windows account/build paths are not included. The independent
+release verifier decomposes the final EXE again and requires **every native
+member** to be present exactly once with identical name, bytes, size and
+source Git commit. The isolated unsigned staging and manual publish gates
+both refuse an incomplete or mismatched collection-source report.
+
+Collection-source evidence helps identify which Windows/Qt/OpenSSL files
+the build actually copied. It **cannot establish a copyright license**,
+a full reproducible third-party build or vendor permission for
+redistribution. The official runtime and upstream license reviews stay
+separate.
 
 **IMPORTANT:** Matching bytes to an installed pip wheel establishes **how the
 builder obtained those bytes**. It is not proof of binary-to-upstream-source
