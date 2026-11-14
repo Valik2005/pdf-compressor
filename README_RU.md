@@ -14,7 +14,7 @@
 </p>
 
 <a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
-  <img alt="⬇ Скачать PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+  <img alt="⬇ Скачать PDF Compressor 2.8 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **Один EXE · Без установки Python · ≈70 МБ**
@@ -61,7 +61,7 @@
 
 [**Скачать EXE напрямую**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Все файлы релиза и лицензии](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Проверить SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
-> Файл не имеет цифровой подписи: Windows SmartScreen может показать стандартное предупреждение. Перед запуском можно сверить SHA-256 с `SHA256SUMS.txt`.
+> Официальный EXE 2.8 имеет проверенную подпись SignPath Foundation. Сверь её в свойствах Windows и SHA-256 из `SHA256SUMS.txt`. SmartScreen всё равно может показывать предупреждение о репутации.
 
 ## 🖥️ Установка на Windows из исходников
 
@@ -111,7 +111,8 @@ tools/                        Проверки релиза, манифесты 
 release_windows_2_8.spec    Настройки PyInstaller для одного EXE
 BUILDING.md                   Инструкция по сборке
 README.md                     English README
-.github/workflows/release-v2_7_1.yml   Сборка и публикация версии 2.7
+.github/workflows/sign-v2_8.yml   Подпись 2.8
+.github/workflows/publish-v2_8-signed.yml   Проверка и публикация 2.8
 ```
 
 ## 📜 Лицензии зависимостей
