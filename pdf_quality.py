@@ -295,7 +295,13 @@ def audit_pdf(source: str | Path, result: str | Path, *,
         if (image_pages and jpeg_quality_hint is not None
                 and report.result_bytes <= report.source_bytes * 0.8
                 and (jpeg_quality_hint <= 35
-                     or (report.raster_only_pages > 0 and jpeg_quality_hint <= 55))):
+                     or (report.raster_only_pages > 0 and jpeg_quality_hint <= 55)
+                     # User's 2.8.1 test pack: a photographic/mixed document
+                     # lost over 85% at JPEG 48 but low-resolution thumbnails
+                     # called it "no issues". At this intensity always request
+                     # a high-zoom manual photo check, not a corruption verdict.
+                     or (jpeg_quality_hint <= 55
+                         and report.result_bytes <= report.source_bytes * 0.2))):
             _add_issue(
                 report, "warning", "low_jpeg_detail_risk", None,
                 f"JPEG quality {jpeg_quality_hint}% with substantial size "

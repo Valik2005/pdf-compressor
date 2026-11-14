@@ -350,3 +350,37 @@ def test_html_report_discloses_jpeg_and_raster_risk_evidence(tmp_path):
     assert "48%" in html
     assert "unreviewed_raster_pages" in html
     assert "raster_detail_needs_review" in html
+
+
+def test_heavily_recompressed_photo_with_selectable_text_needs_review(tmp_path):
+    """Real 2.8.1 feedback: JPEG 48 photos shrank 85.4% but preview stayed quiet."""
+    source = tmp_path / "original-photo.pdf"
+    stream = BytesIO()
+    Image.effect_noise((650, 850), 90).convert("RGB").save(stream, "PNG")
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=595, height=842)
+        page.insert_text((50, 45), "Color photo with selectable caption")
+        page.insert_image(pymupdf.Rect(30, 65, 565, 810), stream=stream.getvalue())
+        doc.save(source)
+
+    from pdf_engine import build_candidate
+    photo48 = tmp_path / "photo48.pdf"
+    size, scaled, changes = build_candidate(source, photo48, quality=48)
+    assert not scaled and changes == 1
+    assert size <= source.stat().st_size * 0.2
+    report = audit_pdf(source, photo48, jpeg_quality_hint=48)
+    assert report.status == "review"
+    assert report.raster_only_pages == 0
+    assert any(x.code == "low_jpeg_detail_risk" for x in report.issues)
+    assert all(x.severity != "error" for x in report.issues)
+
+    # Very low file size alone cannot invent a JPEG loss if the images
+    # were not actually modified, even with a quality hint.
+    identical = audit_pdf(source, source, jpeg_quality_hint=48)
+    assert identical.status == "no_issues_detected"
+
+    photo85 = tmp_path / "photo85.pdf"
+    size85, _, _ = build_candidate(source, photo85, quality=85)
+    assert size85 < source.stat().st_size
+    normal = audit_pdf(source, photo85, jpeg_quality_hint=85)
+    assert not any(x.code == "low_jpeg_detail_risk" for x in normal.issues)
