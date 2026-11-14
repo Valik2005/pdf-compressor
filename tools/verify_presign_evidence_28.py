@@ -67,6 +67,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     manifest = read_json(windows, "build-manifest.json")
     binary = read_json(windows, "bundle-audit.json")
     native = read_json(windows, "native-source-mapping.json")
+    origin = read_json(windows, "native-binary-origin.json")
     signed_independent = sha256(exe)
     if not (manifest.get("source_git_commit") == commit
             and manifest.get("source_has_local_changes") is False
@@ -85,6 +86,22 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
             or native.get("missing_required_source_entries")
             or binary.get("included_virtual_keyboard_files")):
         raise ValueError("Native bundle has missing or prohibited components")
+
+    if (origin.get("source_git_commit") != commit
+            or origin.get("exe_sha256") != signed_independent
+            or origin.get("native_file_count") != native.get("native_file_count")
+            or origin.get("unmatched_wheel_entries")
+            or origin.get("installed_wheel_record_mismatches")
+            or origin.get("redistribution_rights_verified") is not False):
+        raise ValueError("Exact embedded native byte provenance failed")
+    if (len(origin.get("entries", [])) not in (0, native.get("native_file_count"))):
+        raise ValueError("Incomplete embedded native provenance entries")
+    for record in origin.get("entries", []):
+        if (not record.get("name") or len(record.get("sha256", "")) != 64
+                or record.get("size_bytes", 0) <= 0):
+            raise ValueError("Invalid embedded native hash record")
+    if origin.get("matched_count", -1) < 0:
+        raise ValueError("Native origin matched count not reported")
 
     downloads = read_json(sources, "source-download-report.json")
     audited = read_json(sources, "source-archive-audit.json")
@@ -142,6 +159,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         "third_party_license_records": len(names),
         "version_pins_match": True,
         "native_file_count": native["native_file_count"],
+        "native_byte_identical_origin_count": origin["matched_count"],
         "native_component_counts": native.get("component_counts", {}),
         "technical_integrity_checks_passed": True,
         "license_compliance_certified": False,
