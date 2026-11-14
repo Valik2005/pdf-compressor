@@ -2,7 +2,7 @@
 
 ## Status
 
-**Application pending (14 November 2026).** This project is preparing an application to SignPath Foundation for free open-source code signing. **No approval, certificate, or trusted signature has been granted.** The publicly available PDF Compressor releases v2.6.0, v2.7.0, and v2.7.1 are **unsigned**.
+**Application submitted (14 November 2026); awaiting SignPath Foundation review.** The project owner received the form confirmation (“Form submitted”). **No approval, certificate, or trusted signature has been granted.** The publicly available PDF Compressor releases v2.6.0, v2.7.0, and v2.7.1 are **unsigned**.
 
 **Planned provider, subject to approval:** Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
 
