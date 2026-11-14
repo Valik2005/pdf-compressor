@@ -26,6 +26,8 @@ def test_v28_oss_audit_does_not_claim_legal_or_signpath_approval():
     assert "**not a legal opinion or redistribution compliance certificate**" in report
     assert "without commercial dual-licensing" in report
     assert "PDFium" in report
+    assert "**115 native DLL/PYD entries**" in report
+    assert "MySQL Server 8.4" in report
 
 
 def test_prominent_bilingual_oss_notice_exposes_relinking_and_source_archive():

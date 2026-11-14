@@ -8,6 +8,27 @@ These two hashes were independently recalculated from the GitHub review-only arc
 
 This is an evidence checklist grounded in official vendor notices and the *actual bundled binary*. It is **not** a legal opinion and must **not** be treated as proof of compliance or owner authorization. The owner confirms distribution rights only after checking every applicable license requirement.
 
+## After PR #42: accidental MySQL OpenSSL removed
+
+The hashes at the top of this file identify the **historical candidate at
+`020b335c`**. They are NOT valid hashes for the later release binary.
+The enhanced collection audit identified the two previously unclassified
+OpenSSL `-x64` DLLs as byte-for-byte copies from
+`MySQL/MySQL Server 8.4/bin` in the hosted Windows runner.
+PR #42 excludes both DLLs and the optional Qt
+`PySide6/plugins/tls/qopensslbackend.dll` (an offline PDF app does not
+require this Qt OpenSSL TLS backend). Python's `libssl-3.dll`,
+`libcrypto-3.dll` and `_ssl.pyd` remain, with the existing
+OpenSSL/Python notices.
+
+Both [Windows experiment jobs #43650917328](https://github.com/Valik2005/pdf-compressor/actions/runs/43650917328)
+passed **205 tests each**, Qt GUI startup and byte-origin verification of
+**115 native members**. The final six-job release-branch review and fresh
+EXE/ZIP hashes are required after integrating all changes. The earlier
+MySQL-specific distribution question is resolved by **not shipping those
+binaries**, not by claiming rights to them. The independent Microsoft and
+LGPL/AGPL obligations below remain.
+
 ## 1. Microsoft UCRT, MSVC
 
 **Actual archive evidence:** 42 `api-ms-win-*.dll` forwarders and one `ucrtbase.dll` are byte-for-byte present; the source-collection report says `unclassified-builder-path`. Ten `MSVCP*/VCRUNTIME*` files match installed Python/PySide6/Shiboken origins. Thus all files are identified and hashed, but the **original Windows SDK / Visual Studio REDIST installation directory and the maintainer's redistribution entitlement remain unverified**.
@@ -20,14 +41,14 @@ This is an evidence checklist grounded in official vendor notices and the *actua
 
 ## 2. OpenSSL
 
-**Actual archive evidence:** four OpenSSL DLLs present. Two Python-provided `libcrypto-3.dll` and `libssl-3.dll` are matched to installed Python. Two `-x64` libraries were captured from an `installed-program` path with no program/vendor identifier:
+**Historical pre-PR42 archive evidence:** four OpenSSL DLLs were present. Two Python-provided `libcrypto-3.dll` and `libssl-3.dll` are matched to installed Python. Two `-x64` libraries were captured from an `installed-program` path with no program/vendor identifier:
 
 | Included file | SHA-256 | Exact byte size | Source classification |
 | --- | --- | ---: | --- |
 | `libssl-3-x64.dll` | `a2cb46897a5365a740c8f898bf1b9119ba23f01807ad0ba1efb69a9997b43ba0` | 1,296,520 | installed program, vendor not established |
 | `libcrypto-3-x64.dll` | `d51f2b081e5ac0f94c2bf15650a6b55cf48da1de8c313c9f90003d9ed08ccc9e` | 6,946,448 | installed program, vendor not established |
 
-The official [OpenSSL license page](https://openssl-library.org/source/license/index.html) establishes **Apache License 2.0 for OpenSSL 3.0+**. The v2.8 notice pack already includes the exact original OpenSSL 3.5.9 LICENSE and AUTHORS material. **Required:** identify the `-x64` DLL supplier and its additional build-specific notices/components, if any; only then attest that their source and notices are covered.
+The official [OpenSSL license page](https://openssl-library.org/source/license/index.html) establishes **Apache License 2.0 for OpenSSL 3.0+**. The v2.8 notice pack already includes the exact original OpenSSL 3.5.9 LICENSE and AUTHORS material. **Current disposition:** the `-x64` DLL supplier was determined to be MySQL Server 8.4 on the build runner. PR #42 removes those DLLs and the unused Qt TLS backend; their separate supplier-specific redistribution issue no longer applies to the current candidate. Confirm only the actual retained Python/OpenSSL notices and avoid reviving ambient DLL imports in future builds.
 
 ## 3. Qt / PySide6 / Shiboken
 

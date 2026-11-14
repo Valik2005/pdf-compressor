@@ -7,7 +7,7 @@ import zlib
 import pytest
 
 from tools.audit_native_binary_origin_28 import MAGIC, COOKIE, TOC
-from tools.verify_presign_evidence_28 import PINS, NOTICES, validate
+from tools.verify_presign_evidence_28 import PINS, NOTICES, validate, reject_ambient_qt_openssl
 
 
 def dump(folder, name, data):
@@ -251,3 +251,14 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         p.write_text(json.dumps(j))
     with pytest.raises((ValueError, FileNotFoundError, KeyError, zipfile.BadZipFile)):
         validate(win, source, cat, commit)
+
+
+@pytest.mark.parametrize("forbidden", [
+    "libssl-3-x64.dll",
+    "libcrypto-3-x64.dll",
+    "PySide6/plugins/tls/qopensslbackend.dll",
+])
+def test_optional_mysql_openssl_dlls_are_forbidden_even_if_hashes_match(forbidden):
+    reject_ambient_qt_openssl(["_ssl.pyd", "libssl-3.dll", "libcrypto-3.dll"])
+    with pytest.raises(ValueError, match="optional Qt OpenSSL"):
+        reject_ambient_qt_openssl(["_ssl.pyd", forbidden])

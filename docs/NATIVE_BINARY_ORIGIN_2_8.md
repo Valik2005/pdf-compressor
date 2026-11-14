@@ -28,6 +28,24 @@ a wheel RECORD SHA-256 entry, that hash is checked too.
   release EXE and revision. The unsigned three-file packager and manual-only
   release publisher also demand the report.
 
+## OpenSSL dependency correction in v2.8
+
+The enhanced source collection audit traced two previously unclassified
+OpenSSL `-x64` DLLs to the Windows GitHub runner's
+`MySQL/MySQL Server 8.4/bin` tree. Those were not pinned application
+dependencies. The release PyInstaller spec now excludes exactly
+`libssl-3-x64.dll`, `libcrypto-3-x64.dll` and the unused Qt
+`PySide6/plugins/tls/qopensslbackend.dll`; this is a deliberate offline
+application trim, **not a waiver of their licenses**. Python's OpenSSL
+`libssl-3.dll`, `libcrypto-3.dll` and `_ssl.pyd` remain.
+
+The new baseline is **115 native entries** rather than 118. A
+two-Windows-runner integration check verified every remaining member,
+all PDF/GUI tests and EXE startup:
+[Actions #43650917328](https://github.com/Valik2005/pdf-compressor/actions/runs/43650917328).
+The final release-branch six-job acceptance must still pass at the exact
+post-change SHA, then separately on the owner-authorized `main` commit.
+
 ## Independent collection-source audit (v2.8 unsigned)
 
 Before packaging the EXE, `release_windows_2_8.spec` runs
