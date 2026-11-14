@@ -77,12 +77,19 @@ jobs:
       - name: Install pinned reviewed build dependencies
         run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
 
-      - name: Build Windows x64 onefile from the checked-out main commit
-        run: python -m PyInstaller --clean --noconfirm release_windows_review.spec
+      - name: Build final Windows x64 onefile with exact PE version metadata
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
 
-      - name: Rename to the exact public candidate filename
+      - name: Validate PE product and file version against signing policy
         shell: pwsh
-        run: Move-Item dist/PDF_Compressor_2_8_preview_NOT_FOR_RELEASE.exe dist/PDF_Compressor_2_8.exe
+        run: |
+          $exe = Get-Item -LiteralPath dist/PDF_Compressor_2_8.exe
+          $v = $exe.VersionInfo
+          if ($v.ProductName -ne 'PDF Compressor') { throw "Wrong PE ProductName: $($v.ProductName)" }
+          if ($v.FileVersion -ne '2.8.0.0') { throw "Wrong PE FileVersion: $($v.FileVersion)" }
+          if ($v.ProductVersion -ne '2.8.0.0') { throw "Wrong PE ProductVersion: $($v.ProductVersion)" }
+          if ($v.OriginalFilename -ne 'PDF_Compressor_2_8.exe') { throw "Wrong OriginalFilename: $($v.OriginalFilename)" }
+          Write-Host "PE product and version metadata verified for SignPath."
 
       - name: Audit native components, provenance, and unsigned EXE
         shell: pwsh
