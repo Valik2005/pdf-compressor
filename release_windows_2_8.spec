@@ -1,5 +1,5 @@
-# Final Windows v2.8 candidate, only built by the gated SignPath workflow.
-# NOT a publication or legal-compliance certification by itself.
+# Final Windows v2.8 UNSIGNED review candidate; publication is a separate owner-only gate.
+# Build-source provenance is captured before EXE creation; not a license certification.
 from PyInstaller.utils.hooks import collect_all
 
 mupdf_data, mupdf_bins, mupdf_hidden = collect_all("pymupdf")
@@ -53,6 +53,16 @@ removed = [entry[0] for entry in a.binaries + a.datas if drop_virtual_keyboard(e
 a.binaries = [entry for entry in a.binaries if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
 a.datas = [entry for entry in a.datas if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
 print("Unused Qt PDF/QML/Quick and Virtual Keyboard items filtered:", removed)
+
+# Record EXACT original Windows collection paths and SHA-256 for native members.
+# Report contains ONLY sanitized source scopes / package-relative paths.
+# The downstream independent cross-audit compares each recorded source hash
+# to the bytes actually extracted from this onefile executable.
+import os
+from pathlib import Path
+from tools.audit_native_collection_sources_28 import capture
+capture(a.binaries, a.datas, Path("dist/native-collection-sources.json"),
+        source_sha=os.environ.get("GITHUB_SHA"))
 
 pyz = PYZ(a.pure)
 exe = EXE(
