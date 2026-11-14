@@ -1,25 +1,25 @@
 <div align="center">
 
-# 📄 PDF Compressor 2.7.1
+# 📄 PDF Compressor 2.8
 
 **Удобное сжатие PDF и работа со страницами — прямо на вашем компьютере.**
 
 Русский и английский интерфейс · Windows 10/11 · Бесплатно и с открытым кодом
 
 <p>
-  <img alt="Release 2.7.1" src="https://img.shields.io/badge/Release-2.7.1-2563eb?style=flat-square" />
+  <img alt="Release 2.8" src="https://img.shields.io/badge/Release-2.8-2563eb?style=flat-square" />
   <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
   <img alt="Offline" src="https://img.shields.io/badge/Processing-Offline-238636?style=flat-square" />
   <img alt="AGPL-3.0" src="https://img.shields.io/badge/License-AGPL--3.0-8250df?style=flat-square" />
 </p>
 
-<a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe">
-  <img alt="⬇ Скачать PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.7%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+<a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
+  <img alt="⬇ Скачать PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **Один EXE · Без установки Python · ≈70 МБ**
 
-[Прямая ссылка на EXE](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe) · [Страница релиза](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/SHA256SUMS.txt)
+[Прямая ссылка на EXE](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Страница релиза](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
 [English README](README.md)
 
@@ -29,13 +29,14 @@
 
 > 🔒 **Конфиденциальность:** все PDF обрабатываются локально. Документы никуда не загружаются.
 
-**Code signing policy / Политика цифровой подписи:** [заявка SignPath Foundation и правила подписи](docs/CODE_SIGNING_POLICY.md). **Запланировано, после одобрения:** Free code signing provided by SignPath.io, certificate by SignPath Foundation. **Текущие релизы, включая v2.7.1, не подписаны.**
+**Code signing policy / Политика цифровой подписи:** [подтверждённый статус](docs/CODE_SIGNING_POLICY.md). **EXE 2.8 не имеет цифровой подписи:** SignPath Foundation отклонил бесплатную заявку из-за недостаточной публичной известности проекта. Сертификата издателя нет; используйте официальный GitHub-релиз и проверяйте SHA-256.
 
 ## ✨ Возможности
 
 - Сжатие одного или нескольких PDF за раз.
 - Четыре режима: до заданного размера (**SmartFit**), максимальное качество, сбалансированный и максимальное сжатие.
 - **Новое в 2.7 — SmartFit:** анализ текстовых, сканированных и смешанных PDF с осторожным подбором параметров сжатия.
+- **Новое в 2.8:** необязательная проверка качества PDF, предупреждения о JPEG-потерях, локальные HTML/JSON отчёты без полных путей, понятный статус целевого размера и раздел «Лицензии».
 - **Новое в 2.7.1:** пропуск бесполезных попыток JPEG-сжатия мелких изображений и возможность отменить копирование больших PDF с удалением неполного результата.
 - Сначала оптимизация без потерь, затем при необходимости JPEG-сжатие; уменьшение разрешения изображений — только с разрешения пользователя.
 - По возможности сохраняется выделяемый текст; улучшена обработка изображений, используемых на нескольких страницах.
@@ -49,18 +50,18 @@
 
 ## ⬇️ Скачать EXE без Python
 
-Нажми зелёную кнопку **«СКАЧАТЬ»** в начале страницы — она ведёт **сразу на файл** `PDF_Compressor_2_7_1.exe` из официального GitHub Release.
+Нажми зелёную кнопку **«СКАЧАТЬ»** в начале страницы — она ведёт **сразу на файл** `PDF_Compressor_2_8.exe` из официального GitHub Release.
 
 | Параметр | Значение |
 | :-- | :-- |
-| **Версия** | 2.7.1 (стабильная) |
+| **Версия** | 2.8 (стабильная, без цифровой подписи) |
 | **ОС** | Windows 10/11, 64-бит |
 | **Формат** | Один EXE, без установщика и Python |
 | **Размер** | ≈70 МБ |
 
-[**Скачать EXE напрямую**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe) · [Все файлы релиза и лицензии](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) · [Проверить SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/SHA256SUMS.txt)
+[**Скачать EXE напрямую**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Все файлы релиза и лицензии](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Проверить SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
-> Файл не имеет цифровой подписи: Windows SmartScreen может показать стандартное предупреждение. Перед запуском можно сверить SHA-256 с `SHA256SUMS.txt`.
+> **ВНИМАНИЕ: EXE не подписан.** Windows SmartScreen может показать предупреждение. SHA-256 подтверждает совпадение файлов с опубликованным хешем, но не удостоверяет издателя и не гарантирует отсутствие вредоносного кода.
 
 ## 🖥️ Установка на Windows из исходников
 
@@ -80,14 +81,14 @@
 
 ## 🛠️ Сборка EXE
 
-Официальная сборка v2.7.1 производится [через GitHub Actions](.github/workflows/release-v2_7_1.yml) с проверкой запуска, зависимостей и контрольных сумм. Для локальной тестовой сборки в Windows:
+Официальная версия 2.8 проходит Windows-тесты и проверку исходников через [GitHub Actions](.github/workflows/review-28-final-unsigned.yml); для публикации используется только [ручной workflow без подписи](.github/workflows/publish-v2_8-unsigned.yml), после проверки лицензий и разрешения владельца. Для локальной сборки:
 
 ```bat
 python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
-python -m PyInstaller --noconfirm --clean release_windows_review.spec
+python -m PyInstaller --noconfirm --clean release_windows_2_8.spec
 ```
 
-Результат: `dist\PDF_Compressor_2_7_license_review.exe`. Релизный workflow собирает и публикует проверенный файл под именем `PDF_Compressor_2_7_1.exe`. EXE для Windows необходимо собирать **в Windows**. Подробности: [BUILDING.md](BUILDING.md), [пересборка с изменённым Qt](docs/LGPL_RELINKING_2_7.md).
+Результат: `dist\PDF_Compressor_2_8.exe` (неподписанный). Релиз включает ZIP с лицензиями и `SHA256SUMS.txt`. Сборка EXE выполняется в Windows. [BUILDING.md](BUILDING.md) · [пересборка Qt](docs/LGPL_RELINKING_2_8.md).
 
 ## ✅ Тесты
 
@@ -107,15 +108,16 @@ app_icon.ico                  Значок приложения
 requirements.txt              Зависимости для запуска
 tests/                        Тесты PDF, SmartFit и перевода
 tools/                        Проверки релиза, манифесты и пересборка Qt
-release_windows_review.spec   Настройки PyInstaller для одного EXE
+release_windows_2_8.spec   Настройки PyInstaller для одного EXE
 BUILDING.md                   Инструкция по сборке
 README.md                     English README
-.github/workflows/release-v2_7_1.yml   Сборка и публикация версии 2.7
+.github/workflows/review-28-final-unsigned.yml   Проверка EXE и исходников 2.8
+.github/workflows/publish-v2_8-unsigned.yml  Ручная публикация 2.8 без подписи
 ```
 
 ## 📜 Лицензии зависимостей
 
-Исходный код приложения распространяется по **GNU AGPL-3.0-only**. PyMuPDF/MuPDF используют AGPL или коммерческое лицензирование, Qt/PySide6 — LGPL/GPL или коммерческие варианты. В [релизе 2.7.1](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) исходники сторонних библиотек, лицензии, отчёты и инструкция по пересборке одного EXE с совместимыми изменёнными Qt-библиотеками находятся внутри **`Third_Party_Sources_and_Licenses.zip`**. Подробнее: [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) и [уведомления](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
+Исходный код приложения распространяется по **GNU AGPL-3.0-only**. PyMuPDF/MuPDF используют AGPL или коммерческое лицензирование, Qt/PySide6 — LGPL/GPL или коммерческие варианты. В [релизе 2.7.1](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) исходники сторонних библиотек, лицензии, отчёты и инструкция по пересборке одного EXE с совместимыми изменёнными Qt-библиотеками находятся внутри **`Third_Party_Sources_and_Licenses.zip`**. Подробнее: [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) и [уведомления](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
 
 ## ℹ️ Примечание
 
