@@ -73,10 +73,10 @@ def inputs(tmp_path: Path):
         entries.append({"filename": name, "required": True,
                         "expected_sha256": digest(file)})
     catalog_path.write_text(json.dumps({"entries": entries}), encoding="utf-8")
-    for name in ("LGPL_RELINKING_2_7.md", "THIRD_PARTY_NOTICES_2_7.md",
+    for name in ("LGPL_RELINKING_2_8.md", "THIRD_PARTY_NOTICES_2_8.md",
                  "libffi-LICENSE.txt"):
         (sources / name).write_text("Reviewed license text (fixture)", encoding="utf-8")
-    with zipfile.ZipFile(sources / "THIRD_PARTY_NOTICES_2_7.zip", "w") as z:
+    with zipfile.ZipFile(sources / "THIRD_PARTY_NOTICES_2_8.zip", "w") as z:
         for i in range(70):
             z.writestr(f"license-{i}.txt", "Fixture")
     (sources / "source-archive-audit.json").write_text(json.dumps({
@@ -102,6 +102,8 @@ def test_three_signed_release_assets_and_postsign_hash(tmp_path):
         assert len([x for x in z.namelist() if x.startswith("sources/")]) == 6
         assert "reports/authenticode-verification.json" in z.namelist()
         assert "reports/unsigned-build-manifest.json" in z.namelist()
+        assert "licenses/LGPL_RELINKING_2_8.md" in z.namelist()
+        assert "licenses/THIRD_PARTY_NOTICES_2_8.zip" in z.namelist()
 
 
 @pytest.mark.parametrize("defect", [
