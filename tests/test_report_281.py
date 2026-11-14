@@ -134,7 +134,7 @@ def test_html_and_json_escaped_privacy_and_no_source_text(tmp_path):
         html = z.read("test_report.html").decode()
         assert "<script>" not in html
         assert "<img src=x" not in html
-        assert "&lt;script&gt;" in html
+        assert "&lt;img src=x onerror=alert(1)&gt;" in html
         assert r"C:\secret" not in html
         assert "D:\\logs" not in z.read("test_report.json").decode()
 
