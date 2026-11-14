@@ -6,7 +6,7 @@
 
 **The free OSS signing application was declined.** The Foundation cited insufficient independent recognition/usage (GitHub stars, forks, contributors, third-party discussions/articles and other public trust signals), **not a failed technical/security audit**. It invited reapplication after broader adoption. Do **not** wait for an approval of this completed application, claim the release is signed or use the existing signed-only publication workflow.
 
-**An unsigned v2.8 is an optional release path, not yet authorized.** If the maintainer elects to ship unsigned, a separate unsigned-release gate must explicitly verify the final EXE, matching source/notice archive, SHA-256, Windows tests and all outstanding third-party redistribution obligations; publication and README wording must clearly state that no Authenticode signature is present. The current manual signed-release workflow and PR #18 signed-only wording must NOT be used for an unsigned release.
+**The maintainer selected the unsigned v2.8 preparation path.** This is approval to **prepare and test**, not permission to merge into main or publish. A separate gated unsigned three-file assembler, Windows Authenticode NotSigned evidence and manual-only release workflow are prepared. Current signed-only workflows and old PR #18 wording must not be used for this release.
 
 **The release remains blocked by applicable third-party licensing questions regardless of the signature decision.** See `docs/OSS_LICENSE_AUDIT_2_8.md`. A paid signing subscription is not planned.
 Public release candidate: [draft PR #17](https://github.com/Valik2005/pdf-compressor/pull/17) from `release/2.8-ready-for-signpath` into `main`.
@@ -30,9 +30,17 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 - [x] GitHub Actions manual-only SignPath workflow, 2.8-specific PE metadata, approval-dependent artifact configuration, signature/timestamp checking and **post-sign** SHA-256 prepared.
 - [x] Exact three-file signed release assembler with synthetic fail-closed tests, dedicated release-notes and a separate manual publishing workflow prepared. No automatic tag or GitHub Release.
 - [x] Static release gate checker successfully verified manual-only signing/publication rules: [Actions #43597275586](https://github.com/Valik2005/pdf-compressor/actions/runs/43597275586).
-- [x] Future README 2.8 download links/metadata prepared in [draft PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) **but not merged** before public release.
+- [ ] Existing draft [PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) still contains *obsolete signed-only language* and must be corrected/replaced before public v2.8. No README download link is to be changed until the assets exist.
 - [x] Documentation conflict between PR #17 and current `main` resolved; public README and public signing policy still state current unsigned v2.7.1.
 - [ ] **Latest exact-commit integrated test:** source archives, native bundle inventory, Windows EXE, pinned Python packages and package licenses checked *together*, and report `presign-technical-evidence.json` attached. Workflow `review-28-final-unsigned.yml` now performs this; requires final CI success at the actual release-candidate commit.
+
+## Unsigned release CI (not a publication)
+
+- [x] Implemented tools/assemble_unsigned_release_28.py: exactly three files, mandatory six archives, Windows NotSigned check, license/notice ZIPs, reproducible cross-job source/EXE checksums; rejects prior signed evidence.
+- [x] Added tests/test_28_unsigned_release_packaging.py covering correct unsigned packaging and fail-closed tamper cases.
+- [x] Added the stage-unsigned-three-files job to .github/workflows/review-28-final-unsigned.yml; uploads review-only GitHub Actions artifact after all earlier checks succeed.
+- [x] Prepared owner-only, manual .github/workflows/publish-v2_8-unsigned.yml; it demands successful **main** same-commit acceptance plus explicit release and completed license review confirmations, validates three asset hashes, and never uses SignPath.
+- [ ] Confirm successful Windows tests and complete one-run three-file staging at the **final reviewed source commit**.
 
 ## Blocking review — not replaceable by an automated test
 
@@ -51,11 +59,11 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 5. [ ] Owner separately authorizes manual `publish-v2_8-signed.yml` using that successful signed run ID and typed confirmation; verify GitHub's asset hashes, publish only after success.
 6. [ ] Only after v2.8 is publicly accessible, merge bilingual README [PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) so direct download links point to real assets.
 
-## Possible unsigned v2.8 path (requires a separate decision)
+## Selected unsigned v2.8 path (preparation authorized; publishing NOT authorized)
 
 1. [ ] Finish the exact-binary Qt/PySide6, MuPDF, OpenSSL, Mesa, Microsoft runtime and codec notices/source obligations.
 2. [ ] Review the exact final `main` version and obtain maintainer authorization for a deliberately **unsigned** release.
-3. [ ] Prepare a **separate manual unsigned** packaging/publishing workflow with checks for the three assets, their matching source commit, source/license evidence and SHA-256. Never reuse SignPath attestation or signed-only checks.
-4. [ ] Publish complete, accurate unsigned release notes and README download labels; do not merge signed-only docs PR #18 without revising it.
+3. [x] Implement a **separate manual unsigned** three-asset packaging/publishing workflow with checks for the matching source commit, Windows Authenticode NotSigned evidence, source/license reports, and SHA-256. Never reuse SignPath attestation or signed-only checks. **Latest workflow CI is still required before calling the release candidate ready.**
+4. [x] Prepare accurate bilingual unsigned release notes in docs/RELEASE_NOTES_2_8_UNSIGNED.md. [ ] Prepare the post-publication README download labels, and **do not merge** those before v2.8 is publicly available.
 
 **Never claim an unsigned EXE is signed, assume SignPath approval, merge 2.8.1 Testing code into stable, or ignore unsatisfied license requirements to meet a deadline.**
