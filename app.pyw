@@ -451,6 +451,7 @@ class JobWorker(QObject):
                     self.progress.emit(f"Файл {idx + 1}/{len(self.inputs)}: {Path(src).name}", 0, 1)
                     started_at = perf_counter()
                     self.started.emit(idx)
+                    compression_done = False
                     try:
                         result = compress_pdf(src, self.options["folder"],
                             mode=self.options["mode"], target_mb=self.options["target"],
@@ -460,6 +461,7 @@ class JobWorker(QObject):
                             progress=lambda stage, cur, total, idx=idx:
                                 self.progress.emit(f"{idx + 1}/{len(self.inputs)} • {stage}", cur, total))
                         self.timing.emit(idx, perf_counter() - started_at)
+                        compression_done = True
                         self.result.emit(idx, result)
                         completed += 1
                         # 2.8 preview: opt-in, sampled low-resolution review.
@@ -484,6 +486,8 @@ class JobWorker(QObject):
                             self.quality_timing.emit(idx, perf_counter() - qa_started_at)
                             self.quality.emit(idx, review)
                     except Cancelled:
+                        if not compression_done:
+                            self.timing.emit(idx, perf_counter() - started_at)
                         raise
                     except Exception as e:
                         self.timing.emit(idx, perf_counter() - started_at)
