@@ -50,6 +50,12 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 - [ ] Re-run full six-job acceptance on the **latest merged release-branch commit** if documentation or source changes again. This will also be required after an owner-authorized merge into `main`.
 - [ ] Independent applicable third-party license review and **explicit owner approval** are separate from successful CI; owner approval before merge to `main`, and another approval before public unsigned publication.
 
+## Removed accidental OpenSSL dependencies — v2.8 candidate
+
+- [x] Enhanced provenance identified `libcrypto-3-x64.dll` and `libssl-3-x64.dll` as unrelated copies from **MySQL Server 8.4** installed on the hosted Windows runner (not pinned dependencies). [PR #42](https://github.com/Valik2005/pdf-compressor/pull/42) deliberately omits these and unused `PySide6/plugins/tls/qopensslbackend.dll`, while retaining Python OpenSSL and Qt Schannel backend.
+- [x] [Windows Server 2022/2025 experiment #43650917328](https://github.com/Valik2005/pdf-compressor/actions/runs/43650917328): 205/205 regression tests on each runner, genuine unsigned EXE metadata and startup, 115/115 native members audited, no ambient MySQL/OpenSSL DLLs.
+- [ ] After merging the explicit no-ambient-TLS verification gate, repeat the entire six-job acceptance on its **exact final release-branch commit**, then again on `main` after separately authorized merge. The old 118-native ZIP/hashes do not identify the new candidate.
+
 ## Blocking review — not replaceable by an automated test
 
 - [ ] Review all applicable third-party license obligations and individual native/codec attribution, AGPL/MuPDF source/producer notices, Qt LGPL user-relink rights, and the status of Microsoft runtime/system-library exceptions for the exact shipped binary. `docs/THIRD_PARTY_REVIEW_2_8.md` identifies the audit evidence and unanswered questions. **Technical provenance is not legal certification.**
@@ -69,7 +75,7 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 
 ## Selected unsigned v2.8 path (preparation authorized; publishing NOT authorized)
 
-1. [ ] Independently clear the remaining exact-binary Qt/PySide6 LGPL, MuPDF AGPL, OpenSSL `-x64`, Mesa/LLVM, libffi and Microsoft runtime redistribution obligations. Pillow 12.3.0 wheel codec/font notices are already verified; only newly introduced codec dependencies would reopen that specific check.
+1. [ ] Independently clear the remaining exact-binary Qt/PySide6 LGPL, MuPDF AGPL, **retained Python/OpenSSL notices**, Mesa/LLVM, libffi and Microsoft runtime redistribution obligations. The accidental MySQL OpenSSL `-x64` files are excluded from the intended v2.8 binary. Pillow 12.3.0 wheel codec/font notices are already verified; only newly introduced codec dependencies would reopen that specific check.
 2. [ ] Obtain explicit owner authorization **before merging PR #17** into `main` (after the release-branch six-job tests and manual license review). Then run the complete acceptance workflow on that exact `main` commit, verify Windows `NotSigned` and all three hashes, and separately obtain explicit owner authorization **before publishing**.
 3. [x] Implement a **separate manual unsigned** three-asset packaging/publishing workflow with matching source commit, Windows Authenticode NotSigned evidence, source/license reports and SHA-256. One-run proof: [Actions #43619807237](https://github.com/Valik2005/pdf-compressor/actions/runs/43619807237). The workflow remains dormant until owner explicitly authorizes publication and applicable license obligations are cleared.
 4. [x] Prepare bilingual unsigned release notes in docs/RELEASE_NOTES_2_8_UNSIGNED.md and future unsigned README in [PR #29](https://github.com/Valik2005/pdf-compressor/pull/29); do **not merge #29** until actual v2.8 assets are published.
