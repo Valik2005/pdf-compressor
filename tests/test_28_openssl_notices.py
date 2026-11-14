@@ -20,16 +20,16 @@ def test_exact_original_openssl_license_and_author_blobs():
         content = (ROOT / "docs" / "third_party" / name).read_bytes()
         blob = hashlib.sha1(f"blob {len(content)}\0".encode("ascii") + content).hexdigest()
         assert blob == expected_blob
-    license_text = (ROOT / "docs/third_party/OPENSSL_3_5_9_LICENSE.txt").read_text()
+    license_text = (ROOT / "docs/third_party/OPENSSL_3_5_9_LICENSE.txt").read_text(encoding="utf-8")
     assert "Apache License" in license_text
     assert "TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION" in license_text
-    assert "OpenSSL" in (ROOT / "docs/third_party/OPENSSL_3_5_9_AUTHORS.md").read_text()
+    assert "OpenSSL" in (ROOT / "docs/third_party/OPENSSL_3_5_9_AUTHORS.md").read_text(encoding="utf-8")
 
 
 def test_release_notice_manifest_requires_original_openssl_texts():
     assert "components/openssl-3.5.9/LICENSE.txt" in NOTICES
     assert "components/openssl-3.5.9/AUTHORS.md" in NOTICES
-    script = (ROOT / "tools/package_release_notices.py").read_text()
+    script = (ROOT / "tools/package_release_notices.py").read_text(encoding="utf-8")
     assert 'if release_version == "2.8":' in script
     assert 'OPENSSL_3_5_9_LICENSE.txt' in script
     assert 'OPENSSL_3_5_9_AUTHORS.md' in script
