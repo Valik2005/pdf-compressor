@@ -60,6 +60,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
         assert "licenses/THIRD_PARTY_NOTICES_2_8.zip" in names
         assert "reports/unsigned-authenticode-check.json" in names
         assert "reports/presign-technical-evidence.json" in names
+        assert "reports/native-binary-origin.json" in names
         assert "reports/signature-verification.json" not in names
         assert "reports/authenticode-verification.json" not in names
         assert b"NO trusted" in z.read("README.txt")
@@ -69,7 +70,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
     "tampered_exe", "altered_source", "altered_presign",
     "fake_signature", "wrong_windows_source", "missing_notice",
     "signed_evidence_intrusion", "staging_already_exists",
-    "corrupt_native_inventory",
+    "corrupt_native_inventory", "invalid_embedded_origin",
 ])
 def test_reject_unverified_or_contaminated_release(tmp_path, fault):
     windows, sources, evidence, catalog, out, sha = prepare(tmp_path)
@@ -97,6 +98,11 @@ def test_reject_unverified_or_contaminated_release(tmp_path, fault):
         (windows / "signature-verification.json").write_text('{"fake":true}')
     elif fault == "staging_already_exists":
         out.mkdir()
+    elif fault == "invalid_embedded_origin":
+        p = windows / "native-binary-origin.json"
+        proof = json.loads(p.read_text())
+        proof["source_git_commit"] = "b" * 40
+        p.write_text(json.dumps(proof))
     else:
         file = windows / "native-source-mapping.json"
         native = json.loads(file.read_text())

@@ -118,6 +118,7 @@ jobs:
                 'reports/build-manifest.json',
                 'reports/bundle-audit.json',
                 'reports/native-source-mapping.json',
+                'reports/native-binary-origin.json',
                 'reports/presign-technical-evidence.json',
                 'reports/unsigned-authenticode-check.json'
             }
@@ -135,6 +136,14 @@ jobs:
             assert unsigned['status'] == 'NotSigned' and unsigned['checked_on_windows'] is True
             assert unsigned['source_git_commit'] == os.environ['EXPECTED_COMMIT']
             assert unsigned['exe_sha256'] == sha
+            origin = json.loads(z.read('reports/native-binary-origin.json'))
+            assert origin['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert origin['exe_sha256'] == sha
+            assert origin['native_file_count'] >= 100
+            assert origin['redistribution_rights_verified'] is False
+            assert not origin['unmatched_wheel_entries']
+            assert not origin['installed_wheel_record_mismatches']
+            assert evidence['native_byte_identical_origin_count'] == origin['matched_count']
             assert evidence['technical_integrity_checks_passed'] is True
             assert evidence['license_compliance_certified'] is False
             assert evidence['source_git_commit'] == os.environ['EXPECTED_COMMIT']

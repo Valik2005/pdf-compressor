@@ -6,6 +6,12 @@
 
 The project-wide native inventory currently groups **53** Windows runtime entries: **42** `api-ms-win-*.dll` API-set forwarders, **10** `MSVCP*/VCRUNTIME*` copies in the root, PySide6 and Shiboken folders, and **one** `ucrtbase.dll`. The inventory identifies *presence*, not the legal right to distribute any specific file. See `native-source-mapping.json` inside the 2.8 technical review ZIP.
 
+## Actual SHA-256 origin audit
+
+[Windows run #43628766396](https://github.com/Valik2005/pdf-compressor/actions/runs/43628766396) collected `native-binary-origin.json` from the exact unpacked EXE. **All ten** `MSVCP140`/`VCRUNTIME140` copies matched an installed **PySide6_Essentials 6.12.0**, **shiboken6 6.12.0**, or **CPython 3.14.10** binary byte-for-byte. The **42 API-set** compatibility DLLs and **ucrtbase.dll** did not match the limited wheel/CPython install-directory lookup and still require correct Windows system/SDK classification and redistribution rights. The report contains SHA-256 and package-relative paths only, not absolute Windows directories.
+
+A matching runtime file is evidence of **binary origin**, not proof that the project owner satisfies Microsoft's distribution license. This rights check remains separate from the technical audit.
+
 ## Authoritative Microsoft licensing information
 
 - [Redistribute Visual C++ Files — Microsoft Learn](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files): distributing runtime packages or individual DLLs is restricted to appropriately **licensed Visual Studio users**, subject to Microsoft Software License Terms and the corresponding **REDIST list**. App-local DLL distribution is technically supported, though Microsoft recommends central deployment so it can service the runtime independently.

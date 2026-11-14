@@ -32,6 +32,7 @@ BINARY_REPORTS = (
     "build-manifest.json",
     "bundle-audit.json",
     "native-source-mapping.json",
+    "native-binary-origin.json",
     "unsigned-authenticode-check.json",
     "presign-technical-evidence.json",
 )
@@ -93,7 +94,8 @@ def assemble_unsigned_28(
     for name in SOURCE_REPORTS:
         files["reports/" + name] = require_file(sources_dir, name)
     for name in ("build-manifest.json", "bundle-audit.json",
-                 "native-source-mapping.json", "unsigned-authenticode-check.json"):
+                 "native-source-mapping.json", "native-binary-origin.json",
+                 "unsigned-authenticode-check.json"):
         files["reports/" + name] = require_file(windows_dir, name)
     files["reports/presign-technical-evidence.json"] = evidence_path
 
