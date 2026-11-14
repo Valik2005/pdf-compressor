@@ -37,7 +37,10 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
-def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path) -> dict:
+def make_pack(source_dir: Path, catalog: Path, project_license: Path,
+              out: Path, *, release_version: str = "2.7") -> dict:
+    if release_version not in ("2.7", "2.8"):
+        raise ValueError("Unsupported release label")
     entries = json.loads(catalog.read_text(encoding="utf-8"))["entries"]
     selected = {e["id"]: e for e in entries if e["id"] in SOURCES}
     if set(selected) != set(SOURCES):
@@ -129,7 +132,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
             z.writestr(name, data)
         z.writestr("notice-manifest.json", json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         z.writestr("README.txt", (
-            "PDF Compressor 2.7 review notices (NOT a legal-compliance certificate).\n"
+            f"PDF Compressor {release_version} review notices (NOT a legal-compliance certificate).\n"
             "Full upstream source archives are separate GitHub Actions artifacts and must\n"
             "be included permanently if a distributable executable is published.\n"
             "Rebuilding with modified Qt: docs/LGPL_RELINKING_2_7.md.\n"
@@ -143,8 +146,10 @@ def main() -> None:
     p.add_argument("--catalog", type=Path, default=Path("docs/source-archives-2_7.json"))
     p.add_argument("--license", type=Path, default=Path("LICENSE"))
     p.add_argument("--out", type=Path, default=Path("dist/release-notices-review.zip"))
+    p.add_argument("--release-version", choices=("2.7", "2.8"), default="2.7")
     args = p.parse_args()
-    report = make_pack(args.sources, args.catalog, args.license, args.out)
+    report = make_pack(args.sources, args.catalog, args.license, args.out,
+                       release_version=args.release_version)
     print("Source licenses extracted:", len(report["licenses_extracted_from_verified_sources"]))
     print("Source archive hashes checked:", len(report["source_archives"]))
     print("Prepared:", args.out)
