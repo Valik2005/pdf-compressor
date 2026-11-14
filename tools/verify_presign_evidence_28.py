@@ -14,6 +14,19 @@ import zipfile
 from tools.audit_native_binary_origin_28 import embedded_native_members, sha256_bytes
 
 APP_EXE = "PDF_Compressor_2_8.exe"
+UNUSED_QT_TLS = frozenset({
+    "libssl-3-x64.dll", "libcrypto-3-x64.dll",
+    "pyside6/plugins/tls/qopensslbackend.dll",
+})
+
+
+def reject_ambient_qt_openssl(member_names) -> None:
+    """Block unpinned MySQL OpenSSL copies and optional Qt TLS backend."""
+    found = sorted({str(name).lower() for name in member_names} & UNUSED_QT_TLS)
+    if found:
+        raise ValueError("Unexpected optional Qt OpenSSL or ambient DLLs: " +
+                         ", ".join(found))
+
 PINS = {
     "PyMuPDF": "1.27.2.3",
     "PySide6": "6.12.0",
@@ -103,6 +116,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     unpacked = [(name, sha256_bytes(blob), len(blob))
                 for name, blob in embedded_native_members(exe)]
     packed_names = [name for name, _, _ in unpacked]
+    reject_ambient_qt_openssl(packed_names)
     binary_names = [item.get("name") for item in binary.get("all_entries", [])
                     if str(item.get("name", "")).lower().endswith((".dll", ".pyd"))]
     mapped_names = [row.get("path") for row in native.get("native_component_mapping", [])]
