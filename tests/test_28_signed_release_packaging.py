@@ -116,6 +116,7 @@ def test_three_signed_release_assets_and_postsign_hash(tmp_path):
 @pytest.mark.parametrize("defect", [
     "unsigned_same_as_signed", "bad_proof_hash", "missing_timestamper",
     "source_sha_mismatch", "tampered_source", "missing_native_audit",
+    "incorrect_presign_source", "incorrect_presign_unsigned",
 ])
 def test_bad_evidence_refuses_to_package(tmp_path, defect):
     sources, windows, catalog, out, sha = inputs(tmp_path)
@@ -134,6 +135,14 @@ def test_bad_evidence_refuses_to_package(tmp_path, defect):
         data["source_git_commit"] = "c" * 40
     elif defect == "tampered_source":
         (sources / "source2.tar.xz").write_bytes(b"tampered")
+    elif defect in ("incorrect_presign_source", "incorrect_presign_unsigned"):
+        proof = windows / "presign-technical-evidence.json"
+        p = json.loads(proof.read_text())
+        if defect == "incorrect_presign_source":
+            p["source_git_commit"] = "f" * 40
+        else:
+            p["unsigned_exe_sha256"] = "f" * 64
+        proof.write_text(json.dumps(p))
     else:
         (windows / "native-source-mapping.json").unlink()
     signing.write_text(json.dumps(data))
