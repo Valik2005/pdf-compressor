@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.8 Preview — offline PDF quality review (Qt6)."""
+"""PDF Compressor 2.8.1 Testing — offline app with built-in test reporting."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ import threading
 from time import perf_counter
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSettings, QThread, QObject, Signal, QUrl, QTimer, QRegularExpression, QRectF
+from PySide6.QtCore import Qt, QSettings, QThread, QObject, Signal, QUrl, QTimer, QRegularExpression, QRectF, QStandardPaths
 from PySide6.QtGui import QDesktopServices, QPixmap, QFont, QIcon, QIntValidator, QRegularExpressionValidator, QTransform, QPainter, QColor, QPen, QBrush
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -21,12 +21,13 @@ from PySide6.QtWidgets import (
 
 import pymupdf
 from pdf_quality import audit_pdf, report_html
+from test_report import TestReportStore, now_iso, fresh_id
 from pdf_engine import (
     Cancelled, compress_pdf, file_info, human_size, merge_pdfs,
     rotate_pdf, split_pdf
 )
 
-APP_VERSION = "2.8-preview"
+APP_VERSION = "2.8.1-testing"
 
 
 # Text is keyed by the original Russian UI copy. No external translation file is
@@ -77,6 +78,16 @@ I18N_EN = {
     "Разрешить уменьшение разрешения при необходимости": "Allow image downscaling if necessary",
     "Проверять качество после сжатия (дополнительное время)": "Check quality after compression (takes longer)",
     "Сохранить отчёт проверки": "Save quality report",
+    "Экспорт отчёта тестов (ZIP)": "Export test report (ZIP)",
+    "Очистить историю тестов": "Clear test history",
+    "Удалить историю тестов?": "Delete all saved test runs?",
+    "Все записи о тестах будут удалены только с этого компьютера.": "All test records will be removed only from this computer.",
+    "История тестов пуста": "No test history to export",
+    "Отчёт тестов": "Test report",
+    "Отчёт сохранён": "Test report exported",
+    "Не удалось сохранить отчёт": "Could not export report",
+    "Экспорт тестовых данных": "Export test data",
+    "Журнал тестов": "Test history",
     "Отчёт проверки": "Quality report",
     "Проверка качества: без замечаний": "Quality review: no issues detected",
     "Выше лимита": "Over target",
@@ -414,6 +425,8 @@ class JobWorker(QObject):
     result = Signal(int, object)
     quality = Signal(int, object)
     timing = Signal(int, float)
+    started = Signal(int)
+    quality_timing = Signal(int, float)
     finished = Signal(str)
 
     def __init__(self, action: str, inputs: list[str], options: dict):
@@ -437,6 +450,7 @@ class JobWorker(QObject):
                         raise Cancelled()
                     self.progress.emit(f"Файл {idx + 1}/{len(self.inputs)}: {Path(src).name}", 0, 1)
                     started_at = perf_counter()
+                    self.started.emit(idx)
                     try:
                         result = compress_pdf(src, self.options["folder"],
                             mode=self.options["mode"], target_mb=self.options["target"],
@@ -452,6 +466,7 @@ class JobWorker(QObject):
                         # The completed PDF is still delivered when review is
                         # interrupted or raises a non-fatal diagnostics error.
                         if self.options.get("quality_check", False):
+                            qa_started_at = perf_counter()
                             try:
                                 review = audit_pdf(
                                     src, result.output,
@@ -466,6 +481,7 @@ class JobWorker(QObject):
                                 raise
                             except Exception as error:
                                 review = error
+                            self.quality_timing.emit(idx, perf_counter() - qa_started_at)
                             self.quality.emit(idx, review)
                     except Cancelled:
                         raise
@@ -525,6 +541,19 @@ class MainWindow(QMainWindow):
         self.settings = QSettings("LocalPDF", "PDFCompressor2")
         self.entries: list[dict] = []
         self.active_paths: list[str] = []
+        # Isolated test journal: never touches output PDF or the stable v2.8
+        # settings. Nothing is shared unless the user exports a ZIP.
+        reports_dir = os.environ.get("PDF_COMPRESSOR_REPORT_DIR")
+        if not reports_dir:
+            reports_dir = str(Path(QStandardPaths.writableLocation(
+                QStandardPaths.AppLocalDataLocation)) / "TestReports_281")
+        self._test_store_error = None
+        try:
+            self.test_report_store = TestReportStore(reports_dir)
+        except OSError as error:
+            self.test_report_store = None
+            self._test_store_error = error
+        self._test_runs: dict[int, dict] = {}
         self.last_created_path: str | None = None
         self.thread: QThread | None = None
         self.worker: JobWorker | None = None
@@ -799,6 +828,23 @@ class MainWindow(QMainWindow):
         self.export_quality_btn.clicked.connect(self.save_quality_report)
         result_actions.addWidget(self.export_quality_btn, 2)
         left_outer.addLayout(result_actions)
+        test_actions = QHBoxLayout()
+        test_actions.setSpacing(7)
+        self.export_test_btn = QPushButton("Экспорт отчёта тестов (ZIP)")
+        self.export_test_btn.setObjectName("Secondary")
+        self.export_test_btn.setToolTip(
+            "CSV, JSON и HTML: время, размеры, режимы, цель, ошибки и качество. "
+            "Без текста PDF и без отправки в интернет.")
+        self.export_test_btn.clicked.connect(self.export_test_report)
+        self.export_test_btn.setEnabled(
+            self.test_report_store is not None and bool(self.test_report_store.records()))
+        test_actions.addWidget(self.export_test_btn, 3)
+        self.clear_test_btn = QPushButton("Очистить историю тестов")
+        self.clear_test_btn.setObjectName("Quiet")
+        self.clear_test_btn.clicked.connect(self.clear_test_history)
+        self.clear_test_btn.setEnabled(self.test_report_store is not None)
+        test_actions.addWidget(self.clear_test_btn, 2)
+        left_outer.addLayout(test_actions)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0, 100)
         self.progressbar.setValue(0)
