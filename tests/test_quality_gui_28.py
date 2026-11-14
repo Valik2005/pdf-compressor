@@ -89,6 +89,9 @@ def test_target_miss_uses_short_status_and_exact_overage_tooltip(tmp_path):
     app = QApplication.instance() or QApplication([])
     ui = runpy.run_path(str(APP), run_name="target_overage_gui")
     win = ui["MainWindow"]()
+    # User preferences persist between Qt GUI tests. Make the expected
+    # Russian status deterministic regardless of the previous test.
+    win.language_box.setCurrentIndex(win.language_box.findData("ru"))
     source = tmp_path / "large-text.pdf"
     with pymupdf.open() as document:
         for i in range(120):
@@ -215,5 +218,40 @@ def test_quality_warning_must_not_hide_failed_target_status(tmp_path):
         assert win.table.item(0, 2).text() == "Выше лимита"
         assert "Проверка качества: требуется просмотр" in win.table.item(0, 2).toolTip()
     finally:
+        win.close()
+        app.processEvents()
+
+
+def test_bilingual_offline_license_notice_is_visible_and_explains_lgpl_rights(monkeypatch):
+    """Users can find Qt/LGPL and AGPL notices without a network connection."""
+    app = QApplication.instance() or QApplication([])
+    ui = runpy.run_path(str(APP), run_name="license_notice_gui")
+    win = ui["MainWindow"]()
+    initial_language = win.language
+    seen = []
+    monkeypatch.setattr(ui["QMessageBox"], "information",
+                        lambda _parent, title, message: seen.append((title, message)))
+    try:
+        win.show()
+        app.processEvents()
+        win.language_box.setCurrentIndex(win.language_box.findData("ru"))
+        app.processEvents()
+        assert win.license_btn.text() == "Лицензии"
+        win.license_btn.click()
+        assert seen and "LGPLv3" in seen[-1][1]
+        assert "AGPLv3" in seen[-1][1]
+        assert "БЕЗ ГАРАНТИИ" in seen[-1][1]
+        assert "Third_Party_Sources_and_Licenses.zip" in seen[-1][1]
+        win.language_box.setCurrentIndex(win.language_box.findData("en"))
+        app.processEvents()
+        assert win.license_btn.text() == "Licenses"
+        win.license_btn.click()
+        assert "NO WARRANTY" in seen[-1][1]
+        assert "modify" in seen[-1][1]
+        assert "Qt libraries" in seen[-1][1]
+        assert "github.com/Valik2005/pdf-compressor" in seen[-1][1]
+    finally:
+        win.language_box.setCurrentIndex(win.language_box.findData(initial_language))
+        app.processEvents()
         win.close()
         app.processEvents()
