@@ -36,7 +36,9 @@ This report is a technical bill-of-materials and obligations review, **not a leg
 | Python/PyInstaller | Python PSF license and PyInstaller notice present, Python runtime inventory identified | Confirm included bootloader exception, CPython dynamic extensions and redistribution/source completeness |
 | Microsoft runtime | 42 API sets + 10 MSVCP/VCRUNTIME + 1 UCRTBase | Check [Microsoft redistributable terms](https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files) and whether the actual DLLs qualify as *System Libraries* under applicable AGPL/GPL and SignPath Foundation rules |
 
-## SignPath Foundation eligibility — explicit dependency, not presumed accepted
+## SignPath Foundation eligibility — historical review, not a gate for unsigned 2.8
+
+**Update (14 November 2026):** SignPath Foundation declined the free signing application for insufficient independent public recognition, not on the technical license analysis below. The planned 2.8 is **unsigned**; SignPath's proprietary/dual-licensing program conditions do not themselves prevent an independent unsigned GitHub release, but applicable Qt LGPL, MuPDF AGPL and all third-party redistribution obligations still apply.
 
 [SignPath Foundation OSS conditions](https://signpath.org/terms) state that all components must use an OSI-approved license **without commercial dual-licensing**, prohibit proprietary components except qualifying System Libraries, and require a previously released product, active maintenance, controlled authors/reviewers/approvers and MFA. **Both upstream Qt and PyMuPDF advertise commercial as well as open-source licensing alternatives.** It is therefore necessary to ask SignPath whether the specific **open-source distributions of these dual-licensed dependencies** satisfy its stated policy; no assumption or reinterpretation of the rule substitutes for their answer. Separately clarify whether the redistributed MSVC/UCRT files in this exact binary satisfy their System Library exception. This is a potential **signing-eligibility blocker**, not merely a missing certificate.
 
