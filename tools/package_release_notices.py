@@ -16,7 +16,7 @@ import zipfile
 SOURCES = {
     "qtbase-6.12.0-required": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt",
                                 "LICENSES/Apache-2.0.txt", "LICENSES/MIT.txt",
-                                "LICENSES/BSD-3-Clause.txt"],
+                                "LICENSES/BSD-3-Clause.txt", "LICENSES/BSL-1.0.txt"],
     "qtsvg-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtimageformats-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtforpython-6.12.0": [
@@ -112,6 +112,32 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
     }
     notices.update(extras)
     if release_version == "2.8":
+        # Qt documents opengl32sw.dll as a Windows Mesa llvmpipe fallback.
+        # Preserve specific credits and provide original MIT/Boost license
+        # texts extracted from the verified QtBase 6.12.0 source archive.
+        # This does NOT certify the precise Qt wheel's compiled Mesa build.
+        mesa_attribution = (
+            "Qt for Windows / Mesa llvmpipe software OpenGL fallback (opengl32sw.dll)\n"
+            "Upstream reference: https://doc.qt.io/qt-6.12/windows-graphics.html\n"
+            "Qt/Mesa component attribution: https://doc.qt.io/qt-6/qt-attribution-llvmpipe.html\n"
+            "Qt 6.12 third-party inventory: https://doc.qt.io/qt-6/licenses-used-in-qt.html\n"
+            "Mesa licensing and copyright: https://docs.mesa3d.org/license.html\n"
+            "\n"
+            "Qt's public component attribution identifies:\n"
+            "  Mesa core: Copyright (C) 1999-2007 Brian Paul; MIT License.\n"
+            "  Khronos Group materials: Copyright (c) 2013-2016 The Khronos Group Inc.; MIT License.\n"
+            "  C11 <threads.h> emulation: Copyright yohhoy 2012; Boost Software License 1.0.\n"
+            "\n"
+            "Unmodified full MIT and Boost Software License 1.0 texts are "
+            "included separately in this archive at:\n"
+            "  components/qtbase-6.12.0-required/LICENSES/MIT.txt\n"
+            "  components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt\n"
+            "\n"
+            "These source-derived notices address known Qt upstream terms. "
+            "Exact provenance, additional Mesa/LLVM notices and embedded DLL "
+            "compile configuration still require an independent final review.\n"
+        )
+        notices["notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt"] = mesa_attribution.encode("utf-8")
         # These are the exact upstream files at GitHub tag openssl-3.5.9.
         # The embedded libcrypto version reports 3.5.9, but this alone does
         # not establish the original binary build's provenance or configuration.
