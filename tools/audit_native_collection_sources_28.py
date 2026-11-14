@@ -69,10 +69,14 @@ def scope_for(path: Path, known: dict) -> dict:
         root = os.environ.get(key)
         if root and path.is_relative_to(Path(root).resolve()):
             parts = path.relative_to(Path(root).resolve()).parts
+            # Program Files paths are machine-wide and contain no account
+            # names. Keep the *relative* path so a reviewer can distinguish
+            # e.g. Git/OpenSSL/Visual Studio and the actual SDK Redist tree.
+            # Never emit the absolute Program Files root.
+            relative = "/".join(parts)
             if len(parts) >= 2 and parts[0].lower() == "windows kits":
-                return {"scope": "windows-sdk",
-                        "relative_path": "/".join(parts[:2] + (path.name,))}
-            return {"scope": "installed-program", "relative_path": path.name}
+                return {"scope": "windows-sdk", "relative_path": relative}
+            return {"scope": "installed-program", "relative_path": relative}
     return {"scope": "unclassified-builder-path", "relative_path": path.name}
 
 
