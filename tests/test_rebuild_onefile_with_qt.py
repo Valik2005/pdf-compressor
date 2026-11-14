@@ -2,7 +2,7 @@
 from pathlib import Path
 import pytest
 
-from tools.rebuild_onefile_with_qt import apply_overrides, sha256
+from tools.rebuild_onefile_with_qt import apply_overrides, sha256, RELEASE_SPECS
 
 
 def test_matching_dll_replaced_and_reported(tmp_path: Path) -> None:
@@ -53,3 +53,10 @@ def test_rejects_no_replacement_files(tmp_path: Path) -> None:
     user.mkdir()
     with pytest.raises(ValueError, match="contains no"):
         apply_overrides(qt, user)
+
+
+def test_release_28_relink_mapping_is_explicit_and_legacy_27_unchanged() -> None:
+    assert RELEASE_SPECS["2.7"] == ("release_windows_review.spec",
+                                    "PDF_Compressor_2_7_license_review.exe")
+    assert RELEASE_SPECS["2.8"] == ("release_windows_2_8.spec",
+                                    "PDF_Compressor_2_8.exe")
