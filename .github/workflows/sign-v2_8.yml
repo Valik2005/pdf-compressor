@@ -166,6 +166,15 @@ jobs:
           if ($tools.Count -eq 0) { throw "Windows SDK signtool.exe not found" }
           & $tools[-1].FullName verify /pa /tw /v $exe
           if ($LASTEXITCODE -ne 0) { throw "signtool verification failed ($LASTEXITCODE)" }
+          # Record actual Windows evidence for the later three-asset release gate.
+          $proof = [ordered]@{
+            signature_status = "$($signature.Status)"
+            signer_subject = "$($signature.SignerCertificate.Subject)"
+            timestamper_subject = "$($signature.TimeStamperCertificate.Subject)"
+            signtool_verified = $true
+            signed_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $proof | ConvertTo-Json | Set-Content -Encoding utf8 dist/verified-signed/authenticode-verification.json
 
       - name: Record signed and unsigned SHA-256 independently
         shell: pwsh
@@ -176,6 +185,11 @@ jobs:
           signed = Path("dist/verified-signed/PDF_Compressor_2_8.exe")
           unsigned = json.loads(Path("dist/unsigned-build-manifest.json").read_text())
           h = hashlib.sha256(signed.read_bytes()).hexdigest()
+          proof = json.loads(Path("dist/verified-signed/authenticode-verification.json").read_text(encoding="utf-8-sig"))
+          assert proof["signature_status"] == "Valid"
+          assert "SignPath Foundation" in proof["signer_subject"]
+          assert proof["timestamper_subject"] and proof["signtool_verified"] is True
+          assert proof["signed_sha256"] == h
           if h == unsigned["exe_sha256"]:
               raise ValueError("Signing did not modify the EXE")
           report = {
@@ -185,6 +199,9 @@ jobs:
               "unsigned_sha256": unsigned["exe_sha256"],
               "signed_sha256": h,
               "signed_size_bytes": signed.stat().st_size,
+              "signer_subject": proof["signer_subject"],
+              "timestamp_certificate_subject": proof["timestamper_subject"],
+              "authenticode_verified": True,
               "public_release_created": False,
           }
           Path("dist/verified-signed/signature-verification.json").write_text(
@@ -193,6 +210,14 @@ jobs:
               f"{h}  PDF_Compressor_2_8.exe\n", encoding="utf-8")
           print("Signed SHA-256:",h)
           '@ | python -
+
+      - name: Keep source, native and license audits alongside signed candidate
+        shell: pwsh
+        run: |
+          Copy-Item dist/unsigned-build-manifest.json dist/verified-signed/
+          Copy-Item dist/unsigned-bundle-audit.json dist/verified-signed/
+          Copy-Item dist/native-source-mapping.json dist/verified-signed/
+          Copy-Item dist/license-evidence.zip dist/verified-signed/
 
       - name: Upload verified signed candidate only; DO NOT publish
         uses: actions/upload-artifact@v4
