@@ -97,6 +97,13 @@ def _csv_data(rows: list[dict]) -> bytes:
         for key in FIELDS:
             if row[key] is None:
                 row[key] = ""  # empty is N/A; false is the literal False
+        # Excel treats untrusted names beginning =, +, - or @ as
+        # formulas. Prefix the displayed CSV cell only; JSON preserves
+        # the real filename unchanged for programmatic comparison.
+        for key in ("source_name", "result_name"):
+            val = row[key]
+            if isinstance(val, str) and val.lstrip().startswith(("=", "+", "-", "@")):
+                row[key] = "'" + val
         writer.writerow(row)
     return stream.getvalue().encode("utf-8-sig")
 
@@ -149,8 +156,15 @@ class TestReportStore:
         """Write one terminal result using a single buffered append operation."""
         sanitized = sanitize_record(record)
         data = json.dumps(sanitized, ensure_ascii=False, separators=(",", ":"))
-        with self.journal.open("a", encoding="utf-8", newline="\n") as writer:
-            writer.write(data + "\n")
+        with self.journal.open("a+b") as writer:
+            # A power outage may leave an incomplete final line. Keep that
+            # line separate so the next valid run remains recoverable.
+            writer.seek(0, os.SEEK_END)
+            if writer.tell():
+                writer.seek(-1, os.SEEK_END)
+                if writer.read(1) != b"\n":
+                    writer.write(b"\n")
+            writer.write((data + "\n").encode("utf-8"))
 
     def records(self) -> list[dict]:
         if not self.journal.is_file():
