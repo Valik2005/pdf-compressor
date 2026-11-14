@@ -286,7 +286,7 @@ jobs:
           EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
-          python tools/assemble_signed_release_28.py \
+          python -m tools.assemble_signed_release_28 \
             --sources release-input/sources \
             --windows release-input/windows \
             --catalog docs/source-archives-2_7.json \
