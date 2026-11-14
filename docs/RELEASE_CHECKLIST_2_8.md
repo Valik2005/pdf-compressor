@@ -30,7 +30,7 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 - [x] GitHub Actions manual-only SignPath workflow, 2.8-specific PE metadata, approval-dependent artifact configuration, signature/timestamp checking and **post-sign** SHA-256 prepared.
 - [x] Exact three-file signed release assembler with synthetic fail-closed tests, dedicated release-notes and a separate manual publishing workflow prepared. No automatic tag or GitHub Release.
 - [x] Static release gate checker successfully verified manual-only signing/publication rules: [Actions #43597275586](https://github.com/Valik2005/pdf-compressor/actions/runs/43597275586).
-- [x] Obsolete signed-only README [PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) was **closed**; unsigned post-publication README [draft PR #25](https://github.com/Valik2005/pdf-compressor/pull/25) is prepared but must stay unmerged until v2.8 assets are publicly available.
+- [x] Obsolete signed-only README [PR #18](https://github.com/Valik2005/pdf-compressor/pull/18) was **closed**; unsigned post-publication README [draft PR #29](https://github.com/Valik2005/pdf-compressor/pull/29) is prepared but must stay unmerged until v2.8 assets are publicly available.
 - [x] Documentation conflict between PR #17 and current `main` resolved; public README and public signing policy still state current unsigned v2.7.1.
 - [ ] **Latest exact-commit integrated test:** source archives, native bundle inventory, Windows EXE, pinned Python packages and package licenses checked *together*, and report `presign-technical-evidence.json` attached. Workflow `review-28-final-unsigned.yml` now performs this; requires final CI success at the actual release-candidate commit.
 
@@ -41,6 +41,7 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 - [x] Added the stage-unsigned-three-files job to .github/workflows/review-28-final-unsigned.yml; uploads review-only GitHub Actions artifact after all earlier checks succeed.
 - [x] Prepared owner-only, manual .github/workflows/publish-v2_8-unsigned.yml; it demands successful **main** same-commit acceptance plus explicit release and completed license review confirmations, validates three asset hashes, and never uses SignPath.
 - [x] Completed six-job same-commit staging on [Actions #43619807237](https://github.com/Valik2005/pdf-compressor/actions/runs/43619807237): **168/168 Windows tests on Python 3.13 and 3.14**, six upstream source hashes, 73 notices (including exact OpenSSL 3.5.9 LICENSE/AUTHORS), NotSigned EXE, integrity report and precisely three review-only assets. [ ] Recheck these gates on the eventual final **main** commit after owner-approved merge.
+- [x] Rechecked the updated release-candidate HEAD `42038072c7a0f36142d5b3be8249a502043a18de` using the complete [six-job unsigned Windows + source/archive acceptance #43620339052](https://github.com/Valik2005/pdf-compressor/actions/runs/43620339052): **168/168 tests** on each Python 3.13 and 3.14, correct Windows NotSigned status, intact hash/source cross-audit, six upstream sources, updated OpenSSL attribution and three exact private review assets [artifact #14124111415](https://github.com/Valik2005/pdf-compressor/actions/runs/43620339052/artifacts/14124111415). **Still NOT released; must retest any later final main revision.**
 
 ## Blocking review — not replaceable by an automated test
 
@@ -64,6 +65,6 @@ Private testing line: `testing/2.8.1-automatic-test-report` (still `2.8.1-testin
 1. [ ] Finish the exact-binary Qt/PySide6, MuPDF, OpenSSL, Mesa, Microsoft runtime and codec notices/source obligations.
 2. [ ] Review the exact final `main` version and obtain maintainer authorization for a deliberately **unsigned** release.
 3. [x] Implement a **separate manual unsigned** three-asset packaging/publishing workflow with matching source commit, Windows Authenticode NotSigned evidence, source/license reports and SHA-256. One-run proof: [Actions #43619807237](https://github.com/Valik2005/pdf-compressor/actions/runs/43619807237). The workflow remains dormant until owner explicitly authorizes publication and applicable license obligations are cleared.
-4. [x] Prepare bilingual unsigned release notes in docs/RELEASE_NOTES_2_8_UNSIGNED.md and future unsigned README in [PR #25](https://github.com/Valik2005/pdf-compressor/pull/25); do **not merge #25** until actual v2.8 assets are published.
+4. [x] Prepare bilingual unsigned release notes in docs/RELEASE_NOTES_2_8_UNSIGNED.md and future unsigned README in [PR #25](https://github.com/Valik2005/pdf-compressor/pull/29); do **not merge #25** until actual v2.8 assets are published.
 
 **Never claim an unsigned EXE is signed, assume SignPath approval, merge 2.8.1 Testing code into stable, or ignore unsatisfied license requirements to meet a deadline.**
