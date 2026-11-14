@@ -34,6 +34,39 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest -q
 
+  sources-and-notices:
+    needs: windows-tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Acquire six required sources and validate exact upstream SHA-256
+        run: |
+          python tools/fetch_required_sources.py --out-dir dist/source-candidates --require-all
+          python tools/verify_source_archives.py --catalog docs/source-archives-2_7.json --source-dir dist/source-candidates --out dist/source-candidates/source-archive-audit.json --require-all-verified
+      - name: Package third-party notices and source/relinking instructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/package_release_notices.py --sources dist/source-candidates --out dist/source-candidates/THIRD_PARTY_NOTICES_2_7.zip
+          cp docs/LGPL_RELINKING_2_7.md dist/source-candidates/
+          cp docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md dist/source-candidates/THIRD_PARTY_NOTICES_2_7.md
+          cp docs/third_party_libffi_license.txt dist/source-candidates/libffi-LICENSE.txt
+      - name: Stage verified source evidence for unsigned/signed release assembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-2-8-verified-source-input-NOT-FOR-PUBLICATION
+          path: dist/source-candidates/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
   sign-reviewed-main:
     needs: windows-tests
     if: github.ref == 'refs/heads/main'
@@ -226,3 +259,47 @@ jobs:
           path: dist/verified-signed/
           if-no-files-found: error
           retention-days: 14
+
+  package-three-files-for-review:
+    needs: [sources-and-notices, sign-reviewed-main]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-2-8-verified-source-input-NOT-FOR-PUBLICATION
+          path: release-input/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-2-8-candidate-NOT-YET-RELEASED
+          path: release-input/windows
+      - name: Verify exact v2.8 source revision and three release assets
+        shell: bash
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python tools/assemble_signed_release_28.py \
+            --sources release-input/sources \
+            --windows release-input/windows \
+            --catalog docs/source-archives-2_7.json \
+            --source-sha "$EXPECTED_SOURCE_COMMIT" \
+            --out release-assets
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          ( cd release-assets && sha256sum --check SHA256SUMS.txt --status )
+          echo "Verified 2.8: exact signed EXE, third-party source ZIP, SHA-256."
+      - name: Upload only for maintainer review (never create public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-exact-three-files-REVIEW-NOT-PUBLISHED
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
