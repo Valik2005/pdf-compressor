@@ -150,6 +150,27 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         if rec.get("exe_sha256") != signed_independent or rec.get("exe_name") != APP_EXE:
             raise ValueError("License evidence does not match the Windows EXE")
         missing_license_material = rec.get("missing", [])
+        pillow_notice_path = (
+            "packages/Pillow/12.3.0/"
+            "pillow-12.3.0.dist-info/licenses/LICENSE"
+        )
+        if pillow_notice_path not in z.namelist():
+            raise ValueError("Exact Pillow 12.3.0 wheel license text not packaged")
+        pillow_license = z.read(pillow_notice_path).decode("utf-8", "strict").lower()
+        # The Windows wheel embeds these codecs, and its LICENSE includes
+        # their upstream notices. Do not accept a short generic Pillow-only
+        # license in place of the complete wheel distribution notice.
+        codec_markers = (
+            "libavif-1.4.2", "libjpeg-turbo-3.1.4.1", "libpng-1.6.58",
+            "libwebp-1.6.0", "openjpeg-2.5.4", "tiff-4.7.1",
+            "freetype-2.14.3", "lcms2-2.19.1", "harfbuzz-14.2.1",
+            "brotli-1.2.0", "zlib-ng-2.3.3",
+        )
+        if len(pillow_license) < 50_000 or any(
+            marker not in pillow_license for marker in codec_markers
+        ):
+            raise ValueError("Pillow codec and font/image library notices are incomplete")
+
     return {
         "schema_version": 1,
         "source_git_commit": commit,
@@ -160,6 +181,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         "version_pins_match": True,
         "native_file_count": native["native_file_count"],
         "native_byte_identical_origin_count": origin["matched_count"],
+        "pillow_codec_license_notices_checked": list(codec_markers),
         "native_component_counts": native.get("component_counts", {}),
         "technical_integrity_checks_passed": True,
         "license_compliance_certified": False,
