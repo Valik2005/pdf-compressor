@@ -1842,7 +1842,70 @@ class MainWindow(QMainWindow):
         self.set_status(stage + (f"  •  страница {current}/{total}" if total > 1 else ""))
         self.progressbar.setValue(round(100 * current / max(1, total)))
 
+    def record_test_start(self, index: int):
+        row = self._test_runs.get(index)
+        if row is not None and row["started_at"] is None:
+            row["started_at"] = now_iso()
+            row["status"] = "processing"
+
+    def record_quality_timing(self, index: int, seconds: float):
+        row = self._test_runs.get(index)
+        if row is not None:
+            row["quality_elapsed_seconds"] = seconds
+
+    def _save_test_run(self, index: int):
+        row = self._test_runs.get(index)
+        if row is None or row["_written"] or self.test_report_store is None:
+            return
+        row["finished_at"] = now_iso()
+        try:
+            self.test_report_store.append(row)
+            row["_written"] = True
+            self.export_test_btn.setEnabled(True)
+        except OSError as error:
+            self._test_store_error = error
+            # Reporting must never damage PDF output or crash compression.
+
+    def export_test_report(self):
+        if self.test_report_store is None:
+            self.warn(self.t("Журнал тестов"), str(self._test_store_error))
+            return
+        if not self.test_report_store.records():
+            self.info(self.t("Отчёт тестов"), self.t("История тестов пуста"))
+            return
+        destination, _filter = QFileDialog.getSaveFileName(
+            self, self.t("Экспорт тестовых данных"),
+            str(Path.home() / "PDF_Compressor_2_8_1_test_report.zip"),
+            "ZIP (*.zip)")
+        if not destination:
+            return
+        if not destination.lower().endswith(".zip"):
+            destination += ".zip"
+        try:
+            count = self.test_report_store.export(destination)
+            self.info(self.t("Отчёт сохранён"), f"{count} · {destination}")
+        except (OSError, ValueError) as error:
+            self.warn(self.t("Не удалось сохранить отчёт"), str(error))
+
+    def clear_test_history(self):
+        if self.test_report_store is None:
+            return
+        reply = QMessageBox.question(
+            self, self.t("Очистить историю тестов"),
+            self.t("Удалить историю тестов?") + "\n" +
+            self.t("Все записи о тестах будут удалены только с этого компьютера."),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                self.test_report_store.clear()
+                self.export_test_btn.setEnabled(False)
+            except OSError as error:
+                self.warn(self.t("Журнал тестов"), str(error))
+
     def record_timing(self, index: int, seconds: float):
+        row = self._test_runs.get(index)
+        if row is not None:
+            row["elapsed_seconds"] = seconds
         if 0 <= index < len(self.active_paths):
             source = self.active_paths[index]
             for entry in self.entries:
@@ -1853,7 +1916,13 @@ class MainWindow(QMainWindow):
     def record_result(self, index: int, outcome):
         source = self.active_paths[index] if 0 <= index < len(self.active_paths) else None
         row_idx = next((i for i, e in enumerate(self.entries) if e["path"] == source), -1)
+        run = self._test_runs.get(index)
         if isinstance(outcome, Exception):
+            if run is not None:
+                run["status"] = "error"
+                run["error_type"] = type(outcome).__name__
+                run["quality_status"] = "not_checked"
+                self._save_test_run(index)
             if self._active_action in ("merge", "split", "rotate"):
                 self._tool_errors.append(str(outcome))
             if row_idx >= 0:
@@ -1864,6 +1933,24 @@ class MainWindow(QMainWindow):
             self.refresh_table()
             return
         if hasattr(outcome, "saving_percent"):
+            if run is not None:
+                run.update(
+                    result_name=Path(outcome.output).name,
+                    result_bytes=outcome.result_bytes,
+                    source_bytes=outcome.original_bytes,
+                    saved_bytes=outcome.original_bytes - outcome.result_bytes,
+                    saving_percent=outcome.saving_percent,
+                    target_bytes=outcome.target_bytes,
+                    target_met=outcome.target_met,
+                    over_target_bytes=(max(0, outcome.result_bytes - outcome.target_bytes)
+                                       if outcome.target_bytes is not None else None),
+                    jpeg_quality=outcome.quality,
+                    downscaled=outcome.downscaled,
+                    candidate_attempts=outcome.candidates_tried,
+                    status="target_not_met" if outcome.target_met is False else "success",
+                )
+                if run["quality_status"] == "not_checked":
+                    self._save_test_run(index)
             if row_idx >= 0:
                 e = self.entries[row_idx]
                 e["status"] = "Готово" if outcome.target_met is not False else "Цель не достигнута"
@@ -1921,6 +2008,15 @@ class MainWindow(QMainWindow):
         else:
             detail = "Проверка качества: без замечаний"
         entry["result"] += f" · {detail}"
+        run = self._test_runs.get(index)
+        if run is not None:
+            if isinstance(review, Exception):
+                run["quality_status"] = "unavailable"
+                run["quality_issue_codes"] = ["quality_review_failed"]
+            else:
+                run["quality_status"] = review.status
+                run["quality_issue_codes"] = [issue.code for issue in review.issues]
+            self._save_test_run(index)
         self.refresh_table()
 
     def receive_end_message(self, message: str):
@@ -1928,6 +2024,18 @@ class MainWindow(QMainWindow):
 
     def finalize_thread(self):
         message = getattr(self, "pending_end_message", "Операция завершена")
+        for idx, row in self._test_runs.items():
+            if row["_written"]:
+                continue
+            if row["status"] in ("queued", "processing"):
+                row["status"] = ("cancelled" if message.startswith("Операция отменена")
+                                 else "error")
+                if row["status"] == "error":
+                    row["error_type"] = "JobInterrupted"
+            if row["quality_status"] == "pending":
+                row["quality_status"] = "interrupted"
+            self._save_test_run(idx)
+        self._test_runs.clear()
         self.set_status(message)
         self.busy = False
         self.thread = None
