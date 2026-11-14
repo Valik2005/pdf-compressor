@@ -197,7 +197,7 @@ def test_issue_collection_is_bounded_for_large_damaged_documents(tmp_path):
 def test_html_report_escapes_filename_and_contains_sampled_metrics():
     from pdf_quality import QualityReport, QualityIssue, PageVisualCheck, report_html
     report = QualityReport(
-        source='source <script>alert("x")</script>.pdf',
+        source='source <script>alert("x")<script>.pdf',
         result='output & "result".pdf',
         source_bytes=4500, result_bytes=3000,
         source_pages=3, result_pages=3,
@@ -214,6 +214,54 @@ def test_html_report_escapes_filename_and_contains_sampled_metrics():
     assert "12.00%" in document
     assert "output &amp; &quot;result&quot;.pdf" in document
     assert "<script" not in document
+
+
+def test_exported_quality_report_redacts_windows_and_posix_directories():
+    from pdf_quality import QualityReport, report_html
+    source = r"C:\\Users\\PrivateOwner\\Documents\\secret-original.pdf"
+    result = "/home/private-account/outputs/secret-result.pdf"
+    report = QualityReport(
+        source=source, result=result,
+        source_bytes=1234, result_bytes=900,
+        source_pages=3, result_pages=3,
+        text_checked_pages=3, rendered_pages=(1, 3),
+        issues=[], visual_checks=[],
+    )
+    # The live report remains useful internally; files exported to others do not
+    # contain account names or filesystem structure.
+    assert report.source == source and report.result == result
+    safe = report.as_dict()
+    assert safe["source"] == "secret-original.pdf"
+    assert safe["result"] == "secret-result.pdf"
+    assert safe["schema_version"] == 1
+    assert report.as_dict(include_paths=True)["source"] == source
+
+    html_doc = report_html(report)
+    json_doc = json.dumps(safe, ensure_ascii=False)
+    for content in (html_doc, json_doc):
+        assert "PrivateOwner" not in content
+        assert "private-account" not in content
+        assert "C:\\\\Users" not in content
+        assert "/home/private-account" not in content
+        assert "secret-original.pdf" in content
+        assert "secret-result.pdf" in content
+
+
+def test_quality_export_basename_remains_html_escaped():
+    from pdf_quality import QualityReport, report_html
+    report = QualityReport(
+        source=r"C:\\Private\\<script>alert(1)<script>.pdf",
+        result="/hidden/a & b.pdf",
+        source_bytes=500, result_bytes=400,
+        source_pages=1, result_pages=1,
+        text_checked_pages=1, rendered_pages=(1,),
+        issues=[], visual_checks=[],
+    )
+    html_doc = report_html(report)
+    assert "<script>" not in html_doc
+    assert "&lt;script&gt;" in html_doc
+    assert "a &amp; b.pdf" in html_doc
+    assert "C:" not in html_doc and "/hidden/" not in html_doc
 
 
 def test_cli_writes_local_html_and_json_reports(tmp_path, monkeypatch):

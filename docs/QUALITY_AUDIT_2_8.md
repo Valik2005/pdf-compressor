@@ -16,6 +16,7 @@ After compression, offer an **optional automatic quality review** for each resul
 - The full standalone command-line review can sample at most 32 pages with thumbnails up to 640 pixels along the longest edge. Default is eight pages at 320 pixels, sampled evenly including first and last.
 - The GUI includes **«Сохранить отчёт проверки»** for the selected compressed PDF after an opt-in check. The button exports a readable, locally generated **HTML** document or machine-readable **JSON** without creating extra files automatically. It is disabled until a review is available.
 - Reports include page and file counts, results of selectable text/geometry checks, sampled page numbers and color-sensitive difference metrics, issues grouped into `error` or `warning`, and counts of suppressed issues.
+- **Privacy by default:** exported GUI and command-line HTML/JSON reports show only original/result **file names**, not absolute Windows/POSIX directory paths. Live in-memory report paths remain available to internal processing; only an explicit developer call `as_dict(include_paths=True)` can serialize full paths. A filename may itself contain identifying information, so review exports before sharing.
 
 ## Checks
 
