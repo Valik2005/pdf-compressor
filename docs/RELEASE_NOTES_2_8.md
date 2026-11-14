@@ -23,7 +23,7 @@ Automated analysis is a **diagnostic, not a visual-quality certificate**. It doe
 
 The internal `2.8.1 Testing` branch contains a local automatic test-run exporter and is **not part of the public 2.8 release**.
 
-The maintainer has applied for **free SignPath Foundation code signing**. Application submission does not mean acceptance or an issued certificate. This release will be called **digitally signed only when** a real signed Windows EXE is independently verified; otherwise documentation must explicitly state that it is unsigned. See [Code signing policy](CODE_SIGNING_POLICY.md).
+The maintainer has applied for **free SignPath Foundation code signing**. Application submission does not mean acceptance or an issued certificate. This release will be called **digitally signed only when** a real signed Windows EXE is independently verified; otherwise documentation must explicitly state that it is unsigned. See [Code signing policy](https://github.com/Valik2005/pdf-compressor/blob/main/docs/CODE_SIGNING_POLICY.md).
 
 ## Release packaging (pending)
 
