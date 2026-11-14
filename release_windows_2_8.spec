@@ -54,6 +54,27 @@ a.binaries = [entry for entry in a.binaries if not (drop_virtual_keyboard(entry[
 a.datas = [entry for entry in a.datas if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
 print("Unused Qt PDF/QML/Quick and Virtual Keyboard items filtered:", removed)
 
+# EXPERIMENT ONLY: Windows 10/11 provide the UCRT as an OS component.
+# Omit app-local UCRT/API-set copies, then validate startup and PDF tests.
+# This has not been reviewed for release; NEVER merge this experiment
+# into the stable candidate merely because a runner smoke test succeeds.
+def drop_app_local_ucrt(destination):
+    name = destination.replace(chr(92), "/").rsplit("/", 1)[-1].lower()
+    return (name == "ucrtbase.dll" or
+            name.startswith("api-ms-win-") and name.endswith(".dll"))
+
+
+ucrt_removed = [entry[0] for entry in a.binaries + a.datas
+                if drop_app_local_ucrt(entry[0])]
+if len(ucrt_removed) != 43:
+    raise RuntimeError(
+        f"Expected 43 separately collected app-local UCRT files; found "
+        f"{len(ucrt_removed)}; inspect analysis instead of silently dropping."
+    )
+a.binaries = [item for item in a.binaries if not drop_app_local_ucrt(item[0])]
+a.datas = [item for item in a.datas if not drop_app_local_ucrt(item[0])]
+print("EXPERIMENT: UCRT/API-set files omitted (Windows 10+):", ucrt_removed)
+
 # Record EXACT original Windows collection paths and SHA-256 for native members.
 # Report contains ONLY sanitized source scopes / package-relative paths.
 # The downstream independent cross-audit compares each recorded source hash
