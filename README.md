@@ -14,7 +14,7 @@ English and Russian UI · Windows 10/11 · Free and open source
 </p>
 
 <a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
-  <img alt="⬇ Download PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+  <img alt="⬇ Download PDF Compressor 2.8 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **One EXE · No Python installation · ≈70 MB**
@@ -60,7 +60,7 @@ Use the green **DOWNLOAD** button at the top of this page. It links **directly**
 
 [**Direct EXE download**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [All release assets and licenses](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Verify SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
-> The EXE is unsigned, so Windows SmartScreen may show a warning. You can verify the hash against `SHA256SUMS.txt` before running it.
+> The official v2.8 EXE carries a verified SignPath Foundation digital signature. Verify its Windows Digital Signatures tab and the SHA-256 against `SHA256SUMS.txt`. SmartScreen may still warn based on reputation.
 
 ## 🖥️ Windows installation from source
 
