@@ -28,6 +28,7 @@ AUDIT_FILES = (
     "native-source-mapping.json",
     "signature-verification.json",
     "authenticode-verification.json",
+    "presign-technical-evidence.json",
 )
 
 
