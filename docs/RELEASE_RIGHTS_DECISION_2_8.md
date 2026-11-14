@@ -8,11 +8,30 @@ These two hashes were independently recalculated from the GitHub review-only arc
 
 This is an evidence checklist grounded in official vendor notices and the *actual bundled binary*. It is **not** a legal opinion and must **not** be treated as proof of compliance or owner authorization. The owner confirms distribution rights only after checking every applicable license requirement.
 
+## Clarification: VS Code is the editor, not a Visual Studio license
+
+The maintainer has now specified **VS Code**, not Visual Studio Community,
+as their development editor. [Microsoft's VS Code FAQ](https://code.visualstudio.com/docs/supporting/faq)
+states that VS Code and Visual Studio IDE are distinct products. Microsoft's
+[redistribution terms](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files)
+tie redistribution of Microsoft VC runtime DLLs to an appropriately licensed
+Visual Studio software edition/toolchain and its applicable terms, **not**
+to VS Code. We must **not** mark the Community REDIST entitlement as met.
+
+Continuing to develop in VS Code is fine: we need only resolve the
+independent **redistribution and DLL provenance** question before publishing.
+Possible routes are a valid no-cost individual Community license with
+permitted, unmodified official REDIST copies (after verifying eligibility and
+actual source) **or** a separately tested app that leaves system runtime
+installation to Microsoft/the user. Neither choice is completed by the
+user's report of their editor. Do not automatically swap out Microsoft
+DLLs, require paid Visual Studio, or consider licensing solved.
+
 ## Maintainer licensing status: individual developer (15 Nov 2026)
 
 - [x] **Development/distribution role:** the maintainer confirmed a **personal independent-developer** release rather than distribution by a company or other organization. No identifying name, billing data or employer details are required for this classification.
 - [x] **Eligible no-cost licensing route:** Microsoft officially allows individuals to use **Visual Studio Community** to create their own free or commercial apps. Its [REDIST 2022 list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) explicitly includes properly licensed Community 2022 users, subject to the specific software license terms, original unmodified file eligibility and excluded Debug/nonredist paths.
-- [ ] **Not yet substantiated:** the developer's actual possession/use of a qualifying license agreement and whether **the exact Microsoft DLL copies included by PyInstaller from the Python/Qt wheels** are eligible for redistribution. An individual may qualify without paying, but eligibility alone is not a legal clearance or an assertion about what licenses have been accepted.
+- [ ] **Not yet substantiated:** the developer's actual possession/use of a qualifying Visual Studio license agreement (**VS Code is not one**), or a different permitted redistributable source, and whether **the exact Microsoft DLL copies included by PyInstaller from the Python/Qt wheels** are eligible for redistribution. An individual may qualify without paying, but eligibility alone is not a legal clearance or an assertion about what licenses have been accepted.
 - [ ] **Independent Qt LGPL/MuPDF AGPL and vendor notices review** remains unchanged. All applicable redistribution obligations must still be satisfied before publication.
 
 The latest source candidate is [PR #17](https://github.com/Valik2005/pdf-compressor/pull/17). Historical hashes recorded below are intentionally labelled to their **older** candidate and must never be used as the final EXE checksum. Publish only after the current head's same-commit acceptance, separate owner authorization and confirmed rights.
