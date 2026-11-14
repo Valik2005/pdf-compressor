@@ -31,6 +31,8 @@ NOTICES = {
     "components/openssl-3.5.9/LICENSE.txt",
     "components/openssl-3.5.9/AUTHORS.md",
     "notice-manifest.json",
+    "components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt",
+    "notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt",
 }
 
 def file_required(root: Path, name: str) -> Path:
