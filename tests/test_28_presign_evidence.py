@@ -2,14 +2,40 @@
 import hashlib
 import json
 import zipfile
+import zlib
 
 import pytest
 
+from tools.audit_native_binary_origin_28 import MAGIC, COOKIE, TOC
 from tools.verify_presign_evidence_28 import PINS, NOTICES, validate
 
 
 def dump(folder, name, data):
     (folder / name).write_text(json.dumps(data), encoding="utf-8")
+
+
+def native_fixture_exe(path):
+    """Build a small but structurally valid CArchive with 120 native files."""
+    payload, toc, records = bytearray(), bytearray(), []
+    for i in range(120):
+        name = f"module_{i:03d}.pyd"
+        original = b"MZ" + bytes([i]) * (i % 7 + 5)
+        compressed = zlib.compress(original)
+        name_bytes = name.encode("utf-8") + bytes([0])
+        toc.extend(TOC.pack(TOC.size + len(name_bytes), len(payload),
+                            len(compressed), len(original), 1, b"b"))
+        toc.extend(name_bytes)
+        payload.extend(compressed)
+        records.append({
+            "name": name, "sha256": hashlib.sha256(original).hexdigest(),
+            "size_bytes": len(original), "matched_installed_origins": [],
+            "status": "unverified-build-origin",
+        })
+    size = len(payload) + len(toc) + COOKIE.size
+    cookie = COOKIE.pack(MAGIC, size, len(payload), len(toc), 314,
+                         b"python314.dll".ljust(64, bytes([0])))
+    path.write_bytes(b"MZ" + bytes(500) + payload + toc + cookie)
+    return records
 
 
 def fixture(tmp_path):
@@ -18,7 +44,7 @@ def fixture(tmp_path):
     sources.mkdir()
     commit = "a" * 40
     exe = windows / "PDF_Compressor_2_8.exe"
-    exe.write_bytes(b"FAKE-UNSIGNED-EXE" * 400)
+    native_records = native_fixture_exe(exe)
     digest = hashlib.sha256(exe.read_bytes()).hexdigest()
     dump(windows, "build-manifest.json", {
         "source_git_commit": commit, "source_has_local_changes": False,
@@ -27,12 +53,16 @@ def fixture(tmp_path):
         "installed_builder_package_versions": PINS,
     })
     dump(windows, "bundle-audit.json", {
-        "sha256": digest, "included_virtual_keyboard_files": []
+        "sha256": digest, "included_virtual_keyboard_files": [],
+        "all_entries": [{"name": r["name"]} for r in native_records],
     })
     dump(windows, "native-source-mapping.json", {
         "exe_sha256": digest, "native_file_count": 120,
         "unmapped_native_files": [], "missing_required_source_entries": [],
-        "component_counts": {"QtBase": 15},
+        "component_counts": {"Python runtime": 120},
+        "native_component_mapping": [
+            {"path": r["name"], "component": "Python runtime"} for r in native_records
+        ],
         "open_manual_review_components": [{"component": "Python runtime", "review": "Manual"}],
     })
     dump(windows, "native-binary-origin.json", {
@@ -40,7 +70,7 @@ def fixture(tmp_path):
         "exe_sha256": digest, "native_file_count": 120,
         "matched_count": 0, "unmatched_wheel_entries": [],
         "installed_wheel_record_mismatches": [],
-        "redistribution_rights_verified": False, "entries": [],
+        "redistribution_rights_verified": False, "entries": native_records,
     })
     with zipfile.ZipFile(windows / "license-evidence.zip", "w") as z:
         pillow_codec_sections = (
@@ -107,7 +137,10 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     "alter_windows", "alter_archive", "wrong_version", "bad_license_proof",
     "no_notice", "wrong_source_revision", "unmapped_native", "bad_download",
     "native_origin_wrong_sha", "native_origin_unmatched_wheel",
-    "missing_pillow_notices",
+    "native_origin_empty_entries", "native_origin_forged_member_hash",
+    "native_origin_repeated_member", "native_origin_forged_match_count",
+    "native_source_mapping_missing_member", "bundle_inventory_member_missing",
+    "native_origin_false_wheel_match", "missing_pillow_notices",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -140,8 +173,32 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         j = json.loads(p.read_text())
         if change == "native_origin_wrong_sha":
             j["exe_sha256"] = "f" * 64
-        else:
+        elif change == "native_origin_unmatched_wheel":
             j["unmatched_wheel_entries"] = ["PySide6/Qt6Core.dll"]
+        elif change == "native_origin_empty_entries":
+            j["entries"] = []
+        elif change == "native_origin_forged_member_hash":
+            j["entries"][0]["sha256"] = "f" * 64
+        elif change == "native_origin_repeated_member":
+            j["entries"][1]["name"] = j["entries"][0]["name"]
+        elif change == "native_origin_forged_match_count":
+            j["matched_count"] = 20
+        else:
+            j["entries"][0]["status"] = "byte-identical"
+            j["entries"][0]["matched_installed_origins"] = [
+                {"sha256": "f" * 64, "wheel_record_matches_installed_file": True}
+            ]
+            j["matched_count"] = 1
+        p.write_text(json.dumps(j))
+    elif change == "native_source_mapping_missing_member":
+        p = win / "native-source-mapping.json"
+        j = json.loads(p.read_text())
+        j["native_component_mapping"].pop()
+        p.write_text(json.dumps(j))
+    elif change == "bundle_inventory_member_missing":
+        p = win / "bundle-audit.json"
+        j = json.loads(p.read_text())
+        j["all_entries"].pop()
         p.write_text(json.dumps(j))
     elif change == "unmapped_native":
         p=win / "native-source-mapping.json"
