@@ -54,6 +54,31 @@ a.binaries = [entry for entry in a.binaries if not (drop_virtual_keyboard(entry[
 a.datas = [entry for entry in a.datas if not (drop_virtual_keyboard(entry[0]) or drop_unused_qt(entry[0]))]
 print("Unused Qt PDF/QML/Quick and Virtual Keyboard items filtered:", removed)
 
+# EXPERIMENT ONLY: Qt's optional OpenSSL TLS plugin causes PyInstaller
+# to collect libssl-3-x64.dll and libcrypto-3-x64.dll from an unrelated
+# installed MySQL Server on the Windows runner (confirmed exact source).
+# PDF Compressor is local/offline and imports no QtNetwork itself.
+# Python's own libssl-3.dll/libcrypto-3.dll and _ssl.pyd are NOT removed.
+def remove_optional_qt_tls_openssl(destination):
+    dest = destination.replace(chr(92), "/").lower()
+    name = dest.rsplit("/", 1)[-1]
+    return (name in ("libssl-3-x64.dll", "libcrypto-3-x64.dll") or
+            dest.endswith("/plugins/tls/qopensslbackend.dll"))
+
+
+openssl_removed = [entry[0] for entry in a.binaries + a.datas
+                   if remove_optional_qt_tls_openssl(entry[0])]
+if len(openssl_removed) != 3:
+    raise RuntimeError(
+        f"Expected exactly 3 optional MySQL OpenSSL/Qt TLS members; "
+        f"found {len(openssl_removed)}; refuse to ship unreviewed supplier DLLs."
+    )
+a.binaries = [entry for entry in a.binaries
+              if not remove_optional_qt_tls_openssl(entry[0])]
+a.datas = [entry for entry in a.datas
+           if not remove_optional_qt_tls_openssl(entry[0])]
+print("EXPERIMENT: accidental MySQL OpenSSL and optional Qt TLS removed:", openssl_removed)
+
 # Record EXACT original Windows collection paths and SHA-256 for native members.
 # Report contains ONLY sanitized source scopes / package-relative paths.
 # The downstream independent cross-audit compares each recorded source hash
