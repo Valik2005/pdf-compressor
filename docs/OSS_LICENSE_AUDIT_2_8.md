@@ -13,7 +13,31 @@ This SHA refers **only** to the reviewed, unsigned build. **Re-run every check a
 
 This report is a technical bill-of-materials and obligations review, **not a legal opinion or redistribution compliance certificate**.
 
-## Verified facts, not assumptions
+## Updated release-candidate contents after PR #42 (no MySQL OpenSSL)
+
+The older inventory below is a **historical 118-member baseline**. It is not the
+binary planned for the final unsigned v2.8 release.
+
+On [PR #42](https://github.com/Valik2005/pdf-compressor/pull/42), the
+GitHub runner's accidental `MySQL/MySQL Server 8.4/bin/libssl-3-x64.dll`
+and `libcrypto-3-x64.dll` were traced by SHA-256 and **excluded**, along
+with unused `PySide6/plugins/tls/qopensslbackend.dll`. The application
+is offline; the Python-provided `libssl-3.dll`, `libcrypto-3.dll` and
+`_ssl.pyd` remain, as do Qt's other TLS backends.
+
+Two independently built Windows Server 2022/2025 experimental EXEs each
+had **115 native DLL/PYD entries**, zero MySQL-sourced OpenSSL DLLs,
+**205/205 regression tests passing**, 115/115 per-member provenance
+verification and a successful GUI startup:
+[Actions #43650917328](https://github.com/Valik2005/pdf-compressor/actions/runs/43650917328).
+
+The current isolated release branch must also pass complete **six-job**
+same-commit source/archive/native cross-audit and three-file staging after
+PR #42 and its fail-closed verification change are merged. These technical
+results do not establish Microsoft MSVC/UCRT redistribution eligibility,
+MuPDF AGPL or Qt LGPL legal compliance, or grant permission to publish.
+
+## Historical pre-PR42 facts (preserved for audit traceability)
 
 - Actual onefile inventory: **118 native DLL/PYD entries**. Group counts: QtBase 18, QtSvg 3, QtImageFormats 5, PySide6/Shiboken 7, PyMuPDF 1, MuPDF 2, Pillow codecs 6, OpenSSL 4, Mesa software renderer 1, libffi 1, Python 17, and Microsoft runtime **53**.
 - Of those 53 Microsoft entries, **42** are `api-ms-win-*.dll` API sets, **10** are MSVCP/VCRUNTIME copies inside root/PySide6/shiboken6, and **1** is `ucrtbase.dll`. API-set attribution **does not establish redistributability** for the 11 other files.
@@ -76,7 +100,7 @@ SignPath's approval would authorize *its own signing workflow*, not certify thir
 
 ## Unresolved and retained as UNSIGNED release gates
 
-1. **Legal/compliance review:** Independently verify the exact shipped native binaries and redistribution obligations for Microsoft UCRT/MSVC (11 non-API-set entries), the remaining two `-x64` OpenSSL DLLs, Qt/Mesa/LLVM and libffi. Review AGPL/MuPDF corresponding-source and output-producer requirements and the practical LGPL Qt relinking rights in the onefile distribution. The exact Pillow 12.3.0 wheel codec/font notices are now included and checked by CI; do not incorrectly list them as still missing. Build/hash checks do not replace this review.
+1. **Legal/compliance review:** Independently verify the exact shipped native binaries and redistribution obligations for Microsoft UCRT/MSVC (11 non-API-set entries), the **two retained Python-distributed OpenSSL DLLs**, Qt/Mesa/LLVM and libffi. The two accidental MySQL `-x64` OpenSSL DLLs have been excluded since PR #42. Review AGPL/MuPDF corresponding-source and output-producer requirements and the practical LGPL Qt relinking rights in the onefile distribution. The exact Pillow 12.3.0 wheel codec/font notices are now included and checked by CI; do not incorrectly list them as still missing. Build/hash checks do not replace this review.
 2. **PDF metadata:** Newly **merged/extracted** PDFs now identify `MuPDF (via PyMuPDF); PDF Compressor 2.8` as Producer (release PR #32); **compression and rotation preserve the original metadata**, including potentially signed PDF content. Confirm with Artifex whether any further producer/copyright notice steps are legally required; do not rewrite user documents just to force a notice.
 3. **Current exact revision:** After the native DLL-byte gate and any other reviewed changes reach the isolated release candidate, rerun Windows 3.13/3.14 tests, real onefile launch, six-source verification and three-file staging on **that same head SHA**. Keep 2.8.1 Testing separate from the public candidate.
 4. **Owner-authorized unsigned publication only:** An explicit owner decision is required **before merging the draft candidate PR #17 to `main`**, and a second separate decision is required before the manual unsigned publish workflow. Verify the resulting **main-SHA** EXE's `NotSigned` status, exact source and release ZIP hashes; publish exactly three SHA-256-checked assets, no signing claim. A checksum detects changes but does not authenticate the publisher. Merge future README links (PR #29) **only after** real v2.8 release assets exist.
