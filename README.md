@@ -1,25 +1,25 @@
 <div align="center">
 
-# 📄 PDF Compressor 2.7.1
+# 📄 PDF Compressor 2.8
 
 **Offline PDF compression and page tools — everything stays on your computer.**
 
 English and Russian UI · Windows 10/11 · Free and open source
 
 <p>
-  <img alt="Release 2.7.1" src="https://img.shields.io/badge/Release-2.7.1-2563eb?style=flat-square" />
+  <img alt="Release 2.8" src="https://img.shields.io/badge/Release-2.8-2563eb?style=flat-square" />
   <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
   <img alt="Offline" src="https://img.shields.io/badge/Processing-Offline-238636?style=flat-square" />
   <img alt="AGPL-3.0" src="https://img.shields.io/badge/License-AGPL--3.0-8250df?style=flat-square" />
 </p>
 
-<a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe">
-  <img alt="⬇ Download PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.7%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+<a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
+  <img alt="⬇ Download PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **One EXE · No Python installation · ≈70 MB**
 
-[Direct EXE download](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe) · [Release page](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/SHA256SUMS.txt)
+[Direct EXE download](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Release page](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
 [Русская версия README](README_RU.md)
 
@@ -29,12 +29,13 @@ English and Russian UI · Windows 10/11 · Free and open source
 
 > 🔒 **Privacy:** all PDF files are processed locally. Documents are never uploaded to a cloud service.
 
-**Code signing policy:** [SignPath Foundation application status and project signing rules](docs/CODE_SIGNING_POLICY.md). **Planned, pending approval:** Free code signing provided by SignPath.io, certificate by SignPath Foundation. **Current releases, including v2.7.1, are unsigned.**
+**Code signing policy:** [SignPath Foundation signing rules](docs/CODE_SIGNING_POLICY.md). **Official v2.8 EXE is signed by SignPath Foundation:** verify Windows Digital Signatures and the release SHA-256. A signature does not guarantee zero SmartScreen warnings.
 
 ## ✨ Features
 
 - Compress one or multiple PDFs with four modes: target size (**SmartFit**), highest quality, balanced and maximum compression.
 - **SmartFit (new in 2.7):** classify text, scanned and mixed documents to select conservative compression attempts.
+- **New in 2.8:** optional PDF quality review, JPEG image-detail warnings, local HTML/JSON reports without full directory paths, and clearer target-size results.
 - **2.7.1 update:** skip ineffective JPEG search on tiny/masked images; large output files can be cancelled during copying without retaining incomplete PDFs.
 - Try lossless optimization before recompressing embedded images; optionally reduce image resolution only when enabled by the user.
 - Preserve selectable/vector PDF text where possible; improve handling of images shared between pages.
@@ -48,16 +49,16 @@ English and Russian UI · Windows 10/11 · Free and open source
 
 ## ⬇️ Download the Windows EXE (no Python required)
 
-Use the green **DOWNLOAD** button at the top of this page. It links **directly** to the official `PDF_Compressor_2_7_1.exe` release asset.
+Use the green **DOWNLOAD** button at the top of this page. It links **directly** to the official `PDF_Compressor_2_8.exe` release asset.
 
 | Detail | Value |
 | :-- | :-- |
-| **Version** | 2.7.1 (stable) |
+| **Version** | 2.8 (stable; digitally signed) |
 | **System** | Windows 10/11, 64-bit |
 | **Package** | Single EXE, no installer or Python |
 | **File size** | ≈70 MB |
 
-[**Direct EXE download**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/PDF_Compressor_2_7_1.exe) · [All release assets and licenses](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) · [Verify SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.7.1/SHA256SUMS.txt)
+[**Direct EXE download**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [All release assets and licenses](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Verify SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
 > The EXE is unsigned, so Windows SmartScreen may show a warning. You can verify the hash against `SHA256SUMS.txt` before running it.
 
@@ -79,14 +80,14 @@ For subsequent launches without a console, open `app.pyw` with Python installed.
 
 ## 🛠️ Build a standalone Windows EXE
 
-The official v2.7.1 executable is produced and verified by [the Windows release workflow](.github/workflows/release-v2_7_1.yml). For a local review build on Windows, install the pinned packages and run:
+Official v2.8 is built and signed using the [manual SignPath workflow](.github/workflows/sign-v2_8.yml), then published through the [separately authorized release workflow](.github/workflows/publish-v2_8-signed.yml). For an unsigned local review build on Windows:
 
 ```bat
 python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
-python -m PyInstaller --noconfirm --clean release_windows_review.spec
+python -m PyInstaller --noconfirm --clean release_windows_2_8.spec
 ```
 
-Local output: `dist\PDF_Compressor_2_7_license_review.exe`. The official release workflow renames the verified build to `PDF_Compressor_2_7_1.exe` and attaches its checksums and source archives to the release. Building a Windows EXE requires Windows. See [BUILDING.md](BUILDING.md) and the [Qt relinking guide](docs/LGPL_RELINKING_2_7.md).
+Local output: `dist\PDF_Compressor_2_8.exe` (unsigned). The release signs the verified EXE through SignPath and includes matching source/license assets and SHA-256. See [BUILDING.md](BUILDING.md) and [Qt relinking](docs/LGPL_RELINKING_2_8.md).
 
 ## ✅ Run tests
 
@@ -106,15 +107,16 @@ app_icon.ico                  Windows application icon
 requirements.txt              Runtime dependencies
 tests/                        Engine, SmartFit, packaging and localization tests
 tools/                        Release audits, manifests and Qt relinking tools
-release_windows_review.spec   PyInstaller one-file build specification
+release_windows_2_8.spec    PyInstaller one-file build specification
 BUILDING.md                   Windows build and audit instructions
 README_RU.md                  Русская инструкция
-.github/workflows/release-v2_7_1.yml   Version 2.7 release workflow
+.github/workflows/sign-v2_8.yml   Manual signing for v2.8
+.github/workflows/publish-v2_8-signed.yml   Verified publication
 ```
 
 ## 📜 Licensing note
 
-The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.7.1 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.7.1) groups the applicable upstream sources, license notices, build reports and Qt onefile relinking instructions into **`Third_Party_Sources_and_Licenses.zip`**. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_7.md).
+The application is distributed under **GNU AGPL-3.0-only**. PyMuPDF/MuPDF are AGPL or commercially licensed, and Qt/PySide6 include LGPL/GPL/commercial licensing options. The [v2.8 release](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) groups the applicable upstream sources, license notices, build reports and Qt onefile relinking instructions into **`Third_Party_Sources_and_Licenses.zip`**. See [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) and [third-party notices](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
 
 ## ℹ️ Disclaimer
 
