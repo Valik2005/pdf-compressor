@@ -261,6 +261,20 @@ class CompressionResult:
         return 100 * (1 - self.result_bytes / max(1, self.original_bytes))
 
 
+def _mark_new_pdf_producer(doc: pymupdf.Document) -> None:
+    """Credit MuPDF in PDFs CREATED by the merge/extract tool.
+
+    Do not overwrite source-file metadata during compression or rotation.
+    Those operations should preserve any existing producer/creator notice.
+    """
+    if doc.metadata.get("producer"):
+        return
+    doc.set_metadata({
+        "creator": "PDF Compressor 2.8",
+        "producer": "MuPDF (via PyMuPDF); PDF Compressor 2.8",
+    })
+
+
 def _save_pdf(doc: pymupdf.Document, target: Path) -> int:
     doc.save(str(target), garbage=4, deflate=True,
              deflate_images=True, deflate_fonts=True, use_objstms=1)
@@ -685,6 +699,7 @@ def merge_pdfs(inputs: Iterable[str | Path], out_folder: str | Path, name: str =
                         result.insert_pdf(part, links=True, annots=True)
                     emit(progress, "Объединение файлов", i + 1, len(sources))
                 check_cancel(cancel)
+                _mark_new_pdf_producer(result)
                 _save_pdf(result, tmp)
             check_cancel(cancel)
             _copy_with_cancel(tmp, output, cancel)
@@ -716,6 +731,7 @@ def split_pdf(source: str | Path, out_folder: str | Path, pages: str = "все",
                         for pno in segment:
                             check_cancel(cancel)
                             part.insert_pdf(doc, from_page=pno, to_page=pno, links=False, annots=True)
+                        _mark_new_pdf_producer(part)
                         _save_pdf(part, dest)
                     check_cancel(cancel)
                 except Exception:
