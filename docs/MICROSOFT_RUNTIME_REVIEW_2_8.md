@@ -23,6 +23,25 @@ The project-wide native inventory currently groups **53** Windows runtime entrie
 
 A matching runtime file is evidence of **binary origin**, not proof that the project owner satisfies Microsoft's distribution license. This rights check remains separate from the technical audit.
 
+## Exact ten MSVC runtime copies from reviewed candidate `b66ab014`
+
+The following SHA-256 values were read from `native-collection-sources.json` inside the GitHub artifact's `Third_Party_Sources_and_Licenses.zip` produced by [six-job run #43651626694](https://github.com/Valik2005/pdf-compressor/actions/runs/43651626694). Every source byte hash was also checked against the embedded EXE member. **All filenames are non-Debug VCRUNTIME/MSVCP-family DLLs; their origin is Python/Qt distribution files, not a verified official Microsoft VC/Redist path.**
+
+| Embedded filename | Actual collected file origin | SHA-256 |
+| --- | --- | --- |
+| `VCRUNTIME140.dll` | CPython installation | `d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7` |
+| `VCRUNTIME140_1.dll` | CPython installation | `a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e` |
+| `PySide6/VCRUNTIME140.dll` | PySide6 Essentials 6.12.0 wheel | `a36e0cb185eb89533ed96d4568138f86a1315756a8b2644c5963a8ce23e32101` |
+| `PySide6/VCRUNTIME140_1.dll` | PySide6 Essentials 6.12.0 wheel | `302b1e160e858602490a55e32ae2e29ddfc0bec2a188e19550cb655cdaa58f9c` |
+| `PySide6/MSVCP140.dll` | PySide6 Essentials 6.12.0 wheel | `f6f1d55bfd64027820ddce48f9cd8cf46d53bfa34047e6acf4ef348d492a05cb` |
+| `PySide6/MSVCP140_1.dll` | PySide6 Essentials 6.12.0 wheel | `2be87527c41e1ba8aff48e326e0adcd4743516e0bbcc9304986c726e27de6aca` |
+| `PySide6/MSVCP140_2.dll` | PySide6 Essentials 6.12.0 wheel | `6a72ed8a87eae1671640bd1ca98eccb989f1772ae46ab84594e385bf6d4ac4fb` |
+| `shiboken6/VCRUNTIME140.dll` | Shiboken6 6.12.0 wheel | `e7be9112ee9a5b9f44b44bff24cb761cca9b1ed7550b612f77b70edfcf5fdabf` |
+| `shiboken6/VCRUNTIME140_1.dll` | Shiboken6 6.12.0 wheel | `f02cd4a862b85a9a3153d27e15e5a213f5df8e3d77004ed2e87b8a7e8873d97c` |
+| `shiboken6/MSVCP140.dll` | Shiboken6 6.12.0 wheel | `1ba4d7c0a95d375da138a057a57593b33510ad5bda6c5e2686afd68faa5b4231` |
+
+The [official VS 2022 REDIST list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) permits licensed Community 2022 users to distribute eligible unmodified files from the Visual Studio VC redist tree; **filename family alone and a matching Qt/Python wheel RECORD do not establish that these particular copies are authorized Microsoft REDIST material**. A legal owner assertion cannot be fabricated from a CI pass.
+
 ## Authoritative Microsoft licensing information
 
 - [Redistribute Visual C++ Files — Microsoft Learn](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files): distributing runtime packages or individual DLLs is restricted to appropriately **licensed Visual Studio users**, subject to Microsoft Software License Terms and the corresponding **REDIST list**. App-local DLL distribution is technically supported, though Microsoft recommends central deployment so it can service the runtime independently.
