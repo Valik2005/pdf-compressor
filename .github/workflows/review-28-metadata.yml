@@ -9,7 +9,6 @@ on:
       - release_windows_2_8.spec
       - tools/windows_version_info_2_8.txt
       - .github/workflows/review-28-metadata.yml
-      - .github/workflows/sign-v2_8.yml
   pull_request:
     branches: [develop/2.8-quality-audit]
     paths:
