@@ -1,0 +1,104 @@
+name: EXPERIMENT ONLY - Windows 10+ built-in UCRT for unsigned v2.8
+
+# This is not the accepted release and can never publish/tag anything.
+# Windows hosted runners are not clean consumer installations.
+on:
+  push:
+    branches:
+      - experiment/2.8-windows-system-ucrt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  system-ucrt-experiment:
+    if: github.ref == 'refs/heads/experiment/2.8-windows-system-ucrt'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install exact release dependencies and tests
+        shell: pwsh
+        run: |
+          python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3" "pytest>=8,<11"
+
+      - name: Regression tests on pinned installed dependencies
+        run: python -m pytest -q
+
+      - name: Build isolated unsigned experiment without app-local UCRT
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+
+      - name: Audit 75 remaining native DLL/PYD from actual EXE
+        shell: pwsh
+        run: |
+          python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
+          @'
+          import json
+          from pathlib import Path
+          from tools.audit_native_binary_origin_28 import embedded_native_members
+          exe = Path("dist/PDF_Compressor_2_8.exe")
+          names = [n for n, _ in embedded_native_members(exe)]
+          excluded = [n for n in names
+              if n.replace(chr(92), "/").rsplit("/", 1)[-1].lower() == "ucrtbase.dll"
+              or n.replace(chr(92), "/").rsplit("/", 1)[-1].lower().startswith("api-ms-win-")]
+          assert not excluded, excluded
+          assert len(names) == 75, f"Expected 118-43 native members, got {len(names)}"
+          collection = json.loads(Path("dist/native-collection-sources.json").read_text(encoding="utf-8"))
+          assert collection["native_file_count"] == 75
+          assert {r["path"] for r in collection["entries"]} == set(names)
+          origin = json.loads(Path("dist/native-binary-origin.json").read_text(encoding="utf-8"))
+          assert origin["unmatched_wheel_entries"] == []
+          assert origin["installed_wheel_record_mismatches"] == []
+          assert origin["native_file_count"] == 75
+          print("Experiment: 75/75 native members verified, 43 UCRT copies omitted")
+          '@ | python -
+
+      - name: Check real EXE version and unsigned Authenticode
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $v = (Get-Item $exe).VersionInfo
+          if ($v.ProductName -ne "PDF Compressor by Valik2005" -or $v.FileVersion -ne "2.8.0.0") {
+            throw "Unexpected EXE VERSIONINFO"
+          }
+          if ((Get-AuthenticodeSignature -FilePath $exe).Status.ToString() -ne "NotSigned") {
+            throw "Experiment unexpectedly has signed/invalid signature status"
+          }
+
+      - name: Smoke-test unpacked EXE GUI with system UCRT
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Experimental EXE exited early ($($p.ExitCode))" }
+            Write-Host "Experimental EXE GUI remained active on $env:RUNNER_OS"
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+
+      - name: Upload audit JSON only, never distribute unreviewed EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-system-ucrt-provenance-${{ matrix.os }}-NOT-A-RELEASE
+          path: |
+            dist/native-binary-origin.json
+            dist/native-collection-sources.json
+          retention-days: 7
+          if-no-files-found: error
