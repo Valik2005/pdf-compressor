@@ -1,5 +1,7 @@
 # PDF Compressor 2.8 — Windows (x64)
 
+**HISTORICAL SIGNED-RELEASE DRAFT — NOT FOR THE CURRENT 2.8 RELEASE.** SignPath Foundation declined the free certificate application. For the current planned unsigned release, use [RELEASE_NOTES_2_8_UNSIGNED.md](RELEASE_NOTES_2_8_UNSIGNED.md). No signed EXE exists.
+
 **Stable release · Free and open source · Offline PDF processing**
 
 ## Download
