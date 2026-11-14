@@ -135,7 +135,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
             f"PDF Compressor {release_version} review notices (NOT a legal-compliance certificate).\n"
             "Full upstream source archives are separate GitHub Actions artifacts and must\n"
             "be included permanently if a distributable executable is published.\n"
-            "Rebuilding with modified Qt: docs/LGPL_RELINKING_2_7.md.\n"
+            f"Rebuilding with modified Qt: docs/LGPL_RELINKING_{release_version.replace('.', '_')}.md.\n"
         ))
     return report
 
