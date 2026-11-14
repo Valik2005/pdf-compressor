@@ -87,5 +87,5 @@ def test_refuse_invalid_archive(corruption, tmp_path):
         exe.write_bytes(raw[:510] + b"\0" * 40 + raw[550:])
     else:
         exe.write_bytes(raw[:-20])
-    with pytest.raises((ValueError, Exception)):
+    with pytest.raises(ValueError):
         list(embedded_native_members(exe))
