@@ -123,6 +123,12 @@ jobs:
             source=json.loads(z.read("reports/source-archive-audit.json"))
             downloads=json.loads(z.read("reports/source-download-report.json"))
             unsigned=json.loads(z.read("reports/unsigned-build-manifest.json"))
+            presign=json.loads(z.read("reports/presign-technical-evidence.json"))
+            assert presign["technical_integrity_checks_passed"] is True
+            assert presign["license_compliance_certified"] is False
+            assert presign["source_archives_verified"]==6
+            assert presign["source_git_commit"]==os.environ["EXPECTED_COMMIT"]
+            assert presign["unsigned_exe_sha256"]==unsigned["exe_sha256"]
             assert data["version"]=="2.8" and data["source_git_commit"]==os.environ["EXPECTED_COMMIT"]
             assert unsigned["source_git_commit"]==data["source_git_commit"]
             assert data["signed_sha256"]==sha and data["authenticode_verified"] is True
