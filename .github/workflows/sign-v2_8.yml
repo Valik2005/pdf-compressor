@@ -71,7 +71,7 @@ jobs:
     needs: [windows-tests, sources-and-notices]
     if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -177,6 +177,7 @@ jobs:
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
           github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
           wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: '1800'
           output-artifact-directory: dist/signpath-signed
 
       - name: Require the authentic signed EXE and trusted timestamp
