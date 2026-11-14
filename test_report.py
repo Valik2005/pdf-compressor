@@ -137,6 +137,7 @@ def _html_data(rows: list[dict], summary: dict) -> bytes:
 
 class TestReportStore:
     """An append-only history, independent of GUI and compression engine."""
+    __test__ = False  # pytest must not collect a helper from test_report.py
 
     def __init__(self, directory: str | Path):
         self.directory = Path(directory)
