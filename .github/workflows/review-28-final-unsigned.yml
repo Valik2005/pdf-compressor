@@ -4,7 +4,7 @@ name: Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)
 # No SignPath credentials, no tags, no GitHub Release, and no public download.
 on:
   push:
-    branches: [release/2.8-ready-for-signpath]
+    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main]
   workflow_dispatch:
 
 permissions:
@@ -161,6 +161,25 @@ jobs:
           assert not bundle["included_virtual_keyboard_files"]
           print("Final candidate SHA-256:",digest)
           '@ | python -
+      - name: Windows Authenticode must explicitly say NotSigned
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $sig = Get-AuthenticodeSignature -FilePath $exe
+          if ($sig.Status.ToString() -ne 'NotSigned') {
+            throw "Unsigned release candidate unexpectedly has a signature/status: $($sig.Status)"
+          }
+          $manifest = Get-Content -LiteralPath dist/build-manifest.json -Raw | ConvertFrom-Json
+          $proof = @{
+            status = 'NotSigned'
+            checked_on_windows = $true
+            exe_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            source_git_commit = "$env:GITHUB_SHA"
+            source_manifest_sha256 = "$($manifest.exe_sha256)"
+          }
+          if ($proof.exe_sha256 -ne $proof.source_manifest_sha256) { throw 'Signature proof SHA does not match manifest' }
+          $proof | ConvertTo-Json | Set-Content -Encoding utf8 dist/unsigned-authenticode-check.json
+
       - name: Launch actual v2.8 GUI offscreen
         shell: pwsh
         run: |
@@ -185,5 +204,52 @@ jobs:
             dist/bundle-audit.json
             dist/native-source-mapping.json
             dist/license-evidence.zip
+            dist/unsigned-authenticode-check.json
           if-no-files-found: error
           retention-days: 7
+
+  stage-unsigned-three-files:
+    needs: [cross-verify-source-and-exe]
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: PDF-Compressor-2-8-unsigned-final-candidate-NOT-FOR-RELEASE
+          path: review/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-8-sources-for-final-presign-integrity-NOT-FOR-RELEASE
+          path: review/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-8-presign-cross-audit-NOT-A-LEGAL-CERTIFICATE
+          path: review/evidence
+      - name: Stage exact three-file unsigned release for REVIEW ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m tools.assemble_unsigned_release_28 \
+            --sources review/sources \
+            --windows review/windows \
+            --evidence review/evidence/presign-technical-evidence.json \
+            --catalog docs/source-archives-2_8.json \
+            --source-sha "$GITHUB_SHA" \
+            --out review/three-assets
+          test "$(find review/three-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          (cd review/three-assets && sha256sum --check SHA256SUMS.txt)
+          test "$(stat -c%s review/three-assets/PDF_Compressor_2_8.exe)" -gt 1000000
+      - name: Upload three verified files (NOT PUBLISHED, LICENSING NOT CLEARED)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-UNSIGNED-three-file-candidate-NOT-PUBLISHED
+          path: review/three-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
