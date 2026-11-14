@@ -1,0 +1,195 @@
+name: Safe one-way sync 2.8 to 2.8.1 Testing
+
+# A main-branch infrastructure workflow. Test-only app code is NOT in main.
+# Only run after trusted development branch push passes Windows 3.13/3.14 CI.
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+    branches: ["develop/2.8-quality-audit"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-sync-pdf-281
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: >-
+      github.repository == 'Valik2005/pdf-compressor' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'develop/2.8-quality-audit' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    outputs:
+      should_sync: ${{ steps.prepare.outputs.should_sync }}
+      original_target: ${{ steps.prepare.outputs.original_target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prepare local merge without modifying the remote
+        id: prepare
+        shell: pwsh
+        env:
+          EXPECTED_SOURCE: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sourceRef = "refs/remotes/origin/develop/2.8-quality-audit"
+          $targetRef = "refs/remotes/origin/testing/2.8.1-automatic-test-report"
+          git fetch --no-tags origin "+refs/heads/develop/2.8-quality-audit:$sourceRef" "+refs/heads/testing/2.8.1-automatic-test-report:$targetRef"
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch required branches" }
+          $source = (git rev-parse $sourceRef).Trim()
+          $target = (git rev-parse $targetRef).Trim()
+
+          if ($source -ne $env:EXPECTED_SOURCE) {
+            "should_sync=false" >> $env:GITHUB_OUTPUT
+            "Source advanced since CI; a later passing CI run will sync it." >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          git merge-base --is-ancestor $source $target
+          if ($LASTEXITCODE -eq 0) {
+            "should_sync=false" >> $env:GITHUB_OUTPUT
+            "Already up-to-date: testing contains source commit." >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          if ($LASTEXITCODE -ne 1) { throw "Could not inspect commit ancestry" }
+          git switch --create testing-sync-candidate $target
+          if ($LASTEXITCODE -ne 0) { throw "Could not create local candidate branch" }
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" merge --no-ff --no-commit $source
+          if ($LASTEXITCODE -ne 0) {
+            $conflicts = (git diff --name-only --diff-filter=U) -join ", "
+            "Merge conflict; testing branch unchanged. Files: $conflicts" >> $env:GITHUB_STEP_SUMMARY
+            git merge --abort
+            throw "Sync requires manual conflict resolution: $conflicts"
+          }
+          if (-not (Test-Path "test_report.py") -or -not (Select-String -Path "app.pyw" -Pattern "from test_report import" -Quiet) -or -not (Test-Path "tests/test_report_gui_281.py")) {
+            git merge --abort
+            throw "Embedded test reporter missing after merge; refusing synchronization"
+          }
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore(testing): sync validated 2.8 changes $($source.Substring(0, 12))"
+          if ($LASTEXITCODE -ne 0) { throw "Could not create local merge commit" }
+          "should_sync=true" >> $env:GITHUB_OUTPUT
+          "original_target=$target" >> $env:GITHUB_OUTPUT
+          "Local merge prepared; Windows tests and EXE audit required before push." >> $env:GITHUB_STEP_SUMMARY
+
+      - uses: actions/setup-python@v5
+        if: steps.prepare.outputs.should_sync == 'true'
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Verify merged candidate on Windows Python 3.13
+        if: steps.prepare.outputs.should_sync == 'true'
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+
+      - uses: actions/setup-python@v5
+        if: steps.prepare.outputs.should_sync == 'true'
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Verify merged candidate on Windows Python 3.14
+        if: steps.prepare.outputs.should_sync == 'true'
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+
+      - name: Build, audit and smoke-test full TESTING EXE
+        if: steps.prepare.outputs.should_sync == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+          if ($LASTEXITCODE -ne 0) { throw "Could not install pinned packaging dependencies" }
+          python -m PyInstaller --noconfirm --clean release_windows_review.spec
+          if ($LASTEXITCODE -ne 0) { throw "Windows TESTING EXE build failed" }
+          $exe = "dist/PDF_Compressor_2_8_1_testing_NOT_FOR_RELEASE.exe"
+          if (-not (Test-Path $exe)) { throw "Missing expected TESTING EXE" }
+          python tools/release_manifest.py --exe $exe --out dist/onefile-manifest.json
+          if ($LASTEXITCODE -ne 0) { throw "Manifest creation failed" }
+          python tools/audit_pyinstaller_bundle.py --exe $exe --reject-virtual-keyboard --out dist/onefile-bundle-audit.json
+          if ($LASTEXITCODE -ne 0) { throw "Bundle inspection failed" }
+          python tools/audit_onefile_native_sources.py --audit dist/onefile-bundle-audit.json --out dist/native-source-mapping.json
+          if ($LASTEXITCODE -ne 0) { throw "Native-source mapping failed" }
+          $manifest = Get-Content dist/onefile-manifest.json -Raw | ConvertFrom-Json
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash.ToLower() -ne $manifest.exe_sha256.ToLower()) {
+            throw "EXE SHA-256 differs from exact-build manifest"
+          }
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $binary = (Resolve-Path $exe).Path
+          $process = Start-Process -FilePath $binary -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $process.Refresh()
+            if ($process.HasExited) { throw "Testing EXE terminated on startup" }
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Bundle exactly the successfully tested git commit
+        if: steps.prepare.outputs.should_sync == 'true'
+        shell: pwsh
+        run: |
+          git bundle create "$env:RUNNER_TEMP/testing-sync-281.bundle" refs/heads/testing-sync-candidate
+          if ($LASTEXITCODE -ne 0) { throw "Could not bundle verified candidate" }
+
+      - uses: actions/upload-artifact@v4
+        if: steps.prepare.outputs.should_sync == 'true'
+        with:
+          name: validated-sync-281-git-bundle
+          path: ${{ runner.temp }}/testing-sync-281.bundle
+          if-no-files-found: error
+          retention-days: 1
+
+  apply:
+    needs: validate
+    if: needs.validate.outputs.should_sync == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: validated-sync-281-git-bundle
+          path: sync-bundle
+
+      - name: Push validated fast-forward to TESTING branch only
+        env:
+          EXPECTED_SOURCE: ${{ github.event.workflow_run.head_sha }}
+          ORIGINAL_TARGET: ${{ needs.validate.outputs.original_target }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/develop/2.8-quality-audit:refs/remotes/origin/develop/2.8-quality-audit" "+refs/heads/testing/2.8.1-automatic-test-report:refs/remotes/origin/testing/2.8.1-automatic-test-report"
+          source_now="$(git rev-parse refs/remotes/origin/develop/2.8-quality-audit)"
+          target_now="$(git rev-parse refs/remotes/origin/testing/2.8.1-automatic-test-report)"
+          if [ "$source_now" != "$EXPECTED_SOURCE" ]; then
+            echo "Source moved during validation; skip stale candidate." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$target_now" != "$ORIGINAL_TARGET" ]; then
+            echo "Testing branch was changed concurrently; refusing overwrite." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          git fetch sync-bundle/testing-sync-281.bundle refs/heads/testing-sync-candidate:refs/remotes/sync/validated
+          candidate="$(git rev-parse refs/remotes/sync/validated)"
+          git merge-base --is-ancestor "$target_now" "$candidate"
+          git merge-base --is-ancestor "$source_now" "$candidate"
+          test "$(git rev-list --parents -n 1 "$candidate" | wc -w)" -eq 3
+          git push origin "$candidate:refs/heads/testing/2.8.1-automatic-test-report"
+          echo "Synced tested 2.8 commit $source_now into internal 2.8.1 Testing: $candidate." >> "$GITHUB_STEP_SUMMARY"
