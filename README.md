@@ -29,7 +29,7 @@ English and Russian UI · Windows 10/11 · Free and open source
 
 > 🔒 **Privacy:** all PDF files are processed locally. Documents are never uploaded to a cloud service.
 
-**Code signing policy:** [SignPath Foundation application status and project signing rules](docs/CODE_SIGNING_POLICY.md). **Planned, pending approval:** Free code signing provided by SignPath.io, certificate by SignPath Foundation. **Current releases, including v2.7.1, are unsigned.**
+**Code signing policy:** [current status](docs/CODE_SIGNING_POLICY.md). **SignPath Foundation declined the free signing application** because the project does not yet have enough independent public recognition. **All published releases, including v2.7.1, are unsigned.** A future application is possible after broader adoption.
 
 ## ✨ Features
 

@@ -2,12 +2,16 @@ name: Validate v2.8 release gates (NO SIGNING)
 
 on:
   push:
-    branches: [chore/2.8-signpath-release-prep, release/2.8-ready-for-signpath]
+    branches: [chore/2.8-signpath-release-prep, release/2.8-ready-for-signpath, release/2.8-unsigned-preparation]
     paths:
       - .github/workflows/sign-v2_8.yml
       - .github/workflows/publish-v2_8-signed.yml
       - .github/workflows/validate-release-28.yml
       - tools/validate_release_workflows_28.py
+      - .github/workflows/publish-v2_8-unsigned.yml
+      - .github/workflows/review-28-final-unsigned.yml
+      - tools/assemble_unsigned_release_28.py
+      - docs/RELEASE_NOTES_2_8_UNSIGNED.md
   workflow_dispatch:
 
 permissions:
@@ -29,4 +33,4 @@ jobs:
       - name: Validate all v2.8 workflows and fail-closed policies
         run: python tools/validate_release_workflows_28.py
       - name: Bytecode-compile 2.8 packager and release helpers
-        run: python -m compileall -q tools/assemble_signed_release_28.py tools/package_release_notices.py tools/rebuild_onefile_with_qt.py
+        run: python -m compileall -q tools/assemble_signed_release_28.py tools/assemble_unsigned_release_28.py tools/package_release_notices.py tools/rebuild_onefile_with_qt.py tools/verify_presign_evidence_28.py
