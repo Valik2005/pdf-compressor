@@ -1,6 +1,6 @@
 # Code signing policy — PDF Compressor
 
-**Status (2026-11-14): application preparation; SignPath Foundation has NOT approved this project, no SignPath certificate or signed EXE is currently available.** Published v2.7.1 and current 2.8 previews are unsigned. This document is a policy, not a claim of existing code signing.
+**Status (2026-11-14): application submitted, awaiting review. SignPath Foundation has NOT approved this project; no SignPath certificate or signed EXE is currently available.** Published v2.7.1 and current 2.8 previews are unsigned. This document is a policy, not a claim of existing code signing.
 
 ## Provider and verification
 
