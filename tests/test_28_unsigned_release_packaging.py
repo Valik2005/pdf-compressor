@@ -61,6 +61,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
         assert "reports/unsigned-authenticode-check.json" in names
         assert "reports/presign-technical-evidence.json" in names
         assert "reports/native-binary-origin.json" in names
+        assert "reports/native-collection-sources.json" in names
         assert "reports/signature-verification.json" not in names
         assert "reports/authenticode-verification.json" not in names
         assert b"NO trusted" in z.read("README.txt")

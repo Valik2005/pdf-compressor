@@ -72,6 +72,23 @@ def fixture(tmp_path):
         "installed_wheel_record_mismatches": [],
         "redistribution_rights_verified": False, "entries": native_records,
     })
+    dump(windows, "native-collection-sources.json", {
+        "schema_version": 1,
+        "source_git_commit": commit,
+        "native_file_count": 120,
+        "source_scope_counts": {"python-installation": 120},
+        "entries": [
+            {
+                "path": r["name"], "source_sha256": r["sha256"],
+                "size_bytes": r["size_bytes"], "source_scope": "python-installation",
+                "source_relative_path": "DLLs/" + r["name"],
+                "distribution": None, "distribution_version": None,
+                "wheel_record_matched": None,
+            }
+            for r in native_records
+        ],
+        "redistribution_rights_verified": False,
+    })
     with zipfile.ZipFile(windows / "license-evidence.zip", "w") as z:
         pillow_codec_sections = (
             "libavif-1.4.2 libjpeg-turbo-3.1.4.1 libpng-1.6.58 "
@@ -131,6 +148,8 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     assert result["source_archives_verified"] == 6
     assert result["third_party_license_records"] >= 65
     assert result["installed_package_evidence_missing_or_incomplete"]
+    assert result["native_build_sources_match_exe"] is True
+    assert result["native_build_source_scope_counts"] == {"python-installation": 120}
 
 
 @pytest.mark.parametrize("change", [
@@ -140,7 +159,10 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     "native_origin_empty_entries", "native_origin_forged_member_hash",
     "native_origin_repeated_member", "native_origin_forged_match_count",
     "native_source_mapping_missing_member", "bundle_inventory_member_missing",
-    "native_origin_false_wheel_match", "missing_pillow_notices",
+    "native_origin_false_wheel_match",
+    "collection_missing", "collection_forged_source", "collection_missing_member",
+    "collection_duplicate_member", "collection_source_path_leak",
+    "collection_wrong_sha", "missing_pillow_notices",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -200,6 +222,23 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         j = json.loads(p.read_text())
         j["all_entries"].pop()
         p.write_text(json.dumps(j))
+    elif change.startswith("collection_"):
+        p = win / "native-collection-sources.json"
+        if change == "collection_missing":
+            p.unlink()
+        else:
+            j = json.loads(p.read_text())
+            if change == "collection_forged_source":
+                j["entries"][0]["source_sha256"] = "f" * 64
+            elif change == "collection_missing_member":
+                j["entries"].pop()
+            elif change == "collection_duplicate_member":
+                j["entries"][1]["path"] = j["entries"][0]["path"]
+            elif change == "collection_source_path_leak":
+                j["entries"][0]["source_relative_path"] = "C:/Users/Secret/lib.dll"
+            elif change == "collection_wrong_sha":
+                j["source_git_commit"] = "f" * 40
+            p.write_text(json.dumps(j))
     elif change == "unmapped_native":
         p=win / "native-source-mapping.json"
         j=json.loads(p.read_text())

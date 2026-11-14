@@ -70,6 +70,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     binary = read_json(windows, "bundle-audit.json")
     native = read_json(windows, "native-source-mapping.json")
     origin = read_json(windows, "native-binary-origin.json")
+    collection = read_json(windows, "native-collection-sources.json")
     signed_independent = sha256(exe)
     if not (manifest.get("source_git_commit") == commit
             and manifest.get("source_has_local_changes") is False
@@ -129,6 +130,44 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         matches_count += bool(matches)
     if origin.get("matched_count") != matches_count:
         raise ValueError("Native byte-origin matched count does not equal inventory")
+
+    # Verify that the actual PyInstaller Analysis SOURCE files match all
+    # native bytes independently extracted from the packaged onefile EXE.
+    collection_rows = collection.get("entries")
+    if (collection.get("schema_version") != 1
+            or collection.get("source_git_commit") != commit
+            or collection.get("redistribution_rights_verified") is not False
+            or collection.get("native_file_count") != count
+            or not isinstance(collection_rows, list)
+            or len(collection_rows) != count):
+        raise ValueError("Incomplete/incorrect native build-stage source inventory")
+    by_path = {}
+    allowed = {"installed-wheel", "python-installation", "windows-system",
+               "windows-sdk", "installed-program", "unclassified-builder-path"}
+    scope_counts = {}
+    for record in collection_rows:
+        name = record.get("path")
+        if (not isinstance(name, str) or name in by_path
+                or name.startswith("/") or ".." in name.split("/")):
+            raise ValueError("Duplicate/unsafe native collection path")
+        scope = record.get("source_scope")
+        rel = record.get("source_relative_path")
+        if (scope not in allowed or not isinstance(rel, str) or not rel
+                or rel.startswith("/") or chr(92) in rel or ":" in rel
+                or ".." in rel.split("/")):
+            raise ValueError("Native source path/scope is unsafe or unrecognized")
+        if scope == "installed-wheel" and (
+                not record.get("distribution") or not record.get("distribution_version")
+                or record.get("wheel_record_matched") is False):
+            raise ValueError("Wheel source identity or RECORD mismatch")
+        scope_counts[scope] = scope_counts.get(scope, 0) + 1
+        by_path[name] = record
+    if scope_counts != collection.get("source_scope_counts") or set(by_path) != set(packed_names):
+        raise ValueError("Collected DLL sources do not match final EXE inventory")
+    for name, sha, size in unpacked:
+        record = by_path[name]
+        if record.get("source_sha256") != sha or record.get("size_bytes") != size:
+            raise ValueError(f"Analyzed source bytes differ from shipped EXE: {name}")
 
     downloads = read_json(sources, "source-download-report.json")
     audited = read_json(sources, "source-archive-audit.json")
@@ -208,6 +247,8 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         "version_pins_match": True,
         "native_file_count": native["native_file_count"],
         "native_byte_identical_origin_count": origin["matched_count"],
+        "native_build_source_scope_counts": scope_counts,
+        "native_build_sources_match_exe": True,
         "pillow_codec_license_notices_checked": list(codec_markers),
         "native_component_counts": native.get("component_counts", {}),
         "technical_integrity_checks_passed": True,
