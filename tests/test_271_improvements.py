@@ -113,7 +113,7 @@ def test_271_gui_version_and_noop_advice_translation():
     # Validate these without requiring a running Qt desktop session.
     from pathlib import Path
     ui = (Path(__file__).parents[1] / "app.pyw").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "2.8-preview"' in ui
+    assert 'APP_VERSION = "2.8.1-testing"' in ui
     assert 'version = QLabel(APP_VERSION)' in ui
     assert 'app.setApplicationName(f"PDF Compressor {APP_VERSION}")' in ui
     assert 'JPEG compression cannot affect these images:' in ui
