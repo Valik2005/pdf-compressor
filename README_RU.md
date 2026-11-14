@@ -14,7 +14,7 @@
 </p>
 
 <a href="https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe">
-  <img alt="⬇ Скачать PDF Compressor 2.7.1 EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
+  <img alt="⬇ Скачать PDF Compressor 2.8 БЕЗ ПОДПИСИ EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
 **Один EXE · Без установки Python · ≈70 МБ**
@@ -117,7 +117,7 @@ README.md                     English README
 
 ## 📜 Лицензии зависимостей
 
-Исходный код приложения распространяется по **GNU AGPL-3.0-only**. PyMuPDF/MuPDF используют AGPL или коммерческое лицензирование, Qt/PySide6 — LGPL/GPL или коммерческие варианты. В [релизе 2.7.1](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) исходники сторонних библиотек, лицензии, отчёты и инструкция по пересборке одного EXE с совместимыми изменёнными Qt-библиотеками находятся внутри **`Third_Party_Sources_and_Licenses.zip`**. Подробнее: [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) и [уведомления](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
+Исходный код приложения распространяется по **GNU AGPL-3.0-only**. PyMuPDF/MuPDF используют AGPL или коммерческое лицензирование, Qt/PySide6 — LGPL/GPL или коммерческие варианты. В [релизе 2.8](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) исходники сторонних библиотек, лицензии, отчёты и инструкция по пересборке одного EXE с совместимыми изменёнными Qt-библиотеками находятся внутри **`Third_Party_Sources_and_Licenses.zip`**. Подробнее: [DEPENDENCIES_AND_LICENSING.md](DEPENDENCIES_AND_LICENSING.md) и [уведомления](docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md).
 
 ## ℹ️ Примечание
 
