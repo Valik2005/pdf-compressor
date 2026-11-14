@@ -36,4 +36,6 @@ This is a maintainer pre-release review document, **not legal advice** or a lice
 5. **Product restrictions:** After approval, configure the **explicit** `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`; enforce `ProductName = PDF Compressor by Valik2005`, `ProductVersion = FileVersion = 2.8.0.0`, and the exclusive official `PDF_Compressor_2_8.exe` filename in SignPath.
 6. **Final approval:** Re-run Windows acceptance + source notices + cross-commit provenance on the final source revision; inspect the actual signed EXE and SHA-256 after SignPath. Get maintainer's separate authorization before a public tag/release.
 
+**Update 14 November 2026:** SignPath Foundation declined the free OSS signing application on public-recognition grounds. The current planned 2.8 release is **unsigned**. A SignPath eligibility determination is no longer a prerequisite for publishing unsigned software, but all independent third-party redistribution/license obligations remain mandatory.
+
 **No paid certificate, legal certification or publisher identity is inferred from successful CI tests.** If any applicable license requirement remains unresolved, hold the public release and request competent OSS licensing review; do not waive it to meet a date.
