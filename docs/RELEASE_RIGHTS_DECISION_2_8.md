@@ -8,6 +8,15 @@ These two hashes were independently recalculated from the GitHub review-only arc
 
 This is an evidence checklist grounded in official vendor notices and the *actual bundled binary*. It is **not** a legal opinion and must **not** be treated as proof of compliance or owner authorization. The owner confirms distribution rights only after checking every applicable license requirement.
 
+## Maintainer licensing status: individual developer (15 Nov 2026)
+
+- [x] **Development/distribution role:** the maintainer confirmed a **personal independent-developer** release rather than distribution by a company or other organization. No identifying name, billing data or employer details are required for this classification.
+- [x] **Eligible no-cost licensing route:** Microsoft officially allows individuals to use **Visual Studio Community** to create their own free or commercial apps. Its [REDIST 2022 list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) explicitly includes properly licensed Community 2022 users, subject to the specific software license terms, original unmodified file eligibility and excluded Debug/nonredist paths.
+- [ ] **Not yet substantiated:** the developer's actual possession/use of a qualifying license agreement and whether **the exact Microsoft DLL copies included by PyInstaller from the Python/Qt wheels** are eligible for redistribution. An individual may qualify without paying, but eligibility alone is not a legal clearance or an assertion about what licenses have been accepted.
+- [ ] **Independent Qt LGPL/MuPDF AGPL and vendor notices review** remains unchanged. All applicable redistribution obligations must still be satisfied before publication.
+
+The latest source candidate is [PR #17](https://github.com/Valik2005/pdf-compressor/pull/17). Historical hashes recorded below are intentionally labelled to their **older** candidate and must never be used as the final EXE checksum. Publish only after the current head's same-commit acceptance, separate owner authorization and confirmed rights.
+
 ## After PR #42: accidental MySQL OpenSSL removed
 
 The hashes at the top of this file identify the **historical candidate at
@@ -71,7 +80,8 @@ Pillow 12.3.0 installed-wheel codec/font LICENSE (~78 KB) is included, with each
 ## Release decision — do not auto-check
 
 - [ ] All third-party software and native sources are matched to licensed distributors and correct copy-specific license/notice material.
-- [ ] Maintainer/organization's applicable Microsoft redistribution eligibility and actual authorized REDIST/Windows SDK copies documented, or a separately tested alternate packaging plan used.
+- [x] Maintainer confirmed the project is distributed as an **individual developer**, not on behalf of an organization (15 Nov 2026); free Community license route is potentially applicable.
+- [ ] Actual individual license/accepted terms and permitted Microsoft REDIST/Windows SDK **copies in the exact EXE** documented, or a separately tested alternate packaging plan used.
 - [ ] Qt LGPL/GPL and PyMuPDF AGPL corresponding source, notices, relinking and output copyright conditions independently confirmed.
 - [ ] Legal/compliance reviewer name or responsible maintainer, date, scope and references recorded. **The assistant cannot self-attest the owner's rights or manufacture an external legal opinion.**
 - [ ] **Separate** owner authorization to merge PR #17 into `main`. Re-run six-job acceptance on new exact main commit and verify real unsigned EXE + two SHA256SUMS entries.
