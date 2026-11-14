@@ -48,6 +48,9 @@ def check() -> None:
     assert submit[0]["with"]["wait-for-completion"] == "true"
     assert int(submit[0]["with"]["wait-for-completion-timeout-in-seconds"]) >= 1200
     assert "github-artifact-id" in submit[0]["with"]
+    assert submit[0]["with"]["artifact-configuration-slug"] == "${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}"
+    assert "SIGNPATH_ARTIFACT_CONFIG" in str(sign_steps)
+    assert "SIGNPATH_PROJECT" in str(sign_steps)
     signtext = (ROOT / ".github/workflows/sign-v2_8.yml").read_text(encoding="utf-8")
     publishtext = (ROOT / ".github/workflows/publish-v2_8-signed.yml").read_text(encoding="utf-8")
     assert "test_report.py" in signtext and 'APP_VERSION = "2.8"' in signtext
