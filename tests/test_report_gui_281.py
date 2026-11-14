@@ -163,7 +163,8 @@ def test_in_app_report_logs_failed_file_and_cancelled_unstarted(tmp_path, monkey
         assert "secret" not in json.dumps(rows)
         win._test_runs = {1: {
             **win._test_runs[0], "run_id": "manual-cancel",
-            "started_at": None, "status": "queued", "_written": False,
+            "started_at": None, "status": "queued",
+            "quality_status": "pending", "_written": False,
         }}
         win.pending_end_message = "Операция отменена. Успешно завершено: 0."
         # finalize_thread owns Qt state: use its cancellation branch without
