@@ -35,6 +35,13 @@ def fixture(tmp_path):
         "component_counts": {"QtBase": 15},
         "open_manual_review_components": [{"component": "Python runtime", "review": "Manual"}],
     })
+    dump(windows, "native-binary-origin.json", {
+        "schema_version": 1, "source_git_commit": commit,
+        "exe_sha256": digest, "native_file_count": 120,
+        "matched_count": 0, "unmatched_wheel_entries": [],
+        "installed_wheel_record_mismatches": [],
+        "redistribution_rights_verified": False, "entries": [],
+    })
     with zipfile.ZipFile(windows / "license-evidence.zip", "w") as z:
         z.writestr("evidence-report.json", json.dumps({
             "exe_name": exe.name, "exe_sha256": digest,
@@ -89,6 +96,7 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
 @pytest.mark.parametrize("change", [
     "alter_windows", "alter_archive", "wrong_version", "bad_license_proof",
     "no_notice", "wrong_source_revision", "unmapped_native", "bad_download",
+    "native_origin_wrong_sha", "native_origin_unmatched_wheel",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -109,6 +117,14 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         (source / "THIRD_PARTY_NOTICES_2_8.zip").unlink()
     elif change == "wrong_source_revision":
         commit="b"*40
+    elif change.startswith("native_origin_"):
+        p = win / "native-binary-origin.json"
+        j = json.loads(p.read_text())
+        if change == "native_origin_wrong_sha":
+            j["exe_sha256"] = "f" * 64
+        else:
+            j["unmatched_wheel_entries"] = ["PySide6/Qt6Core.dll"]
+        p.write_text(json.dumps(j))
     elif change == "unmapped_native":
         p=win / "native-source-mapping.json"
         j=json.loads(p.read_text())
