@@ -61,12 +61,20 @@ def test_gui_quality_review_is_explicit_and_does_not_damage_output(tmp_path, ena
             win.export_quality_btn.click()
             assert html_path.is_file()
             assert "PDF Compressor 2.8" in html_path.read_text(encoding="utf-8")
+            html_export = html_path.read_text(encoding="utf-8")
+            assert "source.pdf" in html_export
+            assert str(tmp_path) not in html_export
             json_path = tmp_path / "manual-quality.json"
             monkeypatch.setattr(ui["QFileDialog"], "getSaveFileName",
                                 lambda *_args: (str(json_path), "JSON (*.json)"))
             win.export_quality_btn.click()
             assert json_path.is_file()
             assert "\"no_issues_detected\"" in json_path.read_text(encoding="utf-8")
+            import json
+            public_report = json.loads(json_path.read_text(encoding="utf-8"))
+            assert public_report["source"] == "source.pdf"
+            assert public_report["result"] == output.name
+            assert str(tmp_path) not in json_path.read_text(encoding="utf-8")
         else:
             assert entry["quality_report"] is None
             assert "Проверка качества" not in entry["result"]

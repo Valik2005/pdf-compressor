@@ -74,12 +74,26 @@ class QualityReport:
         # This is NOT a visual-quality certification: diagnostics are sampled.
         return "no_issues_detected"
 
-    def as_dict(self) -> dict:
-        return {"schema_version": 1, **asdict(self), "status": self.status,
+    def as_dict(self, *, include_paths: bool = False) -> dict:
+        """Public/export representation: omit private directories by default.
+
+        The live QualityReport retains absolute paths for internal file access.
+        Explicit include_paths=True is only for trusted, local debugging.
+        """
+        data = asdict(self)
+        if not include_paths:
+            data["source"] = _report_basename(self.source)
+            data["result"] = _report_basename(self.result)
+        return {"schema_version": 1, **data, "status": self.status,
                 "note": ("Heuristic diagnostic only. Exact selectable text and "
                          "page geometry are checked on each matched page. Visual "
                          "differences are sampled at low resolution; unrendered "
                          "pages, tiny text and fine print require manual review.")}
+
+
+def _report_basename(value: str) -> str:
+    """Drop POSIX and Windows path prefixes even on non-Windows test hosts."""
+    return str(value).replace(chr(92), "/").rstrip("/").rsplit("/", 1)[-1]
 
 
 def _add_issue(report: QualityReport, severity: Severity, code: str,
@@ -358,8 +372,8 @@ footer {{ border-top: 1px solid #d8dfe8; padding-top: 16px;
 <h1>PDF Compressor 2.8 — проверка качества</h1>
 <p class="muted">Предварительный автоматический отчёт, без OCR и подключения к сети.</p>
 <p><strong>Результат: {esc(status_ru[report.status])}</strong></p>
-<p><strong>Исходный PDF:</strong> {esc(report.source)}<br>
-<strong>Результат:</strong> {esc(report.result)}</p>
+<p><strong>Исходный PDF:</strong> {esc(_report_basename(report.source))}<br>
+<strong>Результат:</strong> {esc(_report_basename(report.result))}</p>
 <table><thead><tr><th>Показатель</th><th>До</th><th>После</th></tr></thead>
 <tbody>
 <tr><td>Размер файла</td><td>{report.source_bytes:,} Б</td>
