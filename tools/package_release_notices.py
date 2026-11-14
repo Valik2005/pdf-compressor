@@ -111,6 +111,19 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
         ).encode("utf-8"),
     }
     notices.update(extras)
+    if release_version == "2.8":
+        # These are the exact upstream files at GitHub tag openssl-3.5.9.
+        # The embedded libcrypto version reports 3.5.9, but this alone does
+        # not establish the original binary build's provenance or configuration.
+        for filename, local_name in (
+            ("LICENSE.txt", "OPENSSL_3_5_9_LICENSE.txt"),
+            ("AUTHORS.md", "OPENSSL_3_5_9_AUTHORS.md"),
+        ):
+            p = Path(__file__).resolve().parents[1] / "docs" / "third_party" / local_name
+            if not p.is_file() or p.stat().st_size < 500:
+                raise ValueError(f"Missing exact upstream OpenSSL 3.5.9 notice: {local_name}")
+            notices["components/openssl-3.5.9/" + filename] = p.read_bytes()
+
     ffi_notice = Path(__file__).resolve().parents[1] / "docs" / "third_party_libffi_license.txt"
     if not ffi_notice.is_file() or ffi_notice.stat().st_size < 500:
         raise ValueError("Full libffi MIT-style notice missing")
@@ -122,6 +135,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
         "full_binary_license_compliance_certified": False,
         "outstanding": [
             "Native component-to-source correspondence and transitive notices require final verification.",
+            "OpenSSL 3.5.9 LICENSE and AUTHORS are included from the upstream tag, but actual embedded DLL provenance still needs independent confirmation.",
             "Actual recombination of an ABI-preserving PE-resource modified Qt DLL passed Windows CI #42479642467; source-code-modified Qt compatibility not certified.",
             "Corresponding sources and license texts must be permanently available alongside public EXE; MSVC redistributable license rights must be established.",
         ],
