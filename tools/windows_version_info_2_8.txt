@@ -21,7 +21,7 @@ VSVersionInfo(
           StringStruct('FileVersion', '2.8.0.0'),
           StringStruct('InternalName', 'PDF_Compressor_2_8'),
           StringStruct('OriginalFilename', 'PDF_Compressor_2_8.exe'),
-          StringStruct('ProductName', 'PDF Compressor'),
+          StringStruct('ProductName', 'PDF Compressor by Valik2005'),
           StringStruct('ProductVersion', '2.8.0.0'),
           StringStruct('LegalCopyright', 'Copyright (c) PDF Compressor contributors; AGPL-3.0')
         ])
