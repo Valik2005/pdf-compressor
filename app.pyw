@@ -1659,6 +1659,43 @@ class MainWindow(QMainWindow):
             self.tool_result_card.hide()
         self.busy = True
         self.active_paths = list(paths)
+        self._test_runs = {}
+        if action == "compress" and self.test_report_store is not None:
+            for index, source in enumerate(paths):
+                entry = next((e for e in self.entries if e["path"] == source), None)
+                if entry is None:
+                    continue
+                target_bytes = (int(opts["target"] * 1_000_000)
+                                if opts["mode"] in ("target", "smartfit") else None)
+                self._test_runs[index] = {
+                    "run_id": fresh_id(),
+                    "session_id": self.test_report_store.session_id,
+                    "version": APP_VERSION,
+                    "started_at": None,
+                    "finished_at": None,
+                    "source_name": Path(source).name,
+                    "result_name": None,
+                    "source_pages": entry.get("pages"),
+                    "mode": opts["mode"],
+                    "target_bytes": target_bytes,
+                    "target_met": None,
+                    "over_target_bytes": None,
+                    "source_bytes": entry.get("size"),
+                    "result_bytes": None,
+                    "saved_bytes": None,
+                    "saving_percent": None,
+                    "elapsed_seconds": None,
+                    "quality_elapsed_seconds": None,
+                    "jpeg_quality": None,
+                    "downscaled": None,
+                    "candidate_attempts": None,
+                    "quality_status": ("pending" if opts.get("quality_check")
+                                       else "not_checked"),
+                    "quality_issue_codes": [],
+                    "status": "queued",
+                    "error_type": None,
+                    "_written": False,
+                }
         self.progressbar.setValue(0)
         self.cancel_btn.setEnabled(True)
         for btn in (self.start_btn, self.add_btn, self.remove_btn, self.clear_btn,
@@ -1676,6 +1713,8 @@ class MainWindow(QMainWindow):
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.update_progress)
         self.worker.timing.connect(self.record_timing)
+        self.worker.started.connect(self.record_test_start)
+        self.worker.quality_timing.connect(self.record_quality_timing)
         self.worker.result.connect(self.record_result)
         self.worker.quality.connect(self.record_quality)
         self.worker.finished.connect(self.receive_end_message)
