@@ -1,36 +1,38 @@
 # Code signing policy — PDF Compressor
 
-**Status (2026-11-14): application submitted, awaiting review. SignPath Foundation has NOT approved this project; no SignPath certificate or signed EXE is currently available.** Published v2.7.1 and current 2.8 previews are unsigned. This document is a policy, not a claim of existing code signing.
+## Status
 
-## Provider and verification
+**Application submitted (14 November 2026); awaiting SignPath Foundation review.** The project owner received the form confirmation (“Form submitted”). **No approval, certificate, or trusted signature has been granted.** The publicly available PDF Compressor releases v2.6.0, v2.7.0, and v2.7.1 are **unsigned**.
 
-If the project is accepted: **Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)**. The Authenticode publisher would be SignPath Foundation rather than the individual maintainer. SignPath Foundation decides whether a project is eligible and requires manual approval for each release.
+**Planned provider, subject to approval:** Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
 
-- Repository and complete application source: https://github.com/Valik2005/pdf-compressor
-- Only release-grade **PDF_Compressor_2_8.exe** built in this repository by GitHub-hosted GitHub Actions from reviewed source on **main** may be submitted.
-- **Never sign** `testing/*`, `*.1-testing`, preview binaries, PR artifacts, local builds, or downloaded/unverified executables.
-- The signing workflow is **manual-only**, does not create a public release, and fails if SignPath has not been configured.
-- SignPath confirms origin using GitHub workflow artifact metadata; the result must pass Windows Authenticode validation, have a trusted timestamp, and receive a new **post-signature SHA-256**. The original unsigned SHA-256 will change when a signature is embedded.
-- Distribute only the final signed binary after matching source/license verification and the maintainer's explicit release authorization. Keep the three-asset format: EXE, third-party source/license ZIP, SHA256SUMS.txt.
-- If SignPath approval is declined or unavailable, do not claim a trusted signature. Do not buy a certificate or use a misleading self-signed certificate.
+## Source and project ownership
 
-## Team roles and security
+- Project: [PDF Compressor](https://github.com/Valik2005/pdf-compressor)
+- Maintainer and source repository owner: [Valik2005](https://github.com/Valik2005)
+- Author/committer: Valik2005; repository owner reviews external pull requests before they are merged.
+- Signing approver: Valik2005. Every public signing request requires explicit manual approval. No undisclosed team members are asserted.
+- License: [GNU AGPL-3.0](../LICENSE). Third-party libraries retain their own licensing obligations; see [DEPENDENCIES_AND_LICENSING.md](../DEPENDENCIES_AND_LICENSING.md).
 
-- Project maintainer, committer, reviewer, signing approver: GitHub **[Valik2005](https://github.com/Valik2005)**. Do not add unnamed contributors. Every external contribution must be reviewed by a maintainer before a signed build.
-- The maintainer must enable multi-factor authentication for both GitHub and SignPath, review each release, and approve each SignPath signing request.
-- Signing credentials are maintained by SignPath; API tokens are stored only as GitHub Actions secrets, never committed or printed. A project-specific GitHub App/organization configuration is required before enabling signing.
+## Privacy and security
 
-## Privacy and external services
+The application processes users' PDF content locally on their computers. **It does not send PDF files, file content, or analytics to external services during PDF processing.** Users may explicitly use external links, GitHub downloads, or export reports. GitHub/SignPath would receive project build artifacts, not users' PDF files, only as part of the maintainer's separate code-signing process after approval.
 
-PDF Compressor processes PDF data **locally**, with no document upload or background analytics. The user may explicitly open web pages or export reports; the program does not transmit PDF content during compression. GitHub Actions sends **program binaries and build metadata**, not users' PDF documents, to the SignPath signing service for the maintainer-approved signing process. See https://signpath.org/terms for the signing service's requirements.
+The application does not require a user account or background network data collection. Local application preferences may be stored on the user's computer. This statement applies to the app's own behavior, not third-party websites opened at a user's request.
 
-## Verification for users
+## Signing and release rules (after approval)
 
-On Windows, open the final EXE's **Properties → Digital Signatures** tab or run `signtool verify /pa /tw /v PDF_Compressor_2_8.exe`. Compare the **signed** EXE's hash with `SHA256SUMS.txt` from the same GitHub Release. A valid signature confirms publisher association and integrity but **does not guarantee Microsoft SmartScreen will never warn**.
+1. Build the official Windows EXE from reviewed source using the project's GitHub Actions on a protected release revision.
+2. Verify source revision, test results, native dependencies, required notices and artifact integrity. Check the signature's trusted publisher and timestamp, and calculate SHA-256 **after signing**.
+3. Keep internal testing-only branches (including `testing/2.8.1-automatic-test-report`) and all preview or experimental binaries **unsigned** and outside public releases.
+4. Keep per-release approval in the maintainer's control. Never automatically publish or claim a build is signed before verified signing completes.
+5. Publish the signed release only after license and compliance checks and express maintainer authorization. Preserve the existing public release layout (EXE, third-party source/license archive, SHA256SUMS.txt).
+6. Should the application be declined, continue to state that published files are unsigned; do not substitute a self-signed certificate or a paid certificate.
 
-## Status and links
+Before installing a downloaded release, users can independently validate its published SHA-256. Once a SignPath-signed release actually exists, they can verify its **Digital Signatures** tab and publisher. A verified digital signature does not guarantee zero SmartScreen warnings.
 
-- Internal implementation guide: [FREE_CODE_SIGNING_PLAN.md](FREE_CODE_SIGNING_PLAN.md)
-- Foundation application: https://signpath.org/apply
-- Signing workflow: [../.github/workflows/sign-v2_8.yml](../.github/workflows/sign-v2_8.yml)
-- Approved OSS projects and requirements: https://signpath.org/terms
+## References
+
+- [Public releases](https://github.com/Valik2005/pdf-compressor/releases)
+- [SignPath Foundation eligibility and code signing rules](https://signpath.org/terms)
+- [SignPath Foundation application](https://signpath.org/apply)
