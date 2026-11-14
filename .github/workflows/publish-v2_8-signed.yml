@@ -107,6 +107,7 @@ jobs:
             required={
               "reports/signature-verification.json",
               "reports/authenticode-verification.json",
+              "reports/presign-technical-evidence.json",
               "reports/unsigned-build-manifest.json",
               "reports/unsigned-bundle-audit.json",
               "reports/native-source-mapping.json",
