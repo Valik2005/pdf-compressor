@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PDF Compressor 2.8 — offline PDF quality review (Qt6)."""
+"""PDF Compressor 2.8 Preview — offline PDF quality review (Qt6)."""
 from __future__ import annotations
 
 import json
@@ -32,6 +32,7 @@ APP_VERSION = "2.8"
 # Text is keyed by the original Russian UI copy. No external translation file is
 # required, so updating the installed app still only needs app.pyw.
 I18N_EN = {
+    "Лицензии": "Licenses",
     "⇩  Перетащите сюда PDF-файлы": "⇩  Drop PDF files here",
     "Или нажмите «Добавить файлы» · несколько документов сразу": "Or select Add files · multiple PDFs at once",
     "●  Документы остаются на компьютере": "●  Your documents stay on this computer",
@@ -576,6 +577,11 @@ class MainWindow(QMainWindow):
         version = QLabel(APP_VERSION)
         version.setObjectName("Badge")
         header.addWidget(version)
+        self.license_btn = QPushButton("Лицензии")
+        self.license_btn.setObjectName("Secondary")
+        self.license_btn.setToolTip("GNU AGPL · Qt LGPL · Third-party source and notices")
+        self.license_btn.clicked.connect(self.show_license_notice)
+        header.addWidget(self.license_btn)
         header.addStretch(1)
         privacy = QLabel("●  Документы остаются на компьютере")
         privacy.setObjectName("Muted")
@@ -1165,6 +1171,33 @@ class MainWindow(QMainWindow):
     def set_status(self, text_ru: str):
         self._status_ru = str(text_ru)
         self.status.setText(self.translated(self._status_ru))
+
+    def show_license_notice(self):
+        """Prominent offline OSS notice; full texts are supplied with release assets."""
+        if self.language == "en":
+            message = (
+                "PDF Compressor 2.8 — GNU AGPLv3. NO WARRANTY.\n\n"
+                "Uses PyMuPDF/MuPDF (AGPLv3) and Qt 6.12 / PySide6 / Shiboken "
+                "(LGPLv3/GPLv3 open-source alternatives, depending on component). "
+                "You may study and modify the covered libraries, replace compatible "
+                "Qt libraries, and run your modified builds under their licenses.\n\n"
+                "Complete license texts, corresponding third-party sources and "
+                "Qt replacement instructions: Third_Party_Sources_and_Licenses.zip "
+                "on the official release page.\n"
+                "Application source: https://github.com/Valik2005/pdf-compressor"
+            )
+        else:
+            message = (
+                "PDF Compressor 2.8 — лицензия GNU AGPLv3. БЕЗ ГАРАНТИИ.\n\n"
+                "Использует PyMuPDF/MuPDF (AGPLv3), Qt 6.12 / PySide6 / Shiboken "
+                "(открытые лицензии LGPLv3/GPLv3 в зависимости от компонента). "
+                "Пользователь вправе изучать и изменять эти библиотеки, заменять "
+                "совместимые Qt-библиотеки и запускать изменённые сборки в рамках лицензий.\n\n"
+                "Полные тексты лицензий, исходники и инструкция по замене Qt: "
+                "Third_Party_Sources_and_Licenses.zip на странице официального релиза.\n"
+                "Исходники приложения: https://github.com/Valik2005/pdf-compressor"
+            )
+        QMessageBox.information(self, self.t("Лицензии"), message)
 
     def info(self, title: str, message: str):
         QMessageBox.information(self, self.t(title), self.translated(message))
