@@ -4,7 +4,7 @@ name: Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)
 # No SignPath credentials, no tags, no GitHub Release, and no public download.
 on:
   push:
-    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main]
+    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main, audit/2.8-native-binary-origin]
   workflow_dispatch:
 
 permissions:
