@@ -28,6 +28,8 @@ NOTICES = {
     "components/qtbase-6.12.0-required/LICENSES/Apache-2.0.txt",
     "components/qtbase-6.12.0-required/LICENSES/MIT.txt",
     "components/mupdf-1.27.2-native/COPYING",
+    "components/openssl-3.5.9/LICENSE.txt",
+    "components/openssl-3.5.9/AUTHORS.md",
     "notice-manifest.json",
 }
 
