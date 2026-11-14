@@ -124,16 +124,16 @@ def assemble_signed_28(sources_dir: Path, windows_dir: Path, catalog_path: Path,
     destination.mkdir(parents=True)
     bundle = destination / BUNDLE_NAME
     notes = (
-        "PDF Compressor v2.8 — exact third-party sources and licenses\\n"
-        "================================================================\\n"
-        "This ZIP accompanies the separately signed PDF_Compressor_2_8.exe.\\n"
-        "sources/: six hash-verified upstream archives (dependency versions pinned).\\n"
-        "licenses/: upstream notices, source and relinking information.\\n"
-        "reports/: pre-sign native/manifest provenance and signed Authenticode checks.\\n"
-        "The source/notice audit is evidence, not a legal certification.\\n"
-        "App source for exact commit: https://github.com/Valik2005/pdf-compressor\\n"
+        "PDF Compressor v2.8 — exact third-party sources and licenses\n"
+        "================================================================\n"
+        "This ZIP accompanies the separately signed PDF_Compressor_2_8.exe.\n"
+        "sources/: six hash-verified upstream archives (dependency versions pinned).\n"
+        "licenses/: upstream notices, source and relinking information.\n"
+        "reports/: pre-sign native/manifest provenance and signed Authenticode checks.\n"
+        "The source/notice audit is evidence, not a legal certification.\n"
+        "App source for exact commit: https://github.com/Valik2005/pdf-compressor\n"
     )
-    sums = "".join(f"{row['expected_sha256']}  {row['filename']}\\n"
+    sums = "".join(f"{row['expected_sha256']}  {row['filename']}\n"
                    for row in required)
     with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_STORED,
                          allowZip64=True) as out:
@@ -151,7 +151,7 @@ def assemble_signed_28(sources_dir: Path, windows_dir: Path, catalog_path: Path,
     if digest(final_exe) != signed_sha:
         raise ValueError("Signed EXE changed while staging release")
     (destination / "SHA256SUMS.txt").write_text(
-        f"{signed_sha}  {EXE_NAME}\\n{digest(bundle)}  {BUNDLE_NAME}\\n",
+        f"{signed_sha}  {EXE_NAME}\n{digest(bundle)}  {BUNDLE_NAME}\n",
         encoding="utf-8",
     )
     result = {"release": "v2.8", "source_git_commit": source_sha,
