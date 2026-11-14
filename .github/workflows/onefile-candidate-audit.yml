@@ -1,7 +1,21 @@
 name: Windows onefile release candidate audit
 
 # Candidate-only. Never publishes a GitHub Release or distributes an EXE.
+# Every direct change on the internal testing branch creates a downloadable
+# private-review EXE artifact, independently of public release workflows.
 on:
+  push:
+    branches:
+      - testing/2.8.1-automatic-test-report
+    paths:
+      - ".github/workflows/onefile-candidate-audit.yml"
+      - "app.pyw"
+      - "pdf_engine.py"
+      - "pdf_quality.py"
+      - "test_report.py"
+      - "release_windows_review.spec"
+      - "tests/**"
+      - "requirements*.txt"
   pull_request:
     branches:
       - main
