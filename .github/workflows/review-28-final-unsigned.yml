@@ -1,0 +1,257 @@
+name: Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)
+
+# Pre-sign technical acceptance of the exact public application version.
+# No SignPath credentials, no tags, no GitHub Release, and no public download.
+on:
+  push:
+    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pre-sign-acceptance-28-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  source-license-preflight:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Verify six exact upstream archives and their SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/fetch_required_sources.py --catalog docs/source-archives-2_8.json --out-dir dist/sources --require-all
+          python tools/verify_source_archives.py --catalog docs/source-archives-2_8.json --source-dir dist/sources --out dist/sources/source-archive-audit.json --require-all-verified
+      - name: Extract matching third-party license texts and relinking docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/package_release_notices.py --release-version 2.8 --catalog docs/source-archives-2_8.json --sources dist/sources --out dist/sources/THIRD_PARTY_NOTICES_2_8.zip
+          cp docs/LGPL_RELINKING_2_8.md dist/sources/
+          cp docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md dist/sources/THIRD_PARTY_NOTICES_2_8.md
+          cp docs/third_party_libffi_license.txt dist/sources/libffi-LICENSE.txt
+      - name: Upload exact review sources from this commit (never a public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-sources-for-final-presign-integrity-NOT-FOR-RELEASE
+          path: dist/sources/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  cross-verify-source-and-exe:
+    needs: [build-final-unsigned, source-license-preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: PDF-Compressor-2-8-unsigned-final-candidate-NOT-FOR-RELEASE
+          path: review/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-8-sources-for-final-presign-integrity-NOT-FOR-RELEASE
+          path: review/sources
+      - name: Fail closed on build/source/license mismatch
+        shell: bash
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python -m tools.verify_presign_evidence_28 \
+            --windows review/windows \
+            --sources review/sources \
+            --catalog docs/source-archives-2_8.json \
+            --source-sha "$EXPECTED_SOURCE_SHA" \
+            --out review/presign-technical-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-presign-cross-audit-NOT-A-LEGAL-CERTIFICATE
+          path: review/presign-technical-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+  build-final-unsigned:
+    needs: tests
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Check exact released application version and absence of test reporter
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          app=Path("app.pyw").read_text(encoding="utf-8")
+          assert 'APP_VERSION = "2.8"' in app
+          assert not Path("test_report.py").exists()
+          assert "from test_report import" not in app
+          '@ | python -
+      - name: Install fixed release builder
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3"
+      - name: Build exact final v2.8 candidate EXE
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+      - name: Audit final unsigned EXE and collect licenses
+        shell: pwsh
+        run: |
+          python tools/release_manifest.py --exe dist/PDF_Compressor_2_8.exe --out dist/build-manifest.json
+          python tools/audit_pyinstaller_bundle.py --exe dist/PDF_Compressor_2_8.exe --reject-virtual-keyboard --out dist/bundle-audit.json
+          python tools/audit_onefile_native_sources.py --audit dist/bundle-audit.json --catalog docs/source-archives-2_8.json --out dist/native-source-mapping.json
+          python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_8.exe --manifest dist/build-manifest.json --out dist/license-evidence.zip
+          python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
+      - name: Confirm VERSIONINFO, clean source, hashes, and native evidence
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $v = (Get-Item $exe).VersionInfo
+          if ($v.ProductName -ne 'PDF Compressor by Valik2005' -or
+              $v.FileVersion -ne '2.8.0.0' -or $v.ProductVersion -ne '2.8.0.0') {
+            throw 'Incorrect final signed-release metadata'
+          }
+          @'
+          import json,os,hashlib
+          from pathlib import Path
+          exe=Path("dist/PDF_Compressor_2_8.exe")
+          manifest=json.loads(Path("dist/build-manifest.json").read_text())
+          bundle=json.loads(Path("dist/bundle-audit.json").read_text())
+          native=json.loads(Path("dist/native-source-mapping.json").read_text())
+          digest=hashlib.sha256(exe.read_bytes()).hexdigest()
+          assert manifest["source_git_commit"]==os.environ["GITHUB_SHA"]
+          assert manifest["source_has_local_changes"] is False
+          assert digest==manifest["exe_sha256"]==bundle["sha256"]==native["exe_sha256"]
+          assert not native["unmapped_native_files"]
+          assert not native["missing_required_source_entries"]
+          assert not bundle["included_virtual_keyboard_files"]
+          print("Final candidate SHA-256:",digest)
+          '@ | python -
+      - name: Windows Authenticode must explicitly say NotSigned
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $sig = Get-AuthenticodeSignature -FilePath $exe
+          if ($sig.Status.ToString() -ne 'NotSigned') {
+            throw "Unsigned release candidate unexpectedly has a signature/status: $($sig.Status)"
+          }
+          $manifest = Get-Content -LiteralPath dist/build-manifest.json -Raw | ConvertFrom-Json
+          $proof = @{
+            status = 'NotSigned'
+            checked_on_windows = $true
+            exe_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            source_git_commit = "$env:GITHUB_SHA"
+            source_manifest_sha256 = "$($manifest.exe_sha256)"
+          }
+          if ($proof.exe_sha256 -ne $proof.source_manifest_sha256) { throw 'Signature proof SHA does not match manifest' }
+          $proof | ConvertTo-Json | Set-Content -Encoding utf8 dist/unsigned-authenticode-check.json
+
+      - name: Launch actual v2.8 GUI offscreen
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            Start-Sleep -Seconds 12
+            $p.Refresh()
+            if ($p.HasExited) { throw "Final EXE terminated early: $($p.ExitCode)" }
+          } finally {
+            $p.Refresh()
+            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          }
+      - name: Upload review-only unsigned candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Compressor-2-8-unsigned-final-candidate-NOT-FOR-RELEASE
+          path: |
+            dist/PDF_Compressor_2_8.exe
+            dist/build-manifest.json
+            dist/bundle-audit.json
+            dist/native-source-mapping.json
+            dist/native-binary-origin.json
+            dist/license-evidence.zip
+            dist/unsigned-authenticode-check.json
+          if-no-files-found: error
+          retention-days: 7
+
+  stage-unsigned-three-files:
+    needs: [cross-verify-source-and-exe]
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: PDF-Compressor-2-8-unsigned-final-candidate-NOT-FOR-RELEASE
+          path: review/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-8-sources-for-final-presign-integrity-NOT-FOR-RELEASE
+          path: review/sources
+      - uses: actions/download-artifact@v4
+        with:
+          name: v2-8-presign-cross-audit-NOT-A-LEGAL-CERTIFICATE
+          path: review/evidence
+      - name: Stage exact three-file unsigned release for REVIEW ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m tools.assemble_unsigned_release_28 \
+            --sources review/sources \
+            --windows review/windows \
+            --evidence review/evidence/presign-technical-evidence.json \
+            --catalog docs/source-archives-2_8.json \
+            --source-sha "$GITHUB_SHA" \
+            --out review/three-assets
+          test "$(find review/three-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          (cd review/three-assets && sha256sum --check SHA256SUMS.txt)
+          test "$(stat -c%s review/three-assets/PDF_Compressor_2_8.exe)" -gt 1000000
+      - name: Upload three verified files (NOT PUBLISHED, LICENSING NOT CLEARED)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-UNSIGNED-three-file-candidate-NOT-PUBLISHED
+          path: review/three-assets/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

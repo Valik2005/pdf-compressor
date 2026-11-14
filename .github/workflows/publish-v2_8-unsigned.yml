@@ -1,0 +1,198 @@
+name: Publish verified UNSIGNED PDF Compressor v2.8 (owner manual only)
+
+# No pushes, pull requests, schedules or automatic releases. This uses a
+# verified three-file artifact from a successful full pre-release CI on main.
+on:
+  workflow_dispatch:
+    inputs:
+      acceptance_run_id:
+        description: 'Successful Final 2.8 unsigned acceptance run ID from EXACT main commit'
+        type: string
+        required: true
+      release_confirmation:
+        description: 'Type RELEASE_V2_8_UNSIGNED to confirm publication of an UNTRUSTED EXE'
+        type: string
+        required: true
+      license_confirmation:
+        description: 'Type LICENSE_OBLIGATIONS_REVIEWED after independent third-party license review'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-v2-8-once
+  cancel-in-progress: false
+
+jobs:
+  publish-unsigned-28:
+    if: github.ref == 'refs/heads/main' && github.actor == 'Valik2005'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Enforce explicit owner consent, licensing review and exact completed source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACCEPTANCE_RUN_ID: ${{ inputs.acceptance_run_id }}
+          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+          LICENSE_CONFIRMATION: ${{ inputs.license_confirmation }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RELEASE_CONFIRMATION" = 'RELEASE_V2_8_UNSIGNED' || { echo 'No owner authorization for unsigned v2.8 release' >&2; exit 1; }
+          test "$LICENSE_CONFIRMATION" = 'LICENSE_OBLIGATIONS_REVIEWED' || { echo 'Missing explicit third-party license review approval' >&2; exit 1; }
+          [[ "$ACCEPTANCE_RUN_ID" =~ ^[0-9]{7,15}$ ]] || { echo 'Invalid Actions run ID' >&2; exit 1; }
+          python - <<'PY'
+          from pathlib import Path
+          app = Path('app.pyw').read_text(encoding='utf-8')
+          assert 'APP_VERSION = "2.8"' in app
+          assert 'from test_report import' not in app
+          assert not Path('test_report.py').exists()
+          assert Path('docs/RELEASE_NOTES_2_8_UNSIGNED.md').exists()
+          PY
+          gh api "repos/$REPOSITORY/actions/runs/$ACCEPTANCE_RUN_ID" > accepted-run.json
+          python - <<'PY'
+          import json, os
+          run = json.load(open('accepted-run.json', encoding='utf-8'))
+          assert run['name'] == 'Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['head_branch'] == 'main' and run['head_sha'] == os.environ['EXPECTED_COMMIT']
+          assert run['event'] in ('push', 'workflow_dispatch')
+          assert run['actor']['login'] == 'Valik2005'
+          print('Verified one-commit acceptance:', run['html_url'])
+          PY
+          if gh release view v2.8 >/dev/null 2>&1; then
+            echo 'v2.8 already exists: refusing to overwrite' >&2; exit 1
+          fi
+          if git ls-remote --exit-code --tags origin refs/tags/v2.8 >/dev/null 2>&1; then
+            echo 'v2.8 tag already exists: refusing to overwrite' >&2; exit 1
+          fi
+
+      - name: Download exactly the independently checked 3-file unsigned artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-8-UNSIGNED-three-file-candidate-NOT-PUBLISHED
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.acceptance_run_id }}
+          path: release-assets
+
+      - name: Verify unsigned Windows proof, sources, and all three hashes
+        shell: bash
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 3
+          ( cd release-assets && sha256sum --check SHA256SUMS.txt --status )
+          python - <<'PY'
+          import hashlib, json, os, zipfile
+          from pathlib import Path
+          base = Path('release-assets')
+          exe = base/'PDF_Compressor_2_8.exe'
+          sourcezip = base/'Third_Party_Sources_and_Licenses.zip'
+          sums = base/'SHA256SUMS.txt'
+          assert {p.name for p in base.iterdir()} == {exe.name, sourcezip.name, sums.name}
+          assert exe.stat().st_size > 1000000 and sourcezip.stat().st_size > 100000
+          sha = hashlib.sha256(exe.read_bytes()).hexdigest()
+          with zipfile.ZipFile(sourcezip) as z:
+            assert z.testzip() is None
+            entries = set(z.namelist())
+            assert len([n for n in entries if n.startswith('sources/')]) == 6
+            needed = {
+                'README.txt', 'SOURCES_SHA256SUMS.txt',
+                'licenses/LGPL_RELINKING_2_8.md',
+                'licenses/THIRD_PARTY_NOTICES_2_8.zip',
+                'licenses/license-evidence.zip',
+                'reports/source-archive-audit.json',
+                'reports/source-download-report.json',
+                'reports/build-manifest.json',
+                'reports/bundle-audit.json',
+                'reports/native-source-mapping.json',
+                'reports/native-binary-origin.json',
+                'reports/presign-technical-evidence.json',
+                'reports/unsigned-authenticode-check.json'
+            }
+            assert needed.issubset(entries), sorted(needed - entries)
+            assert b'NO trusted' in z.read('README.txt')
+            assert 'signature-verification.json' not in entries
+            manifest = json.loads(z.read('reports/build-manifest.json'))
+            unsigned = json.loads(z.read('reports/unsigned-authenticode-check.json'))
+            sources = json.loads(z.read('reports/source-archive-audit.json'))
+            downloads = json.loads(z.read('reports/source-download-report.json'))
+            evidence = json.loads(z.read('reports/presign-technical-evidence.json'))
+            assert manifest['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert manifest['source_has_local_changes'] is False
+            assert manifest['exe_sha256'] == sha
+            assert unsigned['status'] == 'NotSigned' and unsigned['checked_on_windows'] is True
+            assert unsigned['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert unsigned['exe_sha256'] == sha
+            origin = json.loads(z.read('reports/native-binary-origin.json'))
+            assert origin['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert origin['exe_sha256'] == sha
+            assert origin['native_file_count'] >= 100
+            assert origin['redistribution_rights_verified'] is False
+            assert not origin['unmatched_wheel_entries']
+            assert not origin['installed_wheel_record_mismatches']
+            assert evidence['native_byte_identical_origin_count'] == origin['matched_count']
+            assert evidence['technical_integrity_checks_passed'] is True
+            assert evidence['license_compliance_certified'] is False
+            assert evidence['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert evidence['unsigned_exe_sha256'] == sha
+            assert evidence['source_archives_verified'] == 6
+            assert sources['all_required_with_published_hashes'] is True
+            assert downloads['all_required_archives_verified'] is True
+          print('All three UNTRUSTED release assets verified from the exact main commit.')
+          PY
+
+      - name: Stage unsigned v2.8 as a DRAFT with only three assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create v2.8 release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "PDF Compressor 2.8 — unsigned" \
+            --notes-file docs/RELEASE_NOTES_2_8_UNSIGNED.md --draft
+
+      - name: Verify uploaded asset hashes before making release public
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" > uploaded.json
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          release = json.load(open('uploaded.json', encoding='utf-8'))
+          assert release['draft'] is True and release['prerelease'] is False
+          names = {'PDF_Compressor_2_8.exe', 'Third_Party_Sources_and_Licenses.zip', 'SHA256SUMS.txt'}
+          assets = {a['name']:a for a in release['assets']}
+          assert set(assets) == names
+          for name in names:
+              sha = hashlib.sha256((Path('release-assets') / name).read_bytes()).hexdigest()
+              assert assets[name]['digest'] == 'sha256:' + sha
+          print('GitHub asset SHA-256 hashes agree with source artifacts.')
+          PY
+
+      - name: Publish verified UNSIGNED v2.8 only after all owner gates passed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release edit v2.8 --draft=false --latest
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" |
+            python -c "import json,sys; r=json.load(sys.stdin); assert not r['draft'] and len(r['assets'])==3; print(r['html_url'])"

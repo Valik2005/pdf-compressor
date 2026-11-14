@@ -253,10 +253,26 @@ class CompressionResult:
     analysis: PdfAnalysis | None = None
     recommendations: tuple[str, ...] = ()
     candidates_tried: int = 0
+    # Actual requested budget in bytes, for accurate UI exceedance reporting.
+    target_bytes: int | None = None
 
     @property
     def saving_percent(self) -> float:
         return 100 * (1 - self.result_bytes / max(1, self.original_bytes))
+
+
+def _mark_new_pdf_producer(doc: pymupdf.Document) -> None:
+    """Credit MuPDF in PDFs CREATED by the merge/extract tool.
+
+    Do not overwrite source-file metadata during compression or rotation.
+    Those operations should preserve any existing producer/creator notice.
+    """
+    if doc.metadata.get("producer"):
+        return
+    doc.set_metadata({
+        "creator": "PDF Compressor 2.8",
+        "producer": "MuPDF (via PyMuPDF); PDF Compressor 2.8",
+    })
 
 
 def _save_pdf(doc: pymupdf.Document, target: Path) -> int:
@@ -545,6 +561,51 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
                                 # beat the floor; move to the next DPI stage.
                                 break
                         first_trial = False
+                    # Real-world 2.7.1 tests exposed a 1 MB colored PDF that
+                    # missed by ~6% at JPEG 30%, although JPEG 27% fits
+                    # without reducing the pixel dimensions. In the explicit
+                    # "До заданного размера" mode ONLY, test at most two
+                    # slightly lower-quality alternatives if the current best
+                    # is within 8% of the requested budget. SmartFit keeps
+                    # its conservative image-quality floors unchanged.
+                    # This is NOT a promise to meet fundamentally impossible
+                    # targets: scanned fine print may look worse at JPEG 27%.
+                    if (mode == "target" and dpi_stage is None
+                            and not fitted and best_quality is not None
+                            and best_size > target_bytes
+                            and best_size <= target_bytes * 1.08):
+                        rescue_quality = 28
+                        for rescue_attempt in range(2):
+                            check_cancel(cancel)
+                            q = rescue_quality
+                            emit(progress, f"Уточнение размера JPEG {q}%", 0, 1)
+                            size, scaled, changed = build_candidate(
+                                source, candidate, quality=q,
+                                cancel=cancel, progress=progress)
+                            candidates_tried += 1
+                            check_cancel(cancel)
+                            if size <= target_bytes:
+                                fitted = True
+                                if size <= target_bytes and (
+                                    best_quality is None or q > best_quality
+                                    or best_size > target_bytes
+                                ):
+                                    best_path = temp / "chosen.pdf"
+                                    shutil.copyfile(candidate, best_path)
+                                    best_size = size
+                                    best_quality = q
+                                    best_downscale = scaled
+                                    desc = f"JPEG {q}%, исходное разрешение"
+                                # A higher-quality trial may also fit. Avoid
+                                # blindly sacrificing detail to hit a number.
+                                if q == 28:
+                                    rescue_quality = 29
+                                    continue
+                                break
+                            if q == 28:
+                                rescue_quality = 27
+                                continue
+                            break
                     if smartfit and stage_best_quality is not None:
                         # JPEG size is not always strictly monotone. Check two
                         # nearby higher-quality values before settling.
@@ -613,7 +674,8 @@ def compress_pdf(source: str | Path, out_folder: str | Path, mode: str = "target
         return CompressionResult(
             str(source), str(output), original_size, result_info[0], desc,
             best_quality, target_met, original_info[1], best_downscale,
-            analysis, notes, candidates_tried
+            analysis, notes, candidates_tried,
+            target_bytes if target_mode else None
         )
     except Exception:
         output.unlink(missing_ok=True)
@@ -637,6 +699,7 @@ def merge_pdfs(inputs: Iterable[str | Path], out_folder: str | Path, name: str =
                         result.insert_pdf(part, links=True, annots=True)
                     emit(progress, "Объединение файлов", i + 1, len(sources))
                 check_cancel(cancel)
+                _mark_new_pdf_producer(result)
                 _save_pdf(result, tmp)
             check_cancel(cancel)
             _copy_with_cancel(tmp, output, cancel)
@@ -668,6 +731,7 @@ def split_pdf(source: str | Path, out_folder: str | Path, pages: str = "все",
                         for pno in segment:
                             check_cancel(cancel)
                             part.insert_pdf(doc, from_page=pno, to_page=pno, links=False, annots=True)
+                        _mark_new_pdf_producer(part)
                         _save_pdf(part, dest)
                     check_cancel(cancel)
                 except Exception:
