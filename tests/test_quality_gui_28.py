@@ -89,6 +89,9 @@ def test_target_miss_uses_short_status_and_exact_overage_tooltip(tmp_path):
     app = QApplication.instance() or QApplication([])
     ui = runpy.run_path(str(APP), run_name="target_overage_gui")
     win = ui["MainWindow"]()
+    # User preferences persist between Qt GUI tests. Make the expected
+    # Russian status deterministic regardless of the previous test.
+    win.language_box.setCurrentIndex(win.language_box.findData("ru"))
     source = tmp_path / "large-text.pdf"
     with pymupdf.open() as document:
         for i in range(120):
@@ -224,6 +227,7 @@ def test_bilingual_offline_license_notice_is_visible_and_explains_lgpl_rights(mo
     app = QApplication.instance() or QApplication([])
     ui = runpy.run_path(str(APP), run_name="license_notice_gui")
     win = ui["MainWindow"]()
+    initial_language = win.language
     seen = []
     monkeypatch.setattr(ui["QMessageBox"], "information",
                         lambda _parent, title, message: seen.append((title, message)))
@@ -247,5 +251,7 @@ def test_bilingual_offline_license_notice_is_visible_and_explains_lgpl_rights(mo
         assert "Qt libraries" in seen[-1][1]
         assert "github.com/Valik2005/pdf-compressor" in seen[-1][1]
     finally:
+        win.language_box.setCurrentIndex(win.language_box.findData(initial_language))
+        app.processEvents()
         win.close()
         app.processEvents()
