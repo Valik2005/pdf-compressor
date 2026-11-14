@@ -29,7 +29,7 @@
 
 > 🔒 **Конфиденциальность:** все PDF обрабатываются локально. Документы никуда не загружаются.
 
-**Code signing policy / Политика цифровой подписи:** [статус заявки SignPath Foundation](docs/CODE_SIGNING_POLICY.md). Подпись **ещё не одобрена**; текущие публичные EXE остаются неподписанными.
+**Code signing policy / Политика цифровой подписи:** [заявка SignPath Foundation и правила подписи](docs/CODE_SIGNING_POLICY.md). **Запланировано, после одобрения:** Free code signing provided by SignPath.io, certificate by SignPath Foundation. **Текущие релизы, включая v2.7.1, не подписаны.**
 
 ## ✨ Возможности
 
