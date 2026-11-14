@@ -43,6 +43,16 @@ def fixture(tmp_path):
         "redistribution_rights_verified": False, "entries": [],
     })
     with zipfile.ZipFile(windows / "license-evidence.zip", "w") as z:
+        pillow_codec_sections = (
+            "libavif-1.4.2 libjpeg-turbo-3.1.4.1 libpng-1.6.58 "
+            "libwebp-1.6.0 openjpeg-2.5.4 tiff-4.7.1 "
+            "freetype-2.14.3 lcms2-2.19.1 harfbuzz-14.2.1 "
+            "brotli-1.2.0 zlib-ng-2.3.3"
+        )
+        z.writestr(
+            "packages/Pillow/12.3.0/pillow-12.3.0.dist-info/licenses/LICENSE",
+            (pillow_codec_sections + "\n") * 450,
+        )
         z.writestr("evidence-report.json", json.dumps({
             "exe_name": exe.name, "exe_sha256": digest,
             "missing": ["Third-party relinking rights require final review"]
@@ -97,6 +107,7 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     "alter_windows", "alter_archive", "wrong_version", "bad_license_proof",
     "no_notice", "wrong_source_revision", "unmapped_native", "bad_download",
     "native_origin_wrong_sha", "native_origin_unmatched_wheel",
+    "missing_pillow_notices",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -117,6 +128,13 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         (source / "THIRD_PARTY_NOTICES_2_8.zip").unlink()
     elif change == "wrong_source_revision":
         commit="b"*40
+    elif change == "missing_pillow_notices":
+        p = win / "license-evidence.zip"
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr("evidence-report.json", json.dumps({
+                "exe_name": "PDF_Compressor_2_8.exe", "exe_sha256":
+                hashlib.sha256((win / "PDF_Compressor_2_8.exe").read_bytes()).hexdigest(),
+            }))
     elif change.startswith("native_origin_"):
         p = win / "native-binary-origin.json"
         j = json.loads(p.read_text())
