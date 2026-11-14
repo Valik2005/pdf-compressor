@@ -2,7 +2,7 @@ name: Validate v2.8 release gates (NO SIGNING)
 
 on:
   push:
-    branches: [chore/2.8-signpath-release-prep]
+    branches: [chore/2.8-signpath-release-prep, release/2.8-ready-for-signpath]
     paths:
       - .github/workflows/sign-v2_8.yml
       - .github/workflows/publish-v2_8-signed.yml
