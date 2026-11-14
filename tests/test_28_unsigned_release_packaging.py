@@ -19,6 +19,10 @@ def prepare(tmp_path: Path):
     source_test = Path(__file__).with_name("test_28_presign_evidence.py")
     make_fixture = runpy.run_path(str(source_test))["fixture"]
     windows, sources, catalog, commit = make_fixture(tmp_path)
+    # Real installed-package evidence contains several documents; the shared
+    # presign fixture needs a second record for the release packaging gate.
+    with zipfile.ZipFile(windows / "license-evidence.zip", "a") as z:
+        z.writestr("README-license.txt", "synthetic notice for ZIP completeness")
     evidence = tmp_path / "pre-sign-check.json"
     evidence.write_text(
         json.dumps(validate(windows, sources, catalog, commit)), encoding="utf-8"
