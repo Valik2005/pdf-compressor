@@ -64,3 +64,24 @@ def test_capture_rejects_duplicate_and_missing_source(tmp_path):
     with pytest.raises(ValueError, match="Invalid collected"):
         capture([("missing.dll", str(tmp_path / "absent.dll"), "BINARY")],
                 [], tmp_path / "r.json", known={})
+
+
+@pytest.mark.parametrize(("relative", "scope"), [
+    ("Git/mingw64/bin/libcrypto-3-x64.dll", "installed-program"),
+    ("Windows Kits/10/Redist/ucrt/DLLs/x64/ucrtbase.dll", "windows-sdk"),
+])
+def test_provenance_preserves_only_safe_program_files_relative_path(
+        tmp_path, monkeypatch, relative, scope):
+    program_files = tmp_path / "Program Files"
+    file = program_files / relative
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_bytes(b"MZ" + bytes(range(32)))
+    monkeypatch.setenv("ProgramFiles", str(program_files))
+    monkeypatch.setenv("ProgramFiles(x86)", str(tmp_path / "unused-x86"))
+    out = tmp_path / "provenance.json"
+    info = capture([(file.name, str(file), "BINARY")], [], out, known={})
+    row = info["entries"][0]
+    assert row["source_scope"] == scope
+    assert row["source_relative_path"] == relative
+    assert str(tmp_path) not in out.read_text(encoding="utf-8")
+    assert "Program Files" not in row["source_relative_path"]
