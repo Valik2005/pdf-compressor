@@ -197,7 +197,7 @@ def test_issue_collection_is_bounded_for_large_damaged_documents(tmp_path):
 def test_html_report_escapes_filename_and_contains_sampled_metrics():
     from pdf_quality import QualityReport, QualityIssue, PageVisualCheck, report_html
     report = QualityReport(
-        source='source <script>alert("x")</script>.pdf',
+        source='source <script>alert("x")<script>.pdf',
         result='output & "result".pdf',
         source_bytes=4500, result_bytes=3000,
         source_pages=3, result_pages=3,
@@ -250,7 +250,7 @@ def test_exported_quality_report_redacts_windows_and_posix_directories():
 def test_quality_export_basename_remains_html_escaped():
     from pdf_quality import QualityReport, report_html
     report = QualityReport(
-        source=r"C:\\Private\\<script>alert(1)</script>.pdf",
+        source=r"C:\\Private\\<script>alert(1)<script>.pdf",
         result="/hidden/a & b.pdf",
         source_bytes=500, result_bytes=400,
         source_pages=1, result_pages=1,
