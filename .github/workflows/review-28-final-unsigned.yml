@@ -136,6 +136,7 @@ jobs:
           python tools/audit_pyinstaller_bundle.py --exe dist/PDF_Compressor_2_8.exe --reject-virtual-keyboard --out dist/bundle-audit.json
           python tools/audit_onefile_native_sources.py --audit dist/bundle-audit.json --catalog docs/source-archives-2_8.json --out dist/native-source-mapping.json
           python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_8.exe --manifest dist/build-manifest.json --out dist/license-evidence.zip
+          python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
       - name: Confirm VERSIONINFO, clean source, hashes, and native evidence
         shell: pwsh
         run: |
@@ -203,6 +204,7 @@ jobs:
             dist/build-manifest.json
             dist/bundle-audit.json
             dist/native-source-mapping.json
+            dist/native-binary-origin.json
             dist/license-evidence.zip
             dist/unsigned-authenticode-check.json
           if-no-files-found: error
