@@ -2,6 +2,16 @@
 
 **Public stable version remains 2.7.1. This checklist does NOT authorize publishing 2.8.**
 
+## Distribution identity and zero-cost licensing path — confirmed 15 Nov 2026
+
+- [x] The maintainer specified a release **as a private individual / independent developer**, not an organization. Do not request or invent company/legal-entity details.
+- [x] Microsoft's official [Community licensing](https://www.microsoft.com/licensing/guidance/Visual-Studio) permits an eligible individual to build their own free or paid applications without purchasing Visual Studio Professional or Enterprise. The [VS 2022 REDIST page](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) covers validly licensed Community 2022 users, subject to listed file/term restrictions.
+- [ ] Confirm the maintainer's actual applicable individual license/terms and exact Microsoft REDIST/SDK provenance of bundled MSVC/UCRT DLL copies. **Individual-developer status alone does not establish the right to redistribute files copied from other packages.**
+- [ ] Independently clear the unchanged LGPL Qt, AGPL MuPDF and other third-party obligations. The accidental MySQL OpenSSL dependencies were removed and excluded by source-level guards; the retained Python/OpenSSL notices remain.
+- [ ] Explicit owner approval to merge PR #17 into `main` and a **separate** owner approval to publish unsigned v2.8, after the applicable compliance checks. Neither approval is implied by confirming individual-developer status.
+
+**No paid certificate or paid Visual Studio purchase is a prerequisite of the currently selected unsigned individual-developer plan.** See `docs/MICROSOFT_RUNTIME_REVIEW_2_8.md` for exact vendor requirements.
+
 ## SignPath Foundation decision — 14 November 2026
 
 **The free OSS signing application was declined.** The Foundation cited insufficient independent recognition/usage (GitHub stars, forks, contributors, third-party discussions/articles and other public trust signals), **not a failed technical/security audit**. It invited reapplication after broader adoption. Do **not** wait for an approval of this completed application, claim the release is signed or use the existing signed-only publication workflow.
