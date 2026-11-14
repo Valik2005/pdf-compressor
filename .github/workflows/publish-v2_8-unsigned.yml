@@ -119,6 +119,7 @@ jobs:
                 'reports/bundle-audit.json',
                 'reports/native-source-mapping.json',
                 'reports/native-binary-origin.json',
+                'reports/native-collection-sources.json',
                 'reports/presign-technical-evidence.json',
                 'reports/unsigned-authenticode-check.json'
             }
@@ -144,6 +145,12 @@ jobs:
             assert not origin['unmatched_wheel_entries']
             assert not origin['installed_wheel_record_mismatches']
             assert evidence['native_byte_identical_origin_count'] == origin['matched_count']
+            collected = json.loads(z.read('reports/native-collection-sources.json'))
+            assert collected['source_git_commit'] == os.environ['EXPECTED_COMMIT']
+            assert collected['native_file_count'] == origin['native_file_count']
+            assert collected['redistribution_rights_verified'] is False
+            assert evidence['native_build_sources_match_exe'] is True
+            assert evidence['native_build_source_scope_counts'] == collected['source_scope_counts']
             assert evidence['technical_integrity_checks_passed'] is True
             assert evidence['license_compliance_certified'] is False
             assert evidence['source_git_commit'] == os.environ['EXPECTED_COMMIT']
