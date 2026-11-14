@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 import zipfile
 
+from tools.audit_native_binary_origin_28 import embedded_native_members, sha256_bytes
+
 APP_EXE = "PDF_Compressor_2_8.exe"
 PINS = {
     "PyMuPDF": "1.27.2.3",
@@ -94,14 +96,39 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
             or origin.get("installed_wheel_record_mismatches")
             or origin.get("redistribution_rights_verified") is not False):
         raise ValueError("Exact embedded native byte provenance failed")
-    if (len(origin.get("entries", [])) not in (0, native.get("native_file_count"))):
-        raise ValueError("Incomplete embedded native provenance entries")
-    for record in origin.get("entries", []):
-        if (not record.get("name") or len(record.get("sha256", "")) != 64
-                or record.get("size_bytes", 0) <= 0):
-            raise ValueError("Invalid embedded native hash record")
-    if origin.get("matched_count", -1) < 0:
-        raise ValueError("Native origin matched count not reported")
+    # Cross-check all independently produced inventories against the ACTUAL
+    # decompressed onefile bytes. A matching top-level EXE hash alone does not
+    # prove an artifact's separately uploaded JSON inventory is complete.
+    unpacked = [(name, sha256_bytes(blob), len(blob))
+                for name, blob in embedded_native_members(exe)]
+    packed_names = [name for name, _, _ in unpacked]
+    binary_names = [item.get("name") for item in binary.get("all_entries", [])
+                    if str(item.get("name", "")).lower().endswith((".dll", ".pyd"))]
+    mapped_names = [row.get("path") for row in native.get("native_component_mapping", [])]
+    records = origin.get("entries")
+    count = native["native_file_count"]
+    if (not isinstance(records, list) or len(records) != count
+            or len(unpacked) != count or binary_names != packed_names
+            or mapped_names != packed_names or len(set(packed_names)) != count
+            or [record.get("name") for record in records] != packed_names):
+        raise ValueError("Native EXE, bundle, classification and byte-origin inventories differ")
+    matches_count = 0
+    for record, (name, expected_hash, expected_size) in zip(records, unpacked):
+        matches = record.get("matched_installed_origins")
+        if (record.get("sha256") != expected_hash
+                or record.get("size_bytes") != expected_size
+                or not isinstance(matches, list)
+                or record.get("status") != (
+                    "byte-identical" if matches else "unverified-build-origin")
+                or any(candidate.get("sha256") != expected_hash or
+                       candidate.get("wheel_record_matches_installed_file") is False
+                       for candidate in matches)):
+            raise ValueError(f"Native byte-origin report differs from EXE: {name}")
+        if name.lower().startswith(("pyside6/", "shiboken6/", "pil/", "pymupdf/")) and not matches:
+            raise ValueError(f"Bundled wheel binary has no matching installed origin: {name}")
+        matches_count += bool(matches)
+    if origin.get("matched_count") != matches_count:
+        raise ValueError("Native byte-origin matched count does not equal inventory")
 
     downloads = read_json(sources, "source-download-report.json")
     audited = read_json(sources, "source-archive-audit.json")
