@@ -26,7 +26,7 @@
 
 **Evidence already present:** the wheel-matched DLL `PySide6/opengl32sw.dll` SHA-256 `18aedc7a4b610f53bcc7b7a5c5ed9293c7e86f030e3273ad54ed3bb1ebd36702` was inspected and contains Mesa/LLVM historical version strings; both exact-version upstream source tarballs (SHA-256 checked), original Mesa `docs/license.html`, historical LLVM `LICENSE.TXT`, Qt Mesa MIT/Boost texts and extra upstream attribution are included in the source/notice pack.
 
-**Clarification:** the permissive Mesa/LLVM licenses do not generally demand a *byte-for-byte reproducible* binary build or a universal source-code offer merely for redistributing their unmodified binary components. Lack of a matching build SHA **alone** is not proof of noncompliance. However the supplier's exact included/modified subcomponents and license notices still must be covered, and any LGPL covered-work source obligations for Qt remain separate.
+**Clarification:** the permissive Mesa/LLVM license terms alone generally do not demand a *byte-for-byte reproducible* binary build. Lack of a matching build SHA **alone** is not proof of noncompliance. **But** the combined executable is distributed under AGPLv3, whose corresponding-source obligation is broader than a permissive library's standalone license. When a native component is part of the covered combined work and is not an excluded System Library, its corresponding source may need to accompany the EXE **even if the component uses MIT/NCSA terms**. See GNU GPL FAQ, *AGPLv3 Corresponding Source*. A matching original source version/patch set is still an evidence question.
 
 **Still check:** reconcile the Qt wheel's Mesa/LLVM compiled-in parts and any third-party patches/extra licenses against actual component provenance, not version strings alone. Obtain vendor build/patch evidence if the Qt corresponding-source obligation demands it.
 
@@ -34,13 +34,13 @@
 
 ## 3. Pillow 12.3.0 and image codecs
 
-**Requirements:** distribute the applicable Pillow MIT-CMU and bundled third-party copyright/license notices, including notices for native codecs actually present. The mere presence of a permissively licensed codec in an AGPL app does **not** automatically make every separate codec subject to a stand-alone AGPL source-offer obligation. Review actual copyleft terms if identified. [Pillow license](https://pillow.readthedocs.io/en/stable/about.html); [Pillow 12.3.0 release and embedded SBOM note](https://pillow.readthedocs.io/en/stable/releasenotes/12.3.0.html).
+**Requirements:** distribute the applicable Pillow MIT-CMU and bundled third-party copyright/license notices, including notices for native codecs actually present. **In addition**, AGPLv3/GPLv3 corresponding-source rules must be evaluated for all non-System Library modules actually linked into the combined EXE, even if their own standalone licenses are permissive; do not mistake license-text coverage for AGPL source coverage. [GNU FAQ on AGPL corresponding source](https://www.gnu.org/licenses/gpl-faq.html#AGPLv3CorrespondingSource); [Pillow build dependency guidance](https://pillow.readthedocs.io/en/stable/installation/building-from-source.html).
 
 **Evidence already present:** complete ~78 KB LICENSE from the exact installed Pillow wheel in `license-evidence.zip`; independent source tar archive pinned by SHA-256; six Pillow native `.pyd` files matched the installed 12.3.0 wheel; release checks require notices for libavif, libjpeg-turbo, libpng, libwebp, OpenJPEG, TIFF, FreeType, lcms2, HarfBuzz, Brotli and zlib-ng.
 
-**Still check:** identify the *effective native dependency set* (including transitive AV1/WebP codecs, where applicable) using the wheel's software bill of materials and exact six `.pyd` dependencies. Compare all required notices/copyright lines to the **unmodified** installed wheel LICENSE; inspect any extra copyleft or unusual license not captured by name-marker tests.
+**Still check:** identify the *effective native dependency set* (including transitive AV1/WebP codecs, where applicable) using the wheel's software bill of materials and exact six `.pyd` dependencies. Compare all required notices/copyright lines to the **unmodified** installed wheel LICENSE; inspect any extra copyleft or unusual license not captured by name-marker tests. Then make the applicable **compiled non-System Library component sources** available in the durable, same-release corresponding-source package or document an applicable exception, rather than supplying only the Pillow sdist and notices.
 
-**Disposition:** most permissive-license notice work is present. Missing exact source-compiler hash for a permissive codec is not by itself a release blocker; an actual missing required notice/license would be.
+**Disposition:** native codec notices are well covered, but **AGPL corresponding-source completeness remains a specific unresolved release blocker**, because the current nine-archive pack does not enumerate the separate codebases statically incorporated into Pillow wheels. Lack of an identical rebuilt SHA is not the problem; lack of a verified source-to-embedded-module inventory is.
 
 ## 4. PyMuPDF 1.27.2.3 / MuPDF 1.27.2 — AGPLv3
 
@@ -62,3 +62,40 @@
 4. A responsible human maintainer independently decides whether this specific, unsigned Windows 62-native package can be redistributed. **Do not send `LICENSE_OBLIGATIONS_REVIEWED` as an AI-authored representation of human review** or mark `license_compliance_certified=true` in a mechanical provenance JSON.
 
 **No source-code change to the compression engine is suggested by this audit.** This review branch should remain separate from `main` until release coordination; merging it before publication changes the main commit and requires a fresh exact-main six-stage release acceptance. Keeping it isolated preserves the already-accepted candidate.
+
+
+## 5. New decisive source-coverage finding (16 Nov 2026)
+
+This is a **concrete packaging/evidence gap**, not a demand to obtain a paid certificate or a generic lawyer's stamp.
+
+- The exact release catalog `docs/source-archives-2_8.json` marks only **nine** source archives as required: PyMuPDF, MuPDF, PySide6/Shiboken, QtBase, QtSvg, QtImageFormats, Pillow, Mesa and LLVM. There are **no separately named source archives** for CPython, OpenSSL, libffi or the third-party native libraries that Pillow's Windows build incorporates. A complete license notice is not the source code.
+- `tools/assemble_unsigned_release_28.py` enforces `SOURCES = 9`, copies only those nine archives under `sources/`, then packages the **different** `license-evidence.zip`. `tools/verify_presign_evidence_28.py` verifies hashes, notices and 62 exact native hashes but does **not** verify the full transitive corresponding source of statically linked image codecs.
+- Official [Pillow 12.3.0 Windows build script](https://github.com/python-pillow/Pillow/blob/12.3.0/winbuild/build_prepare.py) describes separately built dependencies; its [version catalog](https://github.com/python-pillow/Pillow/blob/12.3.0/.github/dependencies.json) pins the following **upstream build-input candidates**. These are **NOT all claimed present** in the shipped binary; inclusion needs exact wheel/native confirmation:
+
+| Upstream Pillow Windows build candidate | Version in Pillow 12.3.0 build input | What must be established |
+| --- | --- | --- |
+| libjpeg-turbo | 3.1.4.1 | JPEG codec linkage and source/notice |
+| zlib-ng | 2.3.3 | compressed image support |
+| libwebp | 1.6.0 | WebP codec linkage and source/notice |
+| libtiff | 4.7.1 | TIFF codec linkage and source/notice |
+| libpng | 1.6.58 | PNG codec linkage and source/notice |
+| FreeType | 2.14.3 | font support and applicable license |
+| Little CMS | 2.19.1 | color-profile engine |
+| OpenJPEG | 2.5.4 | JPEG2000 codec linkage |
+| HarfBuzz | 14.2.1 | text rendering/shaping |
+| Brotli | 1.2.0 | decompression/codec dependency |
+| libavif | 1.4.2 | AVIF and selected AV1 backends |
+| xz / liblzma | 5.8.3 | TIFF compression, if included |
+
+- Other candidates in that build input include FriBidi 1.0.16, BZip2 1.0.8, Zstandard 1.5.7 and libimagequant 4.4.1. The official [Pillow instructions](https://pillow.readthedocs.io/en/stable/installation/building-from-source.html) state that normal Pillow binary wheels do **not** enable GPLv3 libimagequant support; do **not** assume every build-input candidate was shipped.
+- CPython 3.14.10 and two CPython-derived OpenSSL 3.x DLLs are bundled as native members and have license notices; **separate original CPython/OpenSSL source archives are not in the nine-source pack.** Whether particular components qualify as System Libraries for the GPL/AGPL definition must be evaluated, rather than assumed either way. The existing source bundle contains original upstream OpenSSL 3.5.9 `LICENSE.txt` and `AUTHORS.md`, not its whole source tree.
+- Exact native origin **is** established at the wheel/Python-install layer (62/62 matches), but this does **not** establish source coverage within each compiled wheel. A wheel LICENSE and a wheel RECORD hash answer different questions.
+
+### Technical closeout needed, with no PDF engine/UI modifications
+
+1. At the accepted Windows build, generate a **member → vendored/native library → exact version → compiled/static/dynamic/System Library status → source location + copyright notice** table. Use actual six Pillow `.pyd` and the Qt software-renderer `opengl32sw.dll` inventories, vendor build metadata and official dependency catalog; do not blindly equate all dependency catalog candidates with shipped code.
+2. For non-System Library code actually included in the AGPL-distributed combined executable, supply actual corresponding source (including applicable patches/build scripts) under the release owner's control, not just upstream source links or a permissive `LICENSE` text. Exclude unused components based on evidence.
+3. Review Qt 6.12/PySide6 wheel build-specific source/patch availability and the recipient's actual ability to recompile a compatible Qt and run the relinked EXE; the verified PE-resource replacement is good evidence but not a complete Qt source-compile test.
+4. Only then re-run exact-commit source/EXE acceptance, retain the no-Microsoft-DLL property, and make same-tag source and three assets available **together**. Have the responsible owner attest the specific, documented review before enabling the already-coded publisher.
+
+**Current conclusion: NO UNSUPPORTED CLAIM OF COMPLETE COMPLIANCE.** Existing technical acceptance and licensing notices are real and valuable, but their coverage is not a one-to-one inventory of all code compiled into the distributed EXE. Merely repeating the same nine-source CI run cannot resolve this gap. No paid commercial license is inherently needed, and no changes to `pdf_engine.py` / `app.pyw` are indicated.
