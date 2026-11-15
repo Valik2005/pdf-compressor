@@ -20,6 +20,7 @@ from tools.assemble_patch_release import (
     SOURCE_REPORTS, BUNDLE_NAME, check_zip, digest, require_file,
 )
 from tools.verify_presign_evidence_28 import validate as verify_presign
+from tools.audit_source_coverage_28 import analyze as review_source_coverage
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -101,6 +102,18 @@ def assemble_unsigned_28(
         files["reports/" + name] = require_file(windows_dir, name)
     files["reports/presign-technical-evidence.json"] = evidence_path
 
+    # Require the exact same native/source coverage audit produced independently
+    # during cross-verify. This report explicitly records missing code and cannot
+    # be used as a false claim of completed legal licensing review.
+    coverage_path = require_file(evidence_path.parent, "source-coverage-report.json")
+    recorded_coverage = json.loads(coverage_path.read_text(encoding="utf-8-sig"))
+    independent_coverage = review_source_coverage(windows_dir, sources_dir, catalog_path)
+    if recorded_coverage != independent_coverage:
+        raise ValueError("Independent source coverage audit differs from staged evidence")
+    if recorded_coverage.get("legal_compliance_certified") is not False:
+        raise ValueError("A source inventory cannot certify third-party redistribution rights")
+    files["reports/source-coverage-report.json"] = coverage_path
+
     check_zip(files["licenses/THIRD_PARTY_NOTICES_2_8.zip"], minimum_entries=65)
     check_zip(files["licenses/license-evidence.zip"])
 
@@ -113,7 +126,7 @@ def assemble_unsigned_28(
         "\n"
         "sources/: nine SHA-256-verified upstream source archives.\n"
         "licenses/: Qt LGPL relinking instructions, licenses and notices.\n"
-        "reports/: build/source/native provenance, Windows NotSigned evidence.\n"
+        "reports/: build/source/native provenance, missing-source audit, Windows NotSigned evidence.\n"
         "SOURCES_SHA256SUMS.txt: independent upstream checksums.\n"
         "\n"
         "Official project source: https://github.com/Valik2005/pdf-compressor\n"
