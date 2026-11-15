@@ -12,7 +12,7 @@ Free and open source · Offline PDF processing · No digital signature.
 The official release contains exactly three assets:
 
 - **PDF_Compressor_2_8.exe** — Windows application; no Python installation required, but the official Microsoft VC++ Redistributable x64 must be installed separately.
-- **Third_Party_Sources_and_Licenses.zip** — six matching upstream source archives, applicable license notices, Qt LGPL relinking instructions and build-integrity reports.
+- **Third_Party_Sources_and_Licenses.zip** — seven matching upstream source archives, applicable license notices, Qt LGPL relinking instructions and build-integrity reports.
 - **SHA256SUMS.txt** — independent SHA-256 hashes for the *final unsigned EXE* and the source/license ZIP.
 
 **IMPORTANT:** The EXE **is not digitally signed**. SignPath Foundation did not approve the free certificate application because the project does not yet have enough independent public recognition; this was **not a security or code-quality assessment**. Windows SmartScreen may warn about an unrecognized executable. Windows 11 Smart App Control can instead BLOCK an unsigned, unknown EXE without an individual allow-list option. Do not disable device protection merely to run this application. Download only from the official project release, check its SHA-256 hash against the release's published checksum, and make your own decision about whether to run it. **SHA-256 does not prove publisher identity or guarantee that an application is safe.** Do not treat this as a SignPath-certified build.
