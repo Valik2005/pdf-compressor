@@ -14,6 +14,7 @@ import re
 import zipfile
 
 from tools.audit_onefile_native_sources import component
+from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
 
 # Versions from the Pillow 12.3.0 wheel's independently checked license text
 # and its upstream Windows build dependency catalog. These are candidates,
@@ -100,6 +101,24 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
             raise ValueError("Missing collected native SHA-256: " + name)
         by_name[name] = row
 
+    supplemental_groups = {}
+    if (sources / "supplemental-source-report.json").exists():
+        supplement_catalog = (
+            Path(__file__).resolve().parents[1] /
+            "docs" / "supplemental-source-archives-2_8.json"
+        )
+        reviewed = verify_supplemental_sources(supplement_catalog, sources)
+        verified_ids = {entry["id"] for entry in reviewed}
+        supplements = {
+            "Python runtime": "cpython-3.14.10",
+            "OpenSSL": "openssl-3.5.9",
+        }
+        if not set(supplements.values()).issubset(verified_ids):
+            raise ValueError("Incomplete verified CPython/OpenSSL source set")
+        supplemental_groups = {
+            group: (source_id,) for group, source_id in supplements.items()
+        }
+
     reported = []
     groups = set()
     for entry in entries:
@@ -109,8 +128,9 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
                 or component(name) != group or group not in SOURCE_GROUPS):
             raise ValueError("Unmapped or misclassified native component: " + str(name))
         groups.add(group)
-        sources_for_group = SOURCE_GROUPS[group]
-        for source_id in sources_for_group:
+        core_sources = SOURCE_GROUPS[group]
+        sources_for_group = core_sources + supplemental_groups.get(group, ())
+        for source_id in core_sources:
             desc = catalog_items.get(source_id)
             if not desc:
                 raise ValueError("Required source absent from catalog: " + source_id)
@@ -167,7 +187,8 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
                 "decision": "check AV1/TIFF transitive compiled implementation before deciding applicability",
             })
 
-    without_sources = sorted(group for group in groups if not SOURCE_GROUPS[group])
+    without_sources = sorted(group for group in groups
+                             if not SOURCE_GROUPS[group] and group not in supplemental_groups)
     # These are *explicit* checks, never silently treated as source complete.
     review_items = [
         "Verify actual source/wheel build options and third-party patches for shipped Qt/PySide6/MuPDF.",
@@ -183,8 +204,11 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "native_component_groups": sorted(groups),
         "native_members": reported,
         "sources_catalogued_from_verified_archives": sorted({
-            name for group in groups for name in SOURCE_GROUPS[group]
+            name for row in reported for name in row["upstream_source_archive_ids"]
         }),
+        "supplemental_archives_independently_verified": sum(
+            len(supplemental_groups.get(group, ())) for group in groups
+        ),
         "component_groups_without_separate_source_archives": without_sources,
         "pillow_native_candidate_sources": candidates,
         "outstanding_source_checks": review_items,
