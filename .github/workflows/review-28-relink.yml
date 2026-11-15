@@ -1,11 +1,12 @@
 name: v2.8 Qt relinking proof (NO RELEASE)
 
-# Verify the actual final v2.8 PyInstaller spec can bundle an ABI-preserving,
-# resource-modified Qt DLL instead of merely relying on historical v2.7 proof.
+# Re-run genuine LGPL-compatible onefile Qt-library replacement proof on the
+# CURRENT unsigned 2.8 candidate and any future DLL build/spec modifications.
+# This tests one ABI-preserving PE resource modification, not arbitrary Qt source builds.
 # Does not claim all LGPL legal obligations or arbitrary source changes are verified.
 on:
   push:
-    branches: [chore/2.8-signpath-release-prep]
+    branches: [release/2.8-ready-for-signpath]
     paths:
       - tools/rebuild_onefile_with_qt.py
       - tools/modify_qt_binary_resource.py
