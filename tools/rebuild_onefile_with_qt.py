@@ -59,8 +59,8 @@ def apply_overrides(package_dir: Path, override_dir: Path) -> list[dict]:
     return changes
 
 
-def run(args: list[str], cwd: Path) -> None:
-    subprocess.run(args, cwd=cwd, check=True)
+def run(args: list[str], cwd: Path, *, env: dict | None = None) -> None:
+    subprocess.run(args, cwd=cwd, check=True, env=env)
 
 
 def build(work_dir: Path, overrides: Path | None, *, release_version: str = "2.7") -> dict:
@@ -90,11 +90,34 @@ def build(work_dir: Path, overrides: Path | None, *, release_version: str = "2.7
     installed_qt = Path(qt_path)
     applied = apply_overrides(installed_qt, overrides) if overrides else []
     dist = work_dir / "dist"
+    # Do not alter installed wheel dist-info RECORD or silently bypass wheel
+    # checks. Explicitly authorize only the exact changed Qt DLL hashes for
+    # a recipient rebuild. No such exception exists in official CI builds.
+    build_env = os.environ.copy()
+    build_env.pop("PDF28_RECIPIENT_QT_MANIFEST", None)
+    if applied and release_version == "2.8":
+        declared = {
+            "schema_version": 1,
+            "scope": "recipient-relink",
+            "recipient_modified_qt_libraries": [
+                {
+                    "path": "PySide6/" + item["path"],
+                    "original_sha256": item["original_sha256"],
+                    "replacement_sha256": item["replacement_sha256"],
+                }
+                for item in applied
+            ],
+        }
+        declaration_path = work_dir / "recipient-qt-relink-manifest.json"
+        declaration_path.write_text(
+            json.dumps(declared, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        build_env["PDF28_RECIPIENT_QT_MANIFEST"] = str(declaration_path)
     run(
         [str(py), "-m", "PyInstaller", "--noconfirm", "--clean",
          "--distpath", str(dist), "--workpath", str(work_dir / "pyinstaller"),
          spec_name],
-        source,
+        source, env=build_env,
     )
     exe = dist / output_name
     if not exe.is_file():
