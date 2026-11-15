@@ -8,6 +8,7 @@ PDF Compressor v2.8 uses Qt 6.12.0 and PySide6/Shiboken 6.12.0 through LGPL/GPL 
 ## Requirements
 
 - Windows 10/11 x64; Python 3.14; Git, a working compiler if changing Qt's source, and access to Python wheels.
+- **This 62-native experimental build only:** before launching an EXE rebuilt from this branch, install the **official Microsoft Visual C++ Redistributable x64** if not already present. The rebuilt EXE intentionally excludes 53 MSVC/UCRT/API-set DLLs. Their absence is not a redistributable-license waiver, and ordinary Windows clients must be tested.
 - Application source from **the exact final GitHub v2.8 release tag**, including `app.pyw`, `pdf_engine.py`, `pdf_quality.py`, `release_windows_2_8.spec`, `tools/windows_version_info_2_8.txt`, all `tools/`, the `LICENSE`, and relevant notices.
 - Matching component source archives in the **same release's** `Third_Party_Sources_and_Licenses.zip`: QtBase, QtSvg, QtImageFormats, PySide6/Shiboken, PyMuPDF and MuPDF. Their SHA-256 values are pinned by the archive's manifest.
 - For compiling modified Qt source, follow [official Qt 6 open-source obligations](https://www.qt.io/development/open-source-lgpl-obligations) and build instructions. Replacement DLLs **must be compatible** with the stock PySide6 6.12.0 bindings, Windows x64 and the toolchain.
