@@ -88,7 +88,11 @@ Official [Qt LGPL obligations](https://www.qt.io/development/open-source-lgpl-ob
 
 **Actual evidence:** the project source is publicly AGPLv3; pinned PyMuPDF/MuPDF sources and COPYING are included. Newly merged/extracted PDFs credit MuPDF as producer; compress/rotate paths preserve original input metadata, including potentially signed inputs.
 
-Official [PyMuPDF licensing](https://pymupdf.io/licensing) requires applicable AGPL source disclosure and preservation of **relevant output producer notice**. **Required:** verify complete corresponding code and any output attribution duty for *these four document operations* against vendor policy. Do not rewrite user documents or invalidate signed PDFs merely to force a metadata string. Seek Artifex guidance if the existing preserve-input behavior is not clearly compliant.
+Official [PyMuPDF licensing](https://pymupdf.io/licensing) describes corresponding-source obligations and retaining relevant copyright/producer metadata in generated documents. [Artifex's own AGPL guidance](https://artifex.com/licensing) phrases this as **ideally** mentioning AGPL and preserving the producer line in PDFs created **or modified** with its open-source software; do not replace that nuanced language with an invented universal mandate to rewrite input metadata.
+
+**Verified current behavior in `pdf_engine.py`:** merge/extract call `_mark_new_pdf_producer()` for a new PDF **only when producer metadata is absent**; compression and rotation preserve incoming producer metadata. Consequently, a compressed/rotated PDF can retain a third-party producer without adding MuPDF. This is a real attribution-policy question, **not** evidence that the output is necessarily non-compliant. The AGPL software source/license notices are provided in the release companion ZIP.
+
+**Required:** confirm corresponding source and the appropriate producer/copyright handling for merge, extract, compression and rotation, including signed/user originals, before publication. Do not rewrite or invalidate existing user PDFs merely to add a producer string without a deliberate and technically verified policy. Artifex's FAQ/guidance is not a substitute for a complete license-specific review.
 
 ## 5. Qt Mesa llvmpipe / possible LLVM, Pillow, libffi
 
