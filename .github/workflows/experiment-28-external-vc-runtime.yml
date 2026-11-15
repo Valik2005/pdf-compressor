@@ -5,7 +5,7 @@ name: EXPERIMENT ONLY - system UCRT + external Microsoft VC runtime
 on:
   push:
     branches:
-      - experiment/2.8-use-system-microsoft-runtime
+      - experiment/2.8-current-system-runtime
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   external-vc-runtime-experiment:
-    if: github.ref == 'refs/heads/experiment/2.8-use-system-microsoft-runtime'
+    if: github.ref == 'refs/heads/experiment/2.8-current-system-runtime'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
