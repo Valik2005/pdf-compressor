@@ -17,6 +17,7 @@ COVERED_SOURCES = {
     "PySide6/Shiboken": "qtforpython-6.12.0",
     "PyMuPDF": "pymupdf-1.27.2.3",
     "MuPDF": "mupdf-1.27.2-native",
+    "Pillow codecs": "pillow-12.3.0",
 }
 MANUAL_COMPONENTS = {
     "OpenSSL": "OpenSSL source/version and applicable Apache-style notices",
