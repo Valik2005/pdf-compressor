@@ -1,13 +1,15 @@
 """Source coverage is reviewed from actual native member identity, never licenses alone."""
 import hashlib
+import io
 import json
+import tarfile
 from pathlib import Path
 import zipfile
 
 import pytest
 
 from tools.audit_source_coverage_28 import (
-    PILLOW_CANDIDATES, PILLOW_LICENSE, analyze,
+    PILLOW_CANDIDATES, PILLOW_BUILD_KEYS, PILLOW_LICENSE, analyze,
 )
 
 
@@ -41,7 +43,14 @@ def make_fixture(tmp_path: Path):
             "distribution": package, "distribution_version": version,
         } for name, _, package, version in rows],
     }))
-    (sources / "pillow-12.3.0.tar.gz").write_bytes(b"test source")
+    version_catalog = json.dumps({
+        PILLOW_BUILD_KEYS[key]: version
+        for key, version in PILLOW_CANDIDATES.items()
+    }).encode()
+    with tarfile.open(sources / "pillow-12.3.0.tar.gz", "w:gz") as tar:
+        entry = tarfile.TarInfo("pillow-12.3.0/.github/dependencies.json")
+        entry.size = len(version_catalog)
+        tar.addfile(entry, io.BytesIO(version_catalog))
     catalog = tmp_path / "catalog.json"
     catalog.write_text(json.dumps({"entries": [{
         "id": "pillow-12.3.0", "filename": "pillow-12.3.0.tar.gz",
@@ -78,6 +87,7 @@ def test_exact_member_report_is_honest_and_explicit(tmp_path):
 @pytest.mark.parametrize("fault", [
     "missing_source", "bad_component", "bad_native_sha", "duplicate_member",
     "wrong_exe", "wrong_commit", "wheel_notice_missing", "pillow_notice_removed",
+    "pillow_source_catalog_missing",
 ])
 def test_source_coverage_refuses_bad_or_unverifiable_evidence(tmp_path, fault):
     win, src, cat = make_fixture(tmp_path)
@@ -108,13 +118,15 @@ def test_source_coverage_refuses_bad_or_unverifiable_evidence(tmp_path, fault):
         j = json.loads(p.read_text())
         j["source_git_commit"] = "0" * 40
         p.write_text(json.dumps(j))
+    elif fault == "pillow_source_catalog_missing":
+        (src / "pillow-12.3.0.tar.gz").write_bytes(b"bad-source-tar")
     elif fault == "wheel_notice_missing":
         with zipfile.ZipFile(win / "license-evidence.zip", "w") as z:
             z.writestr(PILLOW_LICENSE, "incomplete")
     elif fault == "pillow_notice_removed":
         with zipfile.ZipFile(win / "license-evidence.zip", "w") as z:
             z.writestr("fake/README.txt", "not a license")
-    with pytest.raises((ValueError, FileNotFoundError, KeyError, zipfile.BadZipFile)):
+    with pytest.raises((ValueError, FileNotFoundError, KeyError, zipfile.BadZipFile, tarfile.TarError)):
         analyze(win, src, cat)
 
 
