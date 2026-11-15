@@ -11,6 +11,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import tarfile
 import zipfile
 
 from tools.audit_onefile_native_sources import component
@@ -36,6 +37,37 @@ PILLOW_CANDIDATES = {
 # In addition to the 11 notices above, libavif can incorporate libaom and
 # dav1d. libtiff may incorporate liblzma. Check actual linkage/build evidence.
 POSSIBLE_TRANSITIVE = ("libaom", "dav1d", "liblzma")
+PILLOW_BUILD_KEYS = {
+    "libavif": "libavif",
+    "libjpeg-turbo": "jpegturbo",
+    "libpng": "libpng",
+    "libwebp": "libwebp",
+    "openjpeg": "openjpeg",
+    "tiff": "tiff",
+    "freetype": "freetype",
+    "lcms2": "lcms2",
+    "harfbuzz": "harfbuzz",
+    "brotli": "brotli",
+    "zlib-ng": "zlib-ng",
+}
+
+
+def pillow_source_dependencies(source: Path) -> dict:
+    """Read the pinned upstream Windows build catalog inside *actual* sdist."""
+    with tarfile.open(source, "r:gz") as tar:
+        entries = [
+            member for member in tar.getmembers()
+            if member.isfile() and member.name.endswith("/.github/dependencies.json")
+        ]
+        if len(entries) != 1 or entries[0].size > 100_000:
+            raise ValueError("Pillow source archive lacks one matching Windows build catalog")
+        stream = tar.extractfile(entries[0])
+        if stream is None:
+            raise ValueError("Unable to read Pillow source dependency catalog")
+        result = json.loads(stream.read().decode("utf-8"))
+        if not isinstance(result, dict):
+            raise ValueError("Pillow upstream dependency catalog malformed")
+        return result
 
 SOURCE_GROUPS = {
     "QtBase": ("qtbase-6.12.0-required",),
@@ -165,13 +197,19 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
             if PILLOW_LICENSE not in archive.namelist():
                 raise ValueError("Exact Pillow wheel license absent")
             license_text = archive.read(PILLOW_LICENSE).decode("utf-8").lower()
+        upstream = pillow_source_dependencies(sources / "pillow-12.3.0.tar.gz")
         for lib, version in sorted(PILLOW_CANDIDATES.items()):
+            if upstream.get(PILLOW_BUILD_KEYS[lib]) != version:
+                raise ValueError(
+                    "Pillow upstream Windows build version disagrees with wheel: " + lib
+                )
             marker = lib + "-" + version
             if marker not in license_text:
                 raise ValueError("Missing installed Pillow wheel notice: " + marker)
             candidates.append({
                 "component": lib,
                 "version_in_wheel_notices": version,
+                "version_matches_hash_verified_upstream_build_catalog": True,
                 "source_in_nine_archives": False,
                 "compiled_linkage_confirmed": False,
                 "source_obligation_or_system_library_exception_reviewed": False,
