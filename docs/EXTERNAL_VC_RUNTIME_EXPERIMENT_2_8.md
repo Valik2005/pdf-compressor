@@ -16,15 +16,15 @@ Removing DLLs from the EXE **does not create a Microsoft license**, and can make
 
 ## Manual consumer Windows 10/11 verification (without editing personal PDFs)
 
-1. From the experiment's GitHub Actions run, download one of the **EXPERIMENT-runtime-prerequisite-...-NOT-FOR-RELEASE** artifacts and extract the unsigned `PDF_Compressor_2_8.exe`. This is a test build, not an official release or authenticated publisher.
+1. From the experiment's GitHub Actions run, download one of the **EXPERIMENT-runtime-prerequisite-...-NOT-FOR-RELEASE** artifacts and extract both `PDF_Compressor_2_8.exe` and its matching `runtime-experiment-manifest.json`. This is a test build, not an official release or authenticated publisher.
 2. Keep the matching `tools/test_external_runtime_windows_28.ps1` from this exact branch and read it before running it. The script contains **no automatic downloads, installations, privilege elevation, uploads, network activity or accesses to your PDF files**.
 3. From an ordinary PowerShell terminal inside the repo folder, run (adjust the EXE path):
 
 ```powershell
-powershell -NoProfile -File .\tools\test_external_runtime_windows_28.ps1 -ExePath .\test-build\PDF_Compressor_2_8.exe -LaunchSmoke -ReportPath .\runtime-test.json
+powershell -NoProfile -File .\tools\test_external_runtime_windows_28.ps1 -ExePath .\test-build\PDF_Compressor_2_8.exe -ManifestPath .\test-build\runtime-experiment-manifest.json -LaunchSmoke -ReportPath .\runtime-test.json
 ```
 
-The script checks that the EXE is a version `2.8.0.0` unsigned build, records its SHA-256, checks for `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll` and `ucrtbase.dll` in Windows System32, and attempts a **12-second offscreen Qt startup using a sanitized PATH** (no Python, Qt or MySQL from the development machine). Its JSON report contains **no user name, device name, full local file paths, PDF text or PDF documents**. Its `gui_smoke_passed` field is a technical test, not a legal clearance.
+The script **requires the matching CI-generated 62-native manifest**, checks its exact source commit, EXE SHA-256, no bundled Microsoft runtime and unsigned test-only status. It then checks that the EXE is a version `2.8.0.0` unsigned build, checks for `vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll` and `ucrtbase.dll` in Windows System32, and attempts a **12-second offscreen Qt startup using a sanitized PATH** (no Python, Qt or MySQL from the development machine). Its JSON report contains **no user name, device name, full local file paths, PDF text or PDF documents**. Its `gui_smoke_passed` field is a technical test, not a legal clearance.
 
 If the runtime files are missing, **do not bypass the test**. Obtain and install the latest supported **Microsoft** VC++ x64 Redistributable manually from Microsoft's official site. Do not download individual DLLs from unknown sites. Rerun the check after installation.
 
