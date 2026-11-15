@@ -16,7 +16,7 @@ Removing DLLs from the EXE **does not create a Microsoft license**, and can make
 
 ## Manual consumer Windows 10/11 verification (without editing personal PDFs)
 
-1. From the experiment's GitHub Actions run, download one of the **EXP-ERIMENT-runtime-prerequisite-...-NOT-FOR-RELEASE** artifacts and extract the unsigned `PDF_Compressor_2_8.exe`. This is a test build, not an official release or authenticated publisher.
+1. From the experiment's GitHub Actions run, download one of the **EXPERIMENT-runtime-prerequisite-...-NOT-FOR-RELEASE** artifacts and extract the unsigned `PDF_Compressor_2_8.exe`. This is a test build, not an official release or authenticated publisher.
 2. Keep the matching `tools/test_external_runtime_windows_28.ps1` from this exact branch and read it before running it. The script contains **no automatic downloads, installations, privilege elevation, uploads, network activity or accesses to your PDF files**.
 3. From an ordinary PowerShell terminal inside the repo folder, run (adjust the EXE path):
 
