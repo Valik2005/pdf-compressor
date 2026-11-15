@@ -4,6 +4,20 @@
 
 **CURRENT OWNER-SELECTED v2.8 (15 Nov 2026):** The isolated release branch now contains the **62-native** Windows x64 version (no embedded Microsoft MSVC/UCRT/API-set DLLs). Source ancestor `392ddd30`; merged release branch `8317b588`. The owner independently ran the exact Windows 2025 artifact EXE SHA-256 `00a878796abad875546c556db63e9bb18af3137e3f7226c6610b1deb91a4b166` on Windows 11 build 26200: official Microsoft VC++ Redistributable x64 v14.51.36247.00 present, GUI smoke passed, Licenses dialog opened. User acceptance of the functional PDF compression engine was recorded separately on 14 Nov using 2.8.1 Testing; no compression-code change is part of this packaging. The `ca56a3e2...` sibling same-source review EXE had all 62 DLL/PYD bytes equal to the user-tested EXE but a different whole-file SHA; never represent one as the other. Current release-branch commits after `392ddd` require same-commit CI before publication. No merge into `main`, no public tag, and no legal license approval is implied. 115-native and older inventories below are **historical, not current candidate contents**. The EXE requires the *separately installed* official Microsoft VC++ Redistributable x64; this build does **not** redistribute Microsoft runtime DLLs. Third-party LGPL/AGPL/Mesa/LLVM/other obligations and separate owner authorization remain prerequisites to a public release. Smart App Control may block unsigned EXEs; do not weaken user security to bypass it.
 
+## Exact 62-native licensing inventory review — 15 Nov 2026
+
+- [x] The six required upstream source archives for Qt/PySide6 and PyMuPDF/MuPDF were independently downloaded and checked with their pinned SHA-256 digests. Release-branch 6/6 run: [#43710767759](https://github.com/Valik2005/pdf-compressor/actions/runs/43710767759).
+- [x] Application GPL-family licensing route selected: `AGPL-3.0-only`; full license text is in the candidate's third-party notices package, and complete application source is available from the private release branch (a public release must point at the **exact** tag).
+- [x] The archived Qt LGPLv3/GPLv3 texts and module source versions cover the identified QtCore/Gui/Widgets/Network/OpenGL/Svg/ImageFormats and PySide6/Shiboken modules; no known GPL-only Qt add-on from the official 6.12 list appears among the actual 62 native members.
+- [x] Qt user-repack route documented; ABI-preserving replacement via the PyInstaller onefile build spec passed on Windows ancestor. Full source-ABI/general installation compliance still requires owner review, not just byte equivalence.
+- [x] The actual Pillow wheel license (including native codecs), Python PSF license, Python OpenSSL 3.5.9 license/authors, libffi license and PyInstaller bootloader exception are bundled in notices/evidence.
+- [x] This selected 62-native EXE has **zero Microsoft runtime DLLs**; separate official VC++ x64 installation is required. Historical Microsoft DLL redistribution questions should not block *this exact* candidate.
+- [ ] Match all remaining third-party/codec and `opengl32sw.dll` Mesa/LLVM license/build notices to applicable exact native components, including a responsible assessment of whether further corresponding source is required for the combined AGPL distribution.
+- [ ] Approve the application-source availability at the **final published source tag** and recipient LGPL Qt replacement/relinking instructions for that same binary after final `main` build.
+- [ ] Record the responsible maintainer's **personal, affirmative license-rights/compliance decision** after reviewing the evidence. No technical system or assistant can grant another copyright holder's permission or impersonate a legal reviewer.
+
+See the detailed [exact candidate license decision](FINAL_THIRD_PARTY_LICENSE_REVIEW_2_8.md). **HOLD** publication until unchecked items are addressed and the owner separately authorizes public distribution.
+
 ## Distribution identity and zero-cost licensing path — confirmed 15 Nov 2026
 
 - [x] The maintainer specified a release **as a private individual / independent developer**, not an organization. Do not request or invent company/legal-entity details.
