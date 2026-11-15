@@ -1,6 +1,11 @@
 # PDF Compressor 2.8 — Windows x64 (unsigned release)
 
-**Free and open source · Offline PDF processing · No digital signature**
+**EXPERIMENTAL SYSTEM-RUNTIME VARIANT — NOT AUTHORIZED FOR PUBLIC RELEASE**
+
+Free and open source · Offline PDF processing · No digital signature.
+
+**Important prerequisite:** This experimental EXE does not contain Microsoft MSVC/UCRT binaries. On Windows 10/11 x64, the **official Microsoft Visual C++ Redistributable x64 must already be installed**. The OS provides UCRT. If the redist is missing, the EXE can fail to start; obtain it only from [Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/). Windows Server CI is not a substitute for real consumer Windows 10/11 validation.
+
 
 ## Download and verification
 
@@ -31,7 +36,12 @@ The quality check **does not run OCR** and does not guarantee visual fidelity of
 
 # PDF Compressor 2.8 — Windows (64 бита), без цифровой подписи
 
-**Бесплатная программа с открытым исходным кодом. PDF обрабатываются локально.**
+**ЭКСПЕРИМЕНТАЛЬНАЯ СБОРКА БЕЗ ВСТРОЕННЫХ MICROSOFT DLL — НЕ ПУБЛИКОВАТЬ**
+
+Бесплатная программа с открытым исходным кодом. PDF обрабатываются локально.
+
+**Обязательное условие:** для этой экспериментальной версии на Windows 10/11 x64 должен быть установлен **официальный Microsoft Visual C++ Redistributable x64**. В EXE нет 53 Microsoft Runtime DLL; UCRT предоставляет Windows, а VC++ Runtime пользователь устанавливает отдельно с [сайта Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/). Без него приложение может не запускаться. Проверки Windows Server не заменяют проверку на обычной Windows 10/11.
+
 
 ## Файлы выпуска
 

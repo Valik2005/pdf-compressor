@@ -140,7 +140,18 @@ jobs:
             origin = json.loads(z.read('reports/native-binary-origin.json'))
             assert origin['source_git_commit'] == os.environ['EXPECTED_COMMIT']
             assert origin['exe_sha256'] == sha
-            assert origin['native_file_count'] >= 100
+            # The 62-native experiment is deliberately Microsoft-free. If a
+            # maintainer promotes it into main after Windows-client validation,
+            # the public publisher must still refuse any embedded MSVC/UCRT.
+            assert origin['native_file_count'] == 62
+            assert len(origin['entries']) == 62
+            forbidden_ms = {'vcruntime140.dll', 'vcruntime140_1.dll',
+                            'msvcp140.dll', 'msvcp140_1.dll',
+                            'msvcp140_2.dll', 'ucrtbase.dll'}
+            for record in origin['entries']:
+                basename = record['name'].replace(chr(92), '/').rsplit('/', 1)[-1].lower()
+                assert basename not in forbidden_ms, basename
+                assert not (basename.startswith('api-ms-win-') and basename.endswith('.dll')), basename
             assert origin['redistribution_rights_verified'] is False
             assert not origin['unmatched_wheel_entries']
             assert not origin['installed_wheel_record_mismatches']

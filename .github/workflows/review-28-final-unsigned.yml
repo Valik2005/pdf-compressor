@@ -4,7 +4,7 @@ name: Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)
 # No SignPath credentials, no tags, no GitHub Release, and no public download.
 on:
   push:
-    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main]
+    branches: [release/2.8-ready-for-signpath, release/2.8-unsigned-preparation, main, experiment/2.8-system-runtime-latest]
   workflow_dispatch:
 
 permissions:
@@ -69,6 +69,8 @@ jobs:
   cross-verify-source-and-exe:
     needs: [build-final-unsigned, source-license-preflight]
     runs-on: ubuntu-latest
+    env:
+      PDF28_REQUIRE_SYSTEM_MSVC: '1'
     timeout-minutes: 12
     permissions:
       contents: read
@@ -215,6 +217,8 @@ jobs:
   stage-unsigned-three-files:
     needs: [cross-verify-source-and-exe]
     runs-on: ubuntu-latest
+    env:
+      PDF28_REQUIRE_SYSTEM_MSVC: '1'
     timeout-minutes: 22
     permissions:
       contents: read

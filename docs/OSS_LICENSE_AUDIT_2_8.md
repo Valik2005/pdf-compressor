@@ -1,3 +1,5 @@
+> **Experimental 62-native packaging update (15 Nov 2026; NOT PUBLISHED):** The isolated `experiment/2.8-system-runtime-latest` branch intentionally excludes all 53 formerly embedded Microsoft MSVC/UCRT/API-set DLLs. It requires an independently installed official Microsoft Visual C++ Redistributable x64 on Windows 10/11; no Microsoft package is distributed. The 118/115-member audit figures below remain historical records for other exact commits. OpenSSL, Qt LGPL, MuPDF AGPL, Mesa/LLVM and other obligations still apply. Consumer Windows QA and separate owner legal/distribution review are not complete.
+
 # PDF Compressor 2.8 — component license audit (verified artifacts)
 
 **Date:** 14 November 2026  
