@@ -137,6 +137,28 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
             "Exact provenance, additional Mesa/LLVM notices and embedded DLL "
             "compile configuration still require an independent final review.\n"
         )
+        # The exact PySide6 6.12.0 opengl32sw.dll used by the release was
+        # independently inspected and contains llvmpipe plus LLVM IR/JIT names.
+        # Bundling the full upstream LLVM notice (including the legacy NCSA
+        # license) is a prudent supplement, NOT a source-version or rebuild
+        # provenance claim for the third-party DLL.
+        llvm_notice = Path(__file__).resolve().parents[1] / "docs" / "third_party" / "LLVM_LICENSE_UPSTREAM.txt"
+        if not llvm_notice.is_file() or llvm_notice.stat().st_size < 10_000:
+            raise ValueError("Missing complete upstream LLVM license and exception text")
+        llvm_text = llvm_notice.read_bytes()
+        for marker in (b"Apache License", b"LLVM Exceptions", b"University of Illinois/NCSA"):
+            if marker not in llvm_text:
+                raise ValueError("Missing required LLVM upstream license section")
+        notices["notices/LLVM_LICENSE_UPSTREAM_2_8.txt"] = llvm_text
+        mesa_attribution += (
+            "\nLLVM supplemental notice: inspected bundled opengl32sw.dll contains "
+            "LLVM IR/JIT strings. Full upstream Apache-2.0 with LLVM exceptions "
+            "AND legacy University of Illinois/NCSA notice texts are retained at "
+            "notices/LLVM_LICENSE_UPSTREAM_2_8.txt. Source: "
+            "https://github.com/llvm/llvm-project/blob/main/llvm/LICENSE.TXT. "
+            "This is a precautionary notice, NOT certification of the "
+            "Qt-distributed DLL's exact LLVM version, binary source, or every license.\n"
+        )
         notices["notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt"] = mesa_attribution.encode("utf-8")
         # These are the exact upstream files at GitHub tag openssl-3.5.9.
         # The embedded libcrypto version reports 3.5.9, but this alone does
