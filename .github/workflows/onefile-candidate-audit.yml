@@ -1,4 +1,4 @@
-name: Windows onefile release candidate audit
+name: Windows onefile legacy preview audit (not selected 2.8 release)
 
 # Candidate-only. Never publishes a GitHub Release or distributes an EXE.
 on:
@@ -61,7 +61,7 @@ jobs:
           print("Unused Qt PDF, QML, Quick DLL/plugin files excluded")
           '@ | python -
       - name: Map all native onefile DLLs and PYDs to source/notice categories
-        run: python tools/audit_onefile_native_sources.py --audit .\\dist\\onefile-bundle-audit.json --out .\\dist\\native-source-mapping.json
+        run: python tools/audit_onefile_native_sources.py --catalog docs/source-archives-2_8.json --audit .\\dist\\onefile-bundle-audit.json --out .\\dist\\native-source-mapping.json
       - name: Validate manifest matches executable
         shell: pwsh
         run: |
