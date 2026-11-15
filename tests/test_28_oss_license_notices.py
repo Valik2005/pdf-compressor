@@ -11,6 +11,9 @@ def test_v28_notices_reference_matching_release_artifacts():
     assert "OpenSSL" in notice and "Mesa" in notice
     assert "MSVCP/VCRUNTIME" in notice
     assert "does not establish complete Mesa attribution" in notice
+    assert "two retained Python-supplied OpenSSL libraries" in notice
+    assert "all four exact binary builds" not in notice
+    assert "libcrypto-3.dll" in notice and "libssl-3.dll" in notice
 
 
 def test_v28_oss_audit_does_not_claim_legal_or_signpath_approval():
