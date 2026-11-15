@@ -1,0 +1,128 @@
+name: EXPERIMENT ONLY - 2.8 latest source, external Microsoft VC runtime
+
+# This workflow NEVER creates tags, GitHub Releases, or publishes binaries.
+# Windows hosted runners are not clean Windows 10/11 client machines.
+on:
+  push:
+    branches:
+      - experiment/2.8-system-runtime-latest
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external-vc-runtime-experiment:
+    if: github.ref == 'refs/heads/experiment/2.8-system-runtime-latest'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install release dependencies, testing tools
+        run: python -m pip install "PyMuPDF==1.27.2.3" "PySide6==6.12.0" "Pillow==12.3.0" "pyinstaller==6.22.3" "pytest>=8,<11"
+      - name: Run all PDF Compressor tests
+        run: python -m pytest -q
+      - name: Create isolated onefile candidate using system runtime
+        run: python -m PyInstaller --clean --noconfirm release_windows_2_8.spec
+      - name: Check exact EXE archive native origin and missing 53 Microsoft DLLs
+        shell: pwsh
+        run: |
+          python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
+          @'
+          import json
+          from pathlib import Path
+          from tools.audit_native_binary_origin_28 import embedded_native_members
+          from tools.verify_presign_evidence_28 import reject_ambient_qt_openssl
+          members = embedded_native_members(Path("dist/PDF_Compressor_2_8.exe"))
+          names = [name for name, raw in members]
+          assert len(names) == 62, f"Expected 115-53=62 native members; found {len(names)}"
+          forbid = {"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll",
+                    "msvcp140_1.dll", "msvcp140_2.dll", "ucrtbase.dll"}
+          for name in names:
+              base = name.replace(chr(92), "/").rsplit("/", 1)[-1].lower()
+              assert base not in forbid, name
+              assert not (base.startswith("api-ms-win-") and base.endswith(".dll")), name
+          reject_ambient_qt_openssl(names)
+          assert "_ssl.pyd" in names
+          assert "libssl-3.dll" in names and "libcrypto-3.dll" in names
+          source = json.loads(Path("dist/native-collection-sources.json").read_text())
+          assert source["native_file_count"] == 62
+          assert len(source["entries"]) == 62
+          assert {r["path"] for r in source["entries"]} == set(names)
+          origin = json.loads(Path("dist/native-binary-origin.json").read_text())
+          assert origin["native_file_count"] == 62
+          assert not origin["installed_wheel_record_mismatches"]
+          assert not origin["unmatched_wheel_entries"]
+          assert source["redistribution_rights_verified"] is False
+          print("Verified 62 packed native members; no bundled MSVC/UCRT/API-set DLLs")
+          '@ | python -
+      - name: Record exact unsigned 62-native EXE test manifest
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $sha = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $native = Get-Content dist/native-binary-origin.json -Raw | ConvertFrom-Json
+          if ($native.native_file_count -ne 62 -or $native.exe_sha256 -ne $sha -or
+              $native.source_git_commit -ne $env:GITHUB_SHA) {
+            throw 'Test manifest and native evidence do not match the exact experiment'
+          }
+          $manifest = [ordered]@{
+            schema_version = 1
+            status = 'EXPERIMENT_ONLY'
+            source_git_commit = "$env:GITHUB_SHA"
+            exe_sha256 = $sha
+            native_file_count = 62
+            bundled_microsoft_runtime_count = 0
+            requires_official_vc_redist_x64 = $true
+            release_authorized = $false
+          }
+          $manifest | ConvertTo-Json | Set-Content -Encoding utf8 dist/runtime-experiment-manifest.json
+      - name: Record official system VC runtime presence (diagnostic not a licensing claim)
+        shell: pwsh
+        run: |
+          $reg = 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+          $entry = Get-ItemProperty -Path $reg -ErrorAction SilentlyContinue
+          if ($null -ne $entry) {
+            Write-Host "System registered Microsoft VC x64 Runtime: Installed=$($entry.Installed), version=$($entry.Version)"
+          } else {
+            Write-Host "System VC runtime registry registration not found"
+          }
+          foreach ($name in @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll', 'ucrtbase.dll')) {
+            $p = Join-Path $env:SystemRoot "System32\$name"
+            if (-not (Test-Path -LiteralPath $p)) { throw "Missing required system runtime $name; must install official Microsoft VC++ x64 Redistributable." }
+            $v = (Get-Item -LiteralPath $p).VersionInfo
+            Write-Host "System32 $name : $($v.FileVersion)"
+          }
+      - name: Reuse consumer Windows prerequisite script to test isolated EXE
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ManifestPath dist/runtime-experiment-manifest.json -ReportPath dist/runtime-validation.json -LaunchSmoke -AllowServerCI
+          $status = Get-Content dist/runtime-validation.json -Raw | ConvertFrom-Json
+          if (-not $status.gui_smoke_passed -or $status.missing_system_dlls.Count -ne 0 -or $status.release_approved -or
+              -not $status.official_vc_runtime_prerequisite_satisfied -or $status.consumer_windows -or
+              -not $status.server_ci_override) {
+            throw 'Experimental Windows runtime prerequisite report failed'
+          }
+      - name: Upload TEST-ONLY EXE and provenance, not a release
+        uses: actions/upload-artifact@v4
+        with:
+          name: EXPERIMENT-runtime-prerequisite-${{ matrix.os }}-NOT-FOR-RELEASE
+          path: |
+            dist/PDF_Compressor_2_8.exe
+            dist/native-binary-origin.json
+            dist/native-collection-sources.json
+            dist/runtime-validation.json
+            dist/runtime-experiment-manifest.json
+            tools/test_external_runtime_windows_28.ps1
+            docs/EXTERNAL_VC_RUNTIME_EXPERIMENT_2_8.md
+          retention-days: 7
+          if-no-files-found: error
