@@ -44,6 +44,8 @@ NOTICES = {
     "components/qtbase-6.12.0-required/LICENSES/Apache-2.0.txt",
     "components/qtbase-6.12.0-required/LICENSES/MIT.txt",
     "components/mupdf-1.27.2-native/COPYING",
+    "components/mesa-11.2.2/COPYING",
+    "components/llvm-3.6.2/LICENSE.TXT",
     "components/openssl-3.5.9/LICENSE.txt",
     "components/openssl-3.5.9/AUTHORS.md",
     "notice-manifest.json",
@@ -78,8 +80,8 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     if catalog.get("schema_version") != 1 or "2.8" not in catalog.get("release", ""):
         raise ValueError("Incorrect v2.8 source catalog")
     required = [e for e in catalog.get("entries", []) if e.get("required")]
-    if len(required) != 7 or len({e["id"] for e in required}) != 7:
-        raise ValueError("Exactly six distinct source components expected")
+    if len(required) != 9 or len({e["id"] for e in required}) != 9:
+        raise ValueError("Exactly nine distinct source components expected")
     exe = file_required(windows, APP_EXE)
     manifest = read_json(windows, "build-manifest.json")
     binary = read_json(windows, "bundle-audit.json")

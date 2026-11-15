@@ -15,7 +15,7 @@ import time
 import urllib.parse
 import urllib.request
 
-ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com", "casper.mupdf.com", "mse.uk.distfiles.macports.org"}
+ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com", "casper.mupdf.com", "mse.uk.distfiles.macports.org", "archive.mesa3d.org", "releases.llvm.org"}
 SHA256_RE = re.compile(r"SHA-256\s+Hash\s*:\s*([a-fA-F0-9]{64})", re.I)
 MAX_SIZE = 600 * 1024 * 1024
 

@@ -14,8 +14,10 @@ def test_v28_notices_reference_matching_release_artifacts():
     assert "Two CPython-provided OpenSSL 3 DLLs remain" in notice
     assert "all four exact binary builds" not in notice
     assert "libcrypto-3.dll" in notice and "libssl-3.dll" in notice
-    assert "seven pinned source archives" in notice
-    assert "pillow-12.3.0.tar.gz" in (ROOT / "docs/source-archives-2_8.json").read_text(encoding="utf-8")
+    assert "nine pinned upstream source archives" in notice
+    catalog = (ROOT / "docs/source-archives-2_8.json").read_text(encoding="utf-8")
+    for name in ("pillow-12.3.0.tar.gz", "mesa-11.2.2.tar.xz", "llvm-3.6.2.src.tar.xz"):
+        assert name in catalog
 
 
 def test_v28_oss_audit_does_not_claim_legal_or_signpath_approval():

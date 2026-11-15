@@ -109,7 +109,7 @@ def fixture(tmp_path):
             "missing": ["Third-party relinking rights require final review"]
         }))
     entries, downloaded, audited = [], [], []
-    for i in range(7):
+    for i in range(9):
         name = f"test{i}.tar.gz"
         contents = (f"source-file-{i}").encode() * 100
         (sources / name).write_bytes(contents)
@@ -154,7 +154,7 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     result = validate(win, source, cat, commit)
     assert result["technical_integrity_checks_passed"] is True
     assert result["license_compliance_certified"] is False
-    assert result["source_archives_verified"] == 7
+    assert result["source_archives_verified"] == 9
     assert result["third_party_license_records"] >= 65
     assert result["installed_package_evidence_missing_or_incomplete"]
     assert result["native_build_sources_match_exe"] is True

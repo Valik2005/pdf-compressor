@@ -34,7 +34,7 @@ def test_audit_accepts_mapped_native_components_with_pins():
     entries = [{"id": n, "required": True} for n in (
         "qtbase-6.12.0-required", "qtsvg-6.12.0", "qtimageformats-6.12.0",
         "qtforpython-6.12.0", "mupdf-1.27.2-native", "pymupdf-1.27.2.3",
-        "pillow-12.3.0")]
+        "pillow-12.3.0", "mesa-11.2.2", "llvm-3.6.2")]
     bundle = {"schema_version": 1, "sha256": "a" * 64, "exe_size_bytes": 123,
               "all_entries": [{"name": "PySide6/Qt6Widgets.dll"},
                               {"name": "PySide6/plugins/imageformats/qwebp.dll"},

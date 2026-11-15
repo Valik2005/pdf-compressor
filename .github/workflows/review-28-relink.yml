@@ -13,6 +13,9 @@ on:
       - tools/verify_relinked_onefile.py
       - release_windows_2_8.spec
       - .github/workflows/review-28-relink.yml
+      - docs/LGPL_RELINKING_2_8.md
+      - docs/FINAL_THIRD_PARTY_LICENSE_REVIEW_2_8.md
+      - docs/source-archives-2_8.json
   workflow_dispatch:
 
 permissions:

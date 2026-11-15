@@ -29,7 +29,11 @@ SOURCES = {
 }
 
 
-EXTRA_28_SOURCES = {"pillow-12.3.0": ["LICENSE"]}
+EXTRA_28_SOURCES = {
+    "pillow-12.3.0": ["LICENSE"],
+    "mesa-11.2.2": ["COPYING"],
+    "llvm-3.6.2": ["LICENSE.TXT"],
+}
 
 
 def digest(path: Path) -> str:
@@ -138,8 +142,10 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
             "  components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt\n"
             "\n"
             "These source-derived notices address known Qt upstream terms. "
-            "Exact provenance, additional Mesa/LLVM notices and embedded DLL "
-            "compile configuration still require an independent final review.\n"
+            "Embedded software OpenGL DLL is the unmodified PySide6 wheel file; "
+            "its embedded version markers identify Mesa 11.2.2 and LLVM 3.6.2. "
+            "The original version-pinned sources, COPYING and historical LLVM "
+            "LICENSE.TXT accompany the EXE. Exact build flags/patches remain unknown.\n"
         )
         # The exact PySide6 6.12.0 opengl32sw.dll used by the release was
         # independently inspected and contains llvmpipe plus LLVM IR/JIT names.
@@ -155,13 +161,11 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
                 raise ValueError("Missing required LLVM upstream license section")
         notices["notices/LLVM_LICENSE_UPSTREAM_2_8.txt"] = llvm_text
         mesa_attribution += (
-            "\nLLVM supplemental notice: inspected bundled opengl32sw.dll contains "
-            "LLVM IR/JIT strings. Full upstream Apache-2.0 with LLVM exceptions "
-            "AND legacy University of Illinois/NCSA notice texts are retained at "
-            "notices/LLVM_LICENSE_UPSTREAM_2_8.txt. Source: "
-            "https://github.com/llvm/llvm-project/blob/main/llvm/LICENSE.TXT. "
-            "This is a precautionary notice, NOT certification of the "
-            "Qt-distributed DLL's exact LLVM version, binary source, or every license.\n"
+            "\nExact legacy LLVM 3.6.2 license is retained at "
+            "components/llvm-3.6.2/LICENSE.TXT (University of Illinois/NCSA). "
+            "Modern Apache-2.0 with LLVM exceptions material is included as "
+            "supplementary contextual history at notices/LLVM_LICENSE_UPSTREAM_2_8.txt, "
+            "NOT substituted for the actual historic LLVM 3.6.2 terms.\n"
         )
         notices["notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt"] = mesa_attribution.encode("utf-8")
         # These are the exact upstream files at GitHub tag openssl-3.5.9.
