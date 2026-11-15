@@ -6,7 +6,7 @@
 
 ## Exact 62-native licensing inventory review — 15 Nov 2026
 
-- [x] The six required upstream source archives for Qt/PySide6 and PyMuPDF/MuPDF were independently downloaded and checked with their pinned SHA-256 digests. Release-branch 6/6 run: [#43710767759](https://github.com/Valik2005/pdf-compressor/actions/runs/43710767759).
+- [x] The seven required upstream source archives for Qt/PySide6, PyMuPDF/MuPDF, and Pillow 12.3.0 were independently downloaded and checked with their pinned SHA-256 digests. Release-branch 6/6 run: [#43710767759](https://github.com/Valik2005/pdf-compressor/actions/runs/43710767759).
 - [x] Application GPL-family licensing route selected: `AGPL-3.0-only`; full license text is in the candidate's third-party notices package, and complete application source is available from the private release branch (a public release must point at the **exact** tag).
 - [x] The archived Qt LGPLv3/GPLv3 texts and module source versions cover the identified QtCore/Gui/Widgets/Network/OpenGL/Svg/ImageFormats and PySide6/Shiboken modules; no known GPL-only Qt add-on from the official 6.12 list appears among the actual 62 native members.
 - [x] Qt user-repack route documented; ABI-preserving replacement via the PyInstaller onefile build spec passed on Windows ancestor. Full source-ABI/general installation compliance still requires owner review, not just byte equivalence.
