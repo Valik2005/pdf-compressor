@@ -129,7 +129,12 @@ def fixture(tmp_path):
     with zipfile.ZipFile(sources / "THIRD_PARTY_NOTICES_2_8.zip", "w") as z:
         for name in NOTICES:
             if name != "notice-manifest.json":
-                z.writestr(name, b"fixture")
+                if name == "notices/LLVM_LICENSE_UPSTREAM_2_8.txt":
+                    full = (Path(__file__).resolve().parents[1] / "docs" /
+                            "third_party" / "LLVM_LICENSE_UPSTREAM.txt").read_bytes()
+                    z.writestr(name, full)
+                else:
+                    z.writestr(name, b"fixture")
         for i in range(65):
             z.writestr(f"components/other/{i}.txt", b"fixture")
         z.writestr("notice-manifest.json", json.dumps({
@@ -166,7 +171,7 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     "collection_missing", "collection_forged_source", "collection_missing_member",
     "collection_duplicate_member", "collection_source_path_leak",
     "collection_wrong_sha", "collection_false_relink", "collection_count_relink",
-    "collection_member_relink", "missing_pillow_notices",
+    "collection_member_relink", "missing_pillow_notices", "missing_llvm_notice",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -187,6 +192,14 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
         (source / "THIRD_PARTY_NOTICES_2_8.zip").unlink()
     elif change == "wrong_source_revision":
         commit="b"*40
+    elif change == "missing_llvm_notice":
+        original = source / "THIRD_PARTY_NOTICES_2_8.zip"
+        tmp = source / "tampered-notices.zip"
+        with zipfile.ZipFile(original) as reader, zipfile.ZipFile(tmp, "w") as writer:
+            for item in reader.infolist():
+                if item.filename != "notices/LLVM_LICENSE_UPSTREAM_2_8.txt":
+                    writer.writestr(item, reader.read(item.filename))
+        tmp.replace(original)
     elif change == "missing_pillow_notices":
         p = win / "license-evidence.zip"
         with zipfile.ZipFile(p, "w") as z:
