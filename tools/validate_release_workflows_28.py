@@ -70,12 +70,26 @@ def check() -> None:
     assert "gh release edit v2.8 --draft=false --latest" in publishtext
 
     # Unsigned release is an entirely separate, owner-authorized release path.
-    assert list(unsigned_publisher["on"]) == ["workflow_dispatch"]
+    assert list(unsigned_publisher["on"]) == ["workflow_run", "issue_comment", "workflow_dispatch"]
+    assert unsigned_publisher["on"]["workflow_run"]["workflows"] == [
+        "Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)"
+    ]
+    assert unsigned_publisher["on"]["workflow_run"]["types"] == ["completed"]
+    assert unsigned_publisher["on"]["workflow_run"]["branches"] == ["main"]
+    assert unsigned_publisher["on"]["issue_comment"]["types"] == ["created"]
     assert unsigned_publisher["permissions"] == {"contents": "read"}
     release_job = unsigned_publisher["jobs"]["publish-unsigned-28"]
     assert release_job["permissions"] == {"contents": "write", "actions": "read"}
-    assert "github.actor == 'Valik2005'" in release_job["if"]
-    assert "github.ref == 'refs/heads/main'" in release_job["if"]
+    approval_job = unsigned_publisher["jobs"]["authorize"]
+    assert approval_job["permissions"] == {
+        "contents": "read", "actions": "read", "issues": "read"
+    }
+    assert release_job["needs"] == ["authorize"]
+    assert "needs.authorize.outputs.authorized == 'true'" in release_job["if"]
+    assert "github.actor == 'Valik2005'" in approval_job["if"]
+    assert "github.ref == 'refs/heads/main'" in approval_job["if"]
+    assert "github.event.workflow_run.conclusion == 'success'" in approval_job["if"]
+    assert "github.event.issue.number == 17" in approval_job["if"]
     requirements = set(unsigned_publisher["on"]["workflow_dispatch"]["inputs"])
     assert requirements == {"acceptance_run_id", "release_confirmation", "license_confirmation"}
     unsigned_yaml = (ROOT / ".github/workflows/publish-v2_8-unsigned.yml").read_text(encoding="utf-8")
@@ -95,7 +109,11 @@ def check() -> None:
     assert "len([n for n in entries if n.startswith('sources/')]) == 6" not in unsigned_yaml
     assert "signpath/github-action" not in unsigned_yaml.lower()
     assert "gh release create v2.8" in unsigned_yaml
-    assert "gh release edit v2.8 --draft=false --latest" in unsigned_yaml
+    assert 'gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false -F make_latest=true' in unsigned_yaml
+    assert "LICENSE_OBLIGATIONS_REVIEWED v2.8 {sha}" in unsigned_yaml
+    assert "source_archives_verified'] == 9" in unsigned_yaml
+    assert "needs.authorize.outputs.acceptance_run_id" in unsigned_yaml
+    assert "main moved; refuse stale automatic release" in unsigned_yaml
     assert unsigned_review["permissions"] == {"contents": "read"}
     jobs = unsigned_review["jobs"]
     assert jobs["stage-unsigned-three-files"]["needs"] == ["cross-verify-source-and-exe"]
