@@ -8,6 +8,7 @@ This script must run on the same GitHub Actions source/executable artifacts.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -52,22 +53,44 @@ PILLOW_BUILD_KEYS = {
 }
 
 
+# This is the exact *Git blob* of the official Pillow tag 12.3.0:
+# https://github.com/python-pillow/Pillow/blob/bb1d8e8ab8d29048624d96e3ee53cecf7c13d13d/.github/dependencies.json
+# GitHub content API returned this blob SHA for that tag.
+PILLOW_UPSTREAM_DEPENDENCY_BLOB = "cc6e74fbac5f96fe795f653aa107bff4d9554c32"
+PILLOW_UPSTREAM_DEPENDENCY_FILE = "PILLOW_12_3_0_BUILD_DEPENDENCIES.json"
+
+
 def pillow_source_dependencies(source: Path) -> dict:
-    """Read the pinned upstream Windows build catalog inside *actual* sdist."""
+    """Verify the actual PyPI sdist and a tag-pinned upstream build catalog.
+
+    Pillow's source distribution deliberately excludes .github/ from MANIFEST,
+    while winbuild/build_prepare.py (included in the sdist) reads
+    .github/dependencies.json from the *GitHub source checkout*. Therefore we
+    preserve the separately authenticated original Git blob in this repo.
+    """
     with tarfile.open(source, "r:gz") as tar:
-        entries = [
+        scripts = [
             member for member in tar.getmembers()
-            if member.isfile() and member.name.endswith("/.github/dependencies.json")
+            if member.isfile() and member.name.endswith("/winbuild/build_prepare.py")
         ]
-        if len(entries) != 1 or entries[0].size > 100_000:
-            raise ValueError("Pillow source archive lacks one matching Windows build catalog")
-        stream = tar.extractfile(entries[0])
-        if stream is None:
-            raise ValueError("Unable to read Pillow source dependency catalog")
-        result = json.loads(stream.read().decode("utf-8"))
-        if not isinstance(result, dict):
-            raise ValueError("Pillow upstream dependency catalog malformed")
-        return result
+        if len(scripts) != 1 or scripts[0].size > 100_000:
+            raise ValueError("Pillow sdist lacks Windows build dependency script")
+        stream = tar.extractfile(scripts[0])
+        if stream is None or b".github" not in stream.read():
+            raise ValueError("Pillow sdist does not reference the upstream build catalog")
+
+    original = (Path(__file__).resolve().parents[1] / "docs" / "third_party" /
+                PILLOW_UPSTREAM_DEPENDENCY_FILE).read_bytes()
+    git_blob = hashlib.sha1(
+        b"blob " + str(len(original)).encode("ascii") + b"\0" + original
+    ).hexdigest()
+    if git_blob != PILLOW_UPSTREAM_DEPENDENCY_BLOB:
+        raise ValueError("Pillow build dependency manifest differs from tag 12.3.0 Git blob")
+    result = json.loads(original.decode("utf-8"))
+    if not isinstance(result, dict):
+        raise ValueError("Pillow upstream build dependency catalog malformed")
+    return result
+
 
 SOURCE_GROUPS = {
     "QtBase": ("qtbase-6.12.0-required",),
