@@ -85,9 +85,20 @@ print("EXPERIMENT: accidental MySQL OpenSSL and optional Qt TLS removed:", opens
 # to the bytes actually extracted from this onefile executable.
 import os
 from pathlib import Path
-from tools.audit_native_collection_sources_28 import capture
+from tools.audit_native_collection_sources_28 import capture, load_recipient_qt_replacements
+
+# Only explicit recipient builds may authorize exact Qt DLL replacement bytes.
+# The CI release runner does not set this variable and remains fail-closed
+# against any change to the installed wheel RECORD. The release verifier
+# independently rejects recipient-relinked DLLs from official v2.8 assets.
+recipient_manifest = os.environ.get("PDF28_RECIPIENT_QT_MANIFEST")
+recipient_changes = (
+    load_recipient_qt_replacements(Path(recipient_manifest))
+    if recipient_manifest else None
+)
 capture(a.binaries, a.datas, Path("dist/native-collection-sources.json"),
-        source_sha=os.environ.get("GITHUB_SHA"))
+        source_sha=os.environ.get("GITHUB_SHA"),
+        recipient_qt_replacements=recipient_changes)
 
 pyz = PYZ(a.pure)
 exe = EXE(
