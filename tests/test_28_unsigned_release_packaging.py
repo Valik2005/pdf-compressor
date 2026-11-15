@@ -13,6 +13,7 @@ from tools.assemble_unsigned_release_28 import (
     assemble_unsigned_28, EXE_NAME, BUNDLE_NAME,
 )
 from tools.verify_presign_evidence_28 import validate
+from tools.audit_source_coverage_28 import analyze as review_source_coverage
 
 
 def prepare(tmp_path: Path):
@@ -26,6 +27,10 @@ def prepare(tmp_path: Path):
     evidence = tmp_path / "pre-sign-check.json"
     evidence.write_text(
         json.dumps(validate(windows, sources, catalog, commit)), encoding="utf-8"
+    )
+    (tmp_path / "source-coverage-report.json").write_text(
+        json.dumps(review_source_coverage(windows, sources, catalog)),
+        encoding="utf-8",
     )
     exe = windows / EXE_NAME
     (windows / "unsigned-authenticode-check.json").write_text(
@@ -60,6 +65,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
         assert "licenses/THIRD_PARTY_NOTICES_2_8.zip" in names
         assert "reports/unsigned-authenticode-check.json" in names
         assert "reports/presign-technical-evidence.json" in names
+        assert "reports/source-coverage-report.json" in names
         assert "reports/native-binary-origin.json" in names
         assert "reports/native-collection-sources.json" in names
         assert "reports/signature-verification.json" not in names
@@ -72,6 +78,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
     "fake_signature", "wrong_windows_source", "missing_notice",
     "signed_evidence_intrusion", "staging_already_exists",
     "corrupt_native_inventory", "invalid_embedded_origin",
+    "missing_source_coverage", "falsified_source_coverage",
 ])
 def test_reject_unverified_or_contaminated_release(tmp_path, fault):
     windows, sources, evidence, catalog, out, sha = prepare(tmp_path)
@@ -95,6 +102,13 @@ def test_reject_unverified_or_contaminated_release(tmp_path, fault):
         check.write_text(json.dumps(proof))
     elif fault == "missing_notice":
         (sources / "THIRD_PARTY_NOTICES_2_8.zip").unlink()
+    elif fault == "missing_source_coverage":
+        (out.parent / "source-coverage-report.json").unlink()
+    elif fault == "falsified_source_coverage":
+        coverage_path = out.parent / "source-coverage-report.json"
+        coverage = json.loads(coverage_path.read_text())
+        coverage["complete_corresponding_source_verified"] = True
+        coverage_path.write_text(json.dumps(coverage))
     elif fault == "signed_evidence_intrusion":
         (windows / "signature-verification.json").write_text('{"fake":true}')
     elif fault == "staging_already_exists":
