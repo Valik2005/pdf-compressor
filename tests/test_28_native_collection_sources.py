@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.audit_native_collection_sources_28 import capture
+from tools.audit_native_collection_sources_28 import capture, load_recipient_qt_replacements
 
 
 def native(tmp_path, name="Qt6Gui.dll", data=b"MZ-Qt-test-dll"):
@@ -85,3 +85,90 @@ def test_provenance_preserves_only_safe_program_files_relative_path(
     assert row["source_relative_path"] == relative
     assert str(tmp_path) not in out.read_text(encoding="utf-8")
     assert "Program Files" not in row["source_relative_path"]
+
+
+def test_recipient_qt_override_is_explicit_and_sha_pinned(tmp_path):
+    qt_file = native(tmp_path, name="Qt6Widgets.dll", data=b"MZ-modified-Qt-resource")
+    modified_sha = hashlib.sha256(qt_file.read_bytes()).hexdigest()
+    original_sha = hashlib.sha256(b"MZ-original-Qt-wheel").hexdigest()
+    wheel = {qt_file.resolve(): {
+        "scope": "installed-wheel", "distribution": "PySide6_Essentials",
+        "version": "6.12.0", "relative_path": "PySide6/Qt6Widgets.dll",
+        "record_sha256": original_sha,
+    }}
+    entry = ("PySide6/Qt6Widgets.dll", str(qt_file), "BINARY")
+    out = tmp_path / "native-collection.json"
+    with pytest.raises(ValueError, match="RECORD"):
+        capture([entry], [], out, known=wheel)
+    manifest = {
+        "schema_version": 1, "scope": "recipient-relink",
+        "recipient_modified_qt_libraries": [
+            {"path": "PySide6/Qt6Widgets.dll",
+             "original_sha256": original_sha,
+             "replacement_sha256": modified_sha}
+        ],
+    }
+    manifest_file = tmp_path / "recipient-qt.json"
+    manifest_file.write_text(json.dumps(manifest), encoding="utf-8")
+    approved = load_recipient_qt_replacements(manifest_file)
+    result = capture([entry], [], out, known=wheel,
+                     recipient_qt_replacements=approved)
+    assert result["recipient_qt_relink"] is True
+    assert result["recipient_modified_qt_count"] == 1
+    assert result["entries"][0]["recipient_modified_qt"] is True
+    assert result["entries"][0]["wheel_record_matched"] is False
+    assert result["entries"][0]["source_sha256"] == modified_sha
+    assert result["redistribution_rights_verified"] is False
+    assert str(tmp_path) not in out.read_text(encoding="utf-8")
+
+    tampered = dict(approved["PySide6/Qt6Widgets.dll"])
+    tampered["replacement_sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="replacement mismatch"):
+        capture([entry], [], out, known=wheel,
+                recipient_qt_replacements={"PySide6/Qt6Widgets.dll": tampered})
+    tampered = dict(approved["PySide6/Qt6Widgets.dll"])
+    tampered["original_sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="replacement mismatch"):
+        capture([entry], [], out, known=wheel,
+                recipient_qt_replacements={"PySide6/Qt6Widgets.dll": tampered})
+    with pytest.raises(ValueError, match="missing native members"):
+        capture([entry], [], out, known=wheel, recipient_qt_replacements={
+            **approved,
+            "PySide6/Qt6Missing.dll": {"original_sha256": original_sha,
+                                         "replacement_sha256": modified_sha},
+        })
+
+
+@pytest.mark.parametrize("bad_path", [
+    "Qt6Widgets.dll", "PySide6/../other.dll",
+    "PySide6/Qt6Widgets.txt", "PySide6/Qt6Widgets\\\\.dll",
+])
+def test_relink_override_manifest_rejects_unsafe_locations(tmp_path, bad_path):
+    manifest = {
+        "schema_version": 1, "scope": "recipient-relink",
+        "recipient_modified_qt_libraries": [{
+            "path": bad_path, "original_sha256": "a" * 64,
+            "replacement_sha256": "b" * 64
+        }],
+    }
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="Unsafe"):
+        load_recipient_qt_replacements(path)
+
+
+def test_relink_manifest_rejects_false_shas_and_duplicates(tmp_path):
+    good = {"path": "PySide6/Qt6Widgets.dll",
+            "original_sha256": "a" * 64,
+            "replacement_sha256": "b" * 64}
+    for records in [
+        [dict(good, replacement_sha256="z" * 64)],
+        [dict(good, original_sha256="b" * 64)],
+        [good, good],
+    ]:
+        doc = {"schema_version": 1, "scope": "recipient-relink",
+               "recipient_modified_qt_libraries": records}
+        path = tmp_path / "manifest.json"
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        with pytest.raises(ValueError):
+            load_recipient_qt_replacements(path)
