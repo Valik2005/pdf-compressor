@@ -46,7 +46,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
     assert info["signature"] == "NotSigned"
     assert info["license_compliance_certified"] is False
     assert info["release_authorized"] is False
-    assert info["source_archives"] == 6
+    assert info["source_archives"] == 7
     assert set(info["files"]) == {EXE_NAME, BUNDLE_NAME, "SHA256SUMS.txt"}
     lines = (out / "SHA256SUMS.txt").read_text().splitlines()
     assert len(lines) == 2
@@ -55,7 +55,7 @@ def test_unsigned_release_has_exact_three_assets_and_no_fake_signature(tmp_path)
     with zipfile.ZipFile(out / BUNDLE_NAME) as z:
         assert z.testzip() is None
         names = set(z.namelist())
-        assert len([x for x in names if x.startswith("sources/")]) == 6
+        assert len([x for x in names if x.startswith("sources/")]) == 7
         assert "licenses/LGPL_RELINKING_2_8.md" in names
         assert "licenses/THIRD_PARTY_NOTICES_2_8.zip" in names
         assert "reports/unsigned-authenticode-check.json" in names
