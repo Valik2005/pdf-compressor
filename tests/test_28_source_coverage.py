@@ -9,7 +9,7 @@ import zipfile
 import pytest
 
 from tools.audit_source_coverage_28 import (
-    PILLOW_CANDIDATES, PILLOW_BUILD_KEYS, PILLOW_LICENSE, analyze,
+    PILLOW_CANDIDATES, PILLOW_LICENSE, analyze,
 )
 
 
@@ -43,14 +43,15 @@ def make_fixture(tmp_path: Path):
             "distribution": package, "distribution_version": version,
         } for name, _, package, version in rows],
     }))
-    version_catalog = json.dumps({
-        PILLOW_BUILD_KEYS[key]: version
-        for key, version in PILLOW_CANDIDATES.items()
-    }).encode()
+    build_script = (
+        "from pathlib import Path\n"
+        "V = json.loads((Path(__file__).parents[1] / "
+        "'.github' / 'dependencies.json').read_text())\n"
+    ).encode()
     with tarfile.open(sources / "pillow-12.3.0.tar.gz", "w:gz") as tar:
-        entry = tarfile.TarInfo("pillow-12.3.0/.github/dependencies.json")
-        entry.size = len(version_catalog)
-        tar.addfile(entry, io.BytesIO(version_catalog))
+        entry = tarfile.TarInfo("pillow-12.3.0/winbuild/build_prepare.py")
+        entry.size = len(build_script)
+        tar.addfile(entry, io.BytesIO(build_script))
     catalog = tmp_path / "catalog.json"
     catalog.write_text(json.dumps({"entries": [{
         "id": "pillow-12.3.0", "filename": "pillow-12.3.0.tar.gz",
@@ -146,3 +147,11 @@ def test_python_only_inventory_does_not_invent_pillow_linkage(tmp_path):
     report = analyze(win, src, cat)
     assert report["pillow_native_candidate_sources"] == []
     assert report["native_component_groups"] == ["Python runtime"]
+
+
+def test_vendor_build_catalog_git_blob_is_required(tmp_path, monkeypatch):
+    import tools.audit_source_coverage_28 as coverage
+    win, src, cat = make_fixture(tmp_path)
+    monkeypatch.setattr(coverage, "PILLOW_UPSTREAM_DEPENDENCY_BLOB", "0" * 40)
+    with pytest.raises(ValueError, match="Git blob"):
+        analyze(win, src, cat)
