@@ -1,0 +1,90 @@
+name: Retain owner-tested PDF Compressor 2.8 EXE (reference only)
+
+# Store the exact user-tested binary with integrity evidence. Not a public
+# GitHub Release, not a tag, and not legal or publisher authorization.
+on:
+  push:
+    branches:
+      - ops/retain-owner-tested-v28-exe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  retain-exact-owner-tested-exe:
+    if: github.ref == 'refs/heads/ops/retain-owner-tested-v28-exe'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Download precise previously user-tested 2025 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download 43701115837 --repo "$GITHUB_REPOSITORY" \
+            --name EXPERIMENT-runtime-prerequisite-windows-2025-NOT-FOR-RELEASE \
+            --dir selected
+      - name: Independently verify the exact EXE and all native contents
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib
+          from tools.audit_native_binary_origin_28 import embedded_native_members
+          d = pathlib.Path('selected/dist')
+          exe = d / 'PDF_Compressor_2_8.exe'
+          expected = '00a878796abad875546c556db63e9bb18af3137e3f7226c6610b1deb91a4b166'
+          commit = '392ddd30b93a681c9975373a7c884374fa77e41d'
+          h = hashlib.sha256()
+          with exe.open('rb') as f:
+              for b in iter(lambda: f.read(1 << 20), b''): h.update(b)
+          assert h.hexdigest() == expected, 'Wrong EXE: fail closed'
+          manifest = json.loads((d/'runtime-experiment-manifest.json').read_text(encoding='utf-8-sig'))
+          assert manifest['exe_sha256'] == expected
+          assert manifest['source_git_commit'] == commit
+          assert manifest['native_file_count'] == 62
+          assert manifest['bundled_microsoft_runtime_count'] == 0
+          assert manifest['requires_official_vc_redist_x64'] is True
+          assert manifest['release_authorized'] is False
+          origin = json.loads((d/'native-binary-origin.json').read_text(encoding='utf-8-sig'))
+          collection = json.loads((d/'native-collection-sources.json').read_text(encoding='utf-8-sig'))
+          assert origin['exe_sha256'] == expected and origin['source_git_commit'] == commit
+          assert origin['native_file_count'] == collection['native_file_count'] == 62
+          expected_members = {r['name']: (r['sha256'], r['size_bytes']) for r in origin['entries']}
+          assert len(expected_members) == 62
+          built_members = {name: (hashlib.sha256(raw).hexdigest(), len(raw)) for name, raw in embedded_native_members(exe)}
+          assert built_members == expected_members, 'Native bytes differ from prior audit'
+          forbidden = {'vcruntime140.dll','vcruntime140_1.dll','msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','ucrtbase.dll'}
+          for name in built_members:
+              base = name.replace(chr(92), '/').rsplit('/',1)[-1].lower()
+              assert base not in forbidden and not (base.startswith('api-ms-win-') and base.endswith('.dll'))
+          assert {r['path']: (r['source_sha256'],r['size_bytes']) for r in collection['entries']} == expected_members
+          print('RETAINED EXACT SHA, 62/62 native bytes, 0 Microsoft runtime DLLs; NOT FOR RELEASE')
+          PY
+      - name: Record review-only provenance (no distribution authorization)
+        shell: bash
+        run: |
+          cat > selected/REFERENCE-NOT-FOR-RELEASE.txt <<'EOF'
+          User-tested PDF Compressor v2.8 unsigned, Windows x64, 62 native DLL/PYD.
+          EXE SHA-256: 00a878796abad875546c556db63e9bb18af3137e3f7226c6610b1deb91a4b166
+          Original source commit: 392ddd30b93a681c9975373a7c884374fa77e41d
+          Original GitHub Actions: 43701115837, windows-2025 artifact 14156521600.
+          Owner's Windows 11 build 26200: official VC++ x64 installed; GUI smoke passed.
+          This artifact is UNSIGNED and has NOT been approved for public release.
+          It is NOT a legal certificate, not a verified code-signature identity,
+          and not a replacement for the exact source/license release packaging.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v28-owner-tested-exact-00a878-REFERENCE-NOT-FOR-RELEASE
+          path: selected/
+          retention-days: 90
+          if-no-files-found: error
