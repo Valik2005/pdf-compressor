@@ -4,7 +4,7 @@ This notice accompanies the **Windows single-EXE** distribution, not the histori
 
 | Component | Bundled use / terms | Where to find terms & source |
 | --- | --- | --- |
-| PyMuPDF 1.27.2.3 / MuPDF 1.27.2 | Document reading and conversion; AGPLv3 or Artifex commercial terms | Complete AGPL application LICENSE, MuPDF `COPYING` in third-party notices ZIP; separately attached PyMuPDF + MuPDF sources |
+| PyMuPDF 1.27.2.3 / MuPDF 1.27.2 | Document reading and conversion; AGPLv3 or Artifex commercial terms | Complete AGPL application LICENSE, MuPDF `docs/license.html` in third-party notices ZIP; separately attached PyMuPDF + MuPDF sources |
 | PySide6 / Shiboken 6.12.0 | Python bindings for Qt; LGPLv3/GPLv3/commercial alternatives | Full applicable LGPLv3/GPLv3 texts in third-party notices ZIP; separately attached PySide6/Shiboken source |
 | QtBase, QtSvg, QtImageFormats 6.12.0 | Widgets/UI, icon and image plugins; LGPLv3/GPLv3 alternatives with bundled third-party code | Full LGPLv3/GPLv3 and third-party notices ZIP; separately attached QtBase/QtSvg/QtImageFormats sources |
 | Pillow 12.3.0 | Imaging and font/codec components; PIL/Pillow MIT-CMU and numerous upstream licenses | The source ZIP also supplies the official SHA-256-verified Pillow 12.3.0 PyPI source tarball; the exact Windows Pillow 12.3.0 wheel's complete ~78 KB `LICENSE` is preserved in `license-evidence.zip` and verified at pre-release time. It includes credits and license terms for libavif, libjpeg-turbo, libpng, libwebp, OpenJPEG, libtiff, FreeType, lcms2, HarfBuzz, Brotli, zlib-ng and others. The wheel's embedded `PIL/*.pyd` files are additionally checked byte-for-byte against installed wheel hashes. |

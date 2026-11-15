@@ -44,7 +44,7 @@ NOTICES = {
     "components/qtbase-6.12.0-required/LICENSES/Apache-2.0.txt",
     "components/qtbase-6.12.0-required/LICENSES/MIT.txt",
     "components/mupdf-1.27.2-native/COPYING",
-    "components/mesa-11.2.2/COPYING",
+    "components/mesa-11.2.2/docs/license.html",
     "components/llvm-3.6.2/LICENSE.TXT",
     "components/openssl-3.5.9/LICENSE.txt",
     "components/openssl-3.5.9/AUTHORS.md",

@@ -13,7 +13,7 @@ def test_source_pack_includes_complete_upstream_boost_mit_license_texts():
     assert "components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt" in NOTICES
     assert "notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt" in NOTICES
     assert "notices/LLVM_LICENSE_UPSTREAM_2_8.txt" in NOTICES
-    assert "components/mesa-11.2.2/COPYING" in NOTICES
+    assert "components/mesa-11.2.2/docs/license.html" in NOTICES
     assert "components/llvm-3.6.2/LICENSE.TXT" in NOTICES
 
 

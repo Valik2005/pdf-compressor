@@ -8,7 +8,7 @@
 
 - [x] Inspected actual user-selected onefile's `PySide6/opengl32sw.dll` SHA `18aedc7a4b610f53bcc7b7a5c5ed9293c7e86f030e3273ad54ed3bb1ebd36702` / 20,639,544 bytes; determined **Mesa 11.2.2 / LLVM 3.6.2** from embedded strings (also Qt historical source).
 - [x] Added both original version-specific source archives and their SHA-256-pinned downloads as required inputs: **nine total**, without modifying compression engine, PySide6 wheels or UI.
-- [x] Original Mesa `COPYING` and historic LLVM 3.6.2 `LICENSE.TXT` are to be extracted and distributed from their exact archives; modern LLVM Apache+exception is supplemental only.
+- [x] Original Mesa `docs/license.html` and historic LLVM 3.6.2 `LICENSE.TXT` are to be extracted and distributed from their exact archives; modern LLVM Apache+exception is supplemental only.
 - [ ] Verify all nine real upstream archives, added notices and source provenance in an updated six-job same-commit private CI run before any public release.
 
 ## Exact 62-native licensing inventory review — 15 Nov 2026

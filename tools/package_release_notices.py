@@ -31,7 +31,7 @@ SOURCES = {
 
 EXTRA_28_SOURCES = {
     "pillow-12.3.0": ["LICENSE"],
-    "mesa-11.2.2": ["COPYING"],
+    "mesa-11.2.2": ["docs/license.html"],
     "llvm-3.6.2": ["LICENSE.TXT"],
 }
 
