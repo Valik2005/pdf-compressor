@@ -120,5 +120,7 @@ jobs:
             dist/native-collection-sources.json
             dist/runtime-validation.json
             dist/runtime-experiment-manifest.json
+            tools/test_external_runtime_windows_28.ps1
+            docs/EXTERNAL_VC_RUNTIME_EXPERIMENT_2_8.md
           retention-days: 7
           if-no-files-found: error
