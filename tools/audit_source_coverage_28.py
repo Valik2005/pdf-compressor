@@ -151,6 +151,22 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         supplemental_groups = {
             group: (source_id,) for group, source_id in supplements.items()
         }
+        # Correlate the *actual* CPython source package's Windows build script
+        # with the OpenSSL/libffi versions, rather than guessing from DLL names.
+        python_source = sources / "Python-3.14.10.tar.xz"
+        with tarfile.open(python_source, "r:xz") as tar:
+            scripts = [
+                member for member in tar.getmembers()
+                if member.isfile() and member.name.endswith("/PCbuild/get_externals.bat")
+            ]
+            if len(scripts) != 1 or scripts[0].size > 100_000:
+                raise ValueError("CPython source lacks its Windows native dependency build pins")
+            content = tar.extractfile(scripts[0])
+            if content is None:
+                raise ValueError("CPython Windows build dependency script cannot be read")
+            pins = content.read().decode("utf-8", "replace").lower()
+            if "libffi-3.4.4" not in pins or "openssl-3.5.9" not in pins:
+                raise ValueError("CPython Windows source pins differ from packaged native sources")
 
     reported = []
     groups = set()
