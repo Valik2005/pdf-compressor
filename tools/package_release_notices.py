@@ -29,6 +29,9 @@ SOURCES = {
 }
 
 
+EXTRA_28_SOURCES = {"pillow-12.3.0": ["LICENSE"]}
+
+
 def digest(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -42,8 +45,9 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
     if release_version not in ("2.7", "2.8"):
         raise ValueError("Unsupported release label")
     entries = json.loads(catalog.read_text(encoding="utf-8"))["entries"]
-    selected = {e["id"]: e for e in entries if e["id"] in SOURCES}
-    if set(selected) != set(SOURCES):
+    specs = {**SOURCES, **EXTRA_28_SOURCES} if release_version == "2.8" else SOURCES
+    selected = {e["id"]: e for e in entries if e["id"] in specs}
+    if set(selected) != set(specs):
         raise ValueError("Missing required source entry in catalog")
     if not project_license.is_file():
         raise ValueError("Application AGPL LICENSE file missing")
@@ -53,7 +57,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path,
     verified_upstream = {item["id"]: item for item in download_report["archives"]
                          if item.get("status") == "hash_matches_official_source"}
     provenance = []
-    for component_id, paths in SOURCES.items():
+    for component_id, paths in specs.items():
         entry = selected[component_id]
         archive = source_dir / entry["filename"]
         reported = verified_upstream.get(component_id, {})
