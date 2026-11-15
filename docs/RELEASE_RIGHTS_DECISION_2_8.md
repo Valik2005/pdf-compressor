@@ -80,7 +80,7 @@ The official [OpenSSL license page](https://openssl-library.org/source/license/i
 
 ## 3. Qt / PySide6 / Shiboken
 
-**Actual evidence:** matching installed-wheel DLLs, included full QtBase/QtSvg/QtImageFormats and Qt for Python source archives with SHA-256, LGPL/GPL notices, and a verified ability to re-pack a onefile EXE with an ABI-compatible modified Qt DLL.
+**Actual evidence:** matching installed-wheel DLLs, included full QtBase/QtSvg/QtImageFormats and Qt for Python source archives with SHA-256 and LGPL/GPL notices. The **current** [Windows v2.8 recipient Qt relink run #43658575876](https://github.com/Valik2005/pdf-compressor/actions/runs/43658575876) passed: precisely declared stock and modified `Qt6Widgets.dll` hashes, modified bytes embedded in onefile, and offscreen GUI startup. The official release verifier explicitly refuses recipient-relinked DLL entries. This is a technical LGPL replacement demonstration only, not proof of full corresponding-source/reverse-engineering or other legal compliance.
 
 Official [Qt LGPL obligations](https://www.qt.io/development/open-source-lgpl-obligations) require complete corresponding library source or a qualifying written offer **controlled by the distributor**, and users' ability to relink against modified Qt libraries. Some Qt modules are GPL-only; see [Qt 6.12 licenses](https://doc.qt.io/qt-6.12/licensing.html). **Required:** confirm the shipped subset of Qt modules has correct applicable terms, that provided sources actually cover all bundled modules and transitive attributions, and that recipient repacking rights are effective in the final distribution (not just an unchanged-source wheel test).
 
