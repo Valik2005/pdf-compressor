@@ -1,4 +1,4 @@
-# Final Windows v2.8 UNSIGNED review candidate; publication is a separate owner-only gate.
+# EXPERIMENT ONLY: current v2.8 uses OS/installed Microsoft runtimes; no merge or public release.
 # Build-source provenance is captured before EXE creation; not a license certification.
 from PyInstaller.utils.hooks import collect_all
 
@@ -78,6 +78,45 @@ a.binaries = [entry for entry in a.binaries
 a.datas = [entry for entry in a.datas
            if not remove_optional_qt_tls_openssl(entry[0])]
 print("EXPERIMENT: accidental MySQL OpenSSL and optional Qt TLS removed:", openssl_removed)
+
+# EXPERIMENT ONLY — this changes the deployment contract:
+# Windows 10/11 supplies the OS UCRT; the MSVC C++ Runtime must be
+# independently installed (e.g. Microsoft's official x64 VC Redistributable).
+# This is NOT a legal shortcut for redistributing the Microsoft-owned DLLs.
+# The stable 2.8 EXE is intentionally unaffected.
+MSVC_DLL_BASENAMES = {
+    "vcruntime140.dll", "vcruntime140_1.dll",
+    "msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll",
+}
+
+
+def microsoft_runtime_group(destination):
+    basename = destination.replace(chr(92), "/").rsplit("/", 1)[-1].lower()
+    if basename == "ucrtbase.dll" or (
+        basename.startswith("api-ms-win-") and basename.endswith(".dll")
+    ):
+        return "system-ucrt"
+    if basename in MSVC_DLL_BASENAMES:
+        return "vc-redistributable-prerequisite"
+    return None
+
+
+runtime_members = [(entry[0], microsoft_runtime_group(entry[0]))
+                   for entry in a.binaries + a.datas]
+ucrt_members = [name for name, group in runtime_members if group == "system-ucrt"]
+msvc_members = [name for name, group in runtime_members
+                if group == "vc-redistributable-prerequisite"]
+if len(ucrt_members) != 43 or len(msvc_members) != 10:
+    raise RuntimeError(
+        "Expected 43 app-local UCRT/API-set entries and 10 MSVC DLLs, "
+        f"got {len(ucrt_members)} and {len(msvc_members)}. "
+        "Refusing to silently change the runtime deployment contract."
+    )
+a.binaries = [e for e in a.binaries if not microsoft_runtime_group(e[0])]
+a.datas = [e for e in a.datas if not microsoft_runtime_group(e[0])]
+print("EXPERIMENT: 43 OS-UCRT files excluded:", ucrt_members)
+print("EXPERIMENT: 10 app-local MSVC runtime files excluded:", msvc_members)
+print("EXPERIMENT: requires official system VC++ x64 runtime installed")
 
 # Record EXACT original Windows collection paths and SHA-256 for native members.
 # Report contains ONLY sanitized source scopes / package-relative paths.
