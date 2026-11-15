@@ -1,6 +1,6 @@
 """Acquire optional v2.8 *verified original* sources for bundled native runtimes.
 
-This supplies full CPython/OpenSSL source archives beside their licenses.
+This supplies full CPython/OpenSSL/libffi source archives beside their licenses.
 Matching an upstream SHA-256 is NOT proof of wheel compiler flags or legal
 compliance. All connections must begin at a pinned official HTTPS URL.
 """
