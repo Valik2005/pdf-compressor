@@ -2,7 +2,7 @@
 
 This tool cannot publish, tag or sign anything. It verifies exact source and
 binary provenance, an independently run Windows unsigned-signature check,
-six source archives and 2.8 notices, then stages exactly three files.
+seven source archives and 2.8 notices, then stages exactly three files.
 
 Technical integrity does not constitute legal clearance of third-party
 redistribution terms. A separate, explicit maintainer release decision is
@@ -17,11 +17,12 @@ import shutil
 import zipfile
 
 from tools.assemble_patch_release import (
-    SOURCES, SOURCE_REPORTS, BUNDLE_NAME, check_zip, digest, require_file,
+    SOURCE_REPORTS, BUNDLE_NAME, check_zip, digest, require_file,
 )
 from tools.verify_presign_evidence_28 import validate as verify_presign
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
+SOURCES = 7  # v2.8 Pillow source; keep 2.7's historical 6 unchanged.
 RELEASE_DOCS = (
     "LGPL_RELINKING_2_8.md",
     "THIRD_PARTY_NOTICES_2_8.md",
@@ -77,7 +78,7 @@ def assemble_unsigned_28(
     required = [x for x in json.loads(catalog_path.read_text(encoding="utf-8"))["entries"]
                 if x.get("required")]
     if len(required) != SOURCES or len({x["filename"] for x in required}) != SOURCES:
-        raise ValueError("Six distinct exact source archives are required")
+        raise ValueError("Seven distinct exact source archives are required")
 
     files: dict[str, Path] = {}
     for component in required:
@@ -110,7 +111,7 @@ def assemble_unsigned_28(
         "Authenticode signature. Verify SHA256SUMS.txt against the release page.\n"
         "A checksum is an integrity check, not proof of publisher identity.\n"
         "\n"
-        "sources/: six SHA-256-verified upstream source archives.\n"
+        "sources/: seven SHA-256-verified upstream source archives.\n"
         "licenses/: Qt LGPL relinking instructions, licenses and notices.\n"
         "reports/: build/source/native provenance, Windows NotSigned evidence.\n"
         "SOURCES_SHA256SUMS.txt: independent upstream checksums.\n"
