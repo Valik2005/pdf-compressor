@@ -57,6 +57,14 @@ jobs:
           cp docs/LGPL_RELINKING_2_8.md dist/sources/
           cp docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md dist/sources/THIRD_PARTY_NOTICES_2_8.md
           cp docs/third_party_libffi_license.txt dist/sources/libffi-LICENSE.txt
+      - name: Acquire official version-pinned CPython 3.14.10 and OpenSSL 3.5.9 full sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m tools.fetch_supplemental_sources_28 \
+            --catalog docs/supplemental-source-archives-2_8.json \
+            --out-dir dist/sources \
+            --out-report dist/sources/supplemental-source-report.json
       - name: Upload exact review sources from this commit (never a public release)
         uses: actions/upload-artifact@v4
         with:
@@ -230,6 +238,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PDF28_REQUIRE_SYSTEM_MSVC: '1'
+      PDF28_REQUIRE_SUPPLEMENTAL: '1'
     timeout-minutes: 22
     permissions:
       contents: read
