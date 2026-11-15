@@ -9,11 +9,13 @@ def test_v28_notices_reference_matching_release_artifacts():
     assert "THIRD_PARTY_NOTICES_2_8.zip" in notice
     assert "THIRD_PARTY_NOTICES_2_7.zip" not in notice
     assert "OpenSSL" in notice and "Mesa" in notice
-    assert "MSVCP/VCRUNTIME" in notice
-    assert "does not establish complete Mesa attribution" in notice
-    assert "two retained Python-supplied OpenSSL libraries" in notice
+    assert "zero Microsoft MSVC/UCRT/API-set DLLs" in notice
+    assert "PySide6/opengl32sw.dll" in notice
+    assert "Two CPython-provided OpenSSL 3 DLLs remain" in notice
     assert "all four exact binary builds" not in notice
     assert "libcrypto-3.dll" in notice and "libssl-3.dll" in notice
+    assert "seven pinned source archives" in notice
+    assert "pillow-12.3.0.tar.gz" in (ROOT / "docs/source-archives-2_8.json").read_text(encoding="utf-8")
 
 
 def test_v28_oss_audit_does_not_claim_legal_or_signpath_approval():
