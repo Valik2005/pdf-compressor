@@ -17,7 +17,7 @@
   <img alt="⬇ Скачать PDF Compressor 2.8 БЕЗ ПОДПИСИ EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20%D0%A1%D0%9A%D0%90%D0%A7%D0%90%D0%A2%D0%AC&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
-**Один EXE · Без установки Python · ≈70 МБ**
+**Один EXE · Без установки Python · Нужен Microsoft VC++ Runtime x64 · ≈65 МБ**
 
 [Прямая ссылка на EXE](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Страница релиза](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
@@ -56,12 +56,12 @@
 | :-- | :-- |
 | **Версия** | 2.8 (стабильная, без цифровой подписи) |
 | **ОС** | Windows 10/11, 64-бит |
-| **Формат** | Один EXE, без установщика и Python |
-| **Размер** | ≈70 МБ |
+| **Формат** | Один EXE, без установщика и Python; отдельно нужен официальный Microsoft VC++ Redistributable x64 |
+| **Размер** | ≈65 МБ (зависит от окончательной сборки) |
 
 [**Скачать EXE напрямую**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Все файлы релиза и лицензии](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Проверить SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
-> **ВНИМАНИЕ: EXE не подписан.** Windows SmartScreen может показать предупреждение. SHA-256 подтверждает совпадение файлов с опубликованным хешем, но не удостоверяет издателя и не гарантирует отсутствие вредоносного кода.
+> **ВНИМАНИЕ: EXE не подписан.** SmartScreen может показать предупреждение, а **Smart App Control в Windows 11 способен полностью запретить запуск неизвестного неподписанного EXE, без исключения для отдельного приложения**. Не отключайте защиту ради запуска. SHA-256 подтверждает совпадение файлов, но не удостоверяет издателя и не гарантирует отсутствие вредоносного кода. Для запуска нужен отдельно установленный **официальный [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/)**; Microsoft DLL в EXE не включены.
 
 ## 🖥️ Установка на Windows из исходников
 
