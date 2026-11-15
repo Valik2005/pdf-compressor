@@ -109,7 +109,7 @@ def assemble_unsigned_28(
             )
         files["reports/supplemental-source-report.json"] = supplement_report
     elif os.environ.get("PDF28_REQUIRE_SUPPLEMENTAL") == "1":
-        raise ValueError("Verified CPython/OpenSSL full source archives required")
+        raise ValueError("Verified CPython/OpenSSL/libffi full source archives required")
 
     for name in RELEASE_DOCS:
         files["licenses/" + name] = require_file(sources_dir, name)
