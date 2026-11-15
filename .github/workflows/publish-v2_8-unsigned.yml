@@ -107,7 +107,7 @@ jobs:
           with zipfile.ZipFile(sourcezip) as z:
             assert z.testzip() is None
             entries = set(z.namelist())
-            assert len([n for n in entries if n.startswith('sources/')]) == 6
+            assert len([n for n in entries if n.startswith('sources/')]) == 9
             needed = {
                 'README.txt', 'SOURCES_SHA256SUMS.txt',
                 'licenses/LGPL_RELINKING_2_8.md',
@@ -166,7 +166,7 @@ jobs:
             assert evidence['license_compliance_certified'] is False
             assert evidence['source_git_commit'] == os.environ['EXPECTED_COMMIT']
             assert evidence['unsigned_exe_sha256'] == sha
-            assert evidence['source_archives_verified'] == 6
+            assert evidence['source_archives_verified'] == 9
             assert sources['all_required_with_published_hashes'] is True
             assert downloads['all_required_archives_verified'] is True
           print('All three UNTRUSTED release assets verified from the exact main commit.')
