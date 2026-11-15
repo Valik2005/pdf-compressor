@@ -88,6 +88,11 @@ def check() -> None:
         "v2-8-UNSIGNED-three-file-candidate-NOT-PUBLISHED"
     ):
         assert phrase in unsigned_yaml, f"Missing unsigned publishing gate: {phrase}"
+    # Publication must reject any older six/seven-source release package.
+    # Source ZIP inputs grew to nine (including Pillow, Mesa 11.2.2, LLVM 3.6.2).
+    assert "len([n for n in entries if n.startswith('sources/')]) == 9" in unsigned_yaml
+    assert "evidence['source_archives_verified'] == 9" in unsigned_yaml
+    assert "len([n for n in entries if n.startswith('sources/')]) == 6" not in unsigned_yaml
     assert "signpath/github-action" not in unsigned_yaml.lower()
     assert "gh release create v2.8" in unsigned_yaml
     assert "gh release edit v2.8 --draft=false --latest" in unsigned_yaml
