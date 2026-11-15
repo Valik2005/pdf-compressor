@@ -105,9 +105,11 @@ jobs:
       - name: Reuse consumer Windows prerequisite script to test isolated EXE
         shell: pwsh
         run: |
-          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ManifestPath dist/runtime-experiment-manifest.json -ReportPath dist/runtime-validation.json -LaunchSmoke
+          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ManifestPath dist/runtime-experiment-manifest.json -ReportPath dist/runtime-validation.json -LaunchSmoke -AllowServerCI
           $status = Get-Content dist/runtime-validation.json -Raw | ConvertFrom-Json
-          if (-not $status.gui_smoke_passed -or $status.missing_system_dlls.Count -ne 0 -or $status.release_approved) {
+          if (-not $status.gui_smoke_passed -or $status.missing_system_dlls.Count -ne 0 -or $status.release_approved -or
+              -not $status.official_vc_runtime_prerequisite_satisfied -or $status.consumer_windows -or
+              -not $status.server_ci_override) {
             throw 'Experimental Windows runtime prerequisite report failed'
           }
       - name: Upload TEST-ONLY EXE and provenance, not a release
