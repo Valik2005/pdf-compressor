@@ -7,7 +7,8 @@ param(
     [Parameter(Mandatory = $true)][string]$ManifestPath,
     [string]$ExpectedSha256,
     [string]$ReportPath,
-    [switch]$LaunchSmoke
+    [switch]$LaunchSmoke,
+    [switch]$AllowServerCI
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,14 @@ $exe = (Resolve-Path -LiteralPath $ExePath -ErrorAction Stop).Path
 if ([Environment]::Is64BitOperatingSystem -ne $true) { throw 'Windows x64 is required.' }
 $build = [Environment]::OSVersion.Version.Build
 if ($build -lt 10240) { throw 'Windows 10/11 or newer is required.' }
+# A Windows Server CI runner is not equivalent to a consumer Windows client.
+# The override is explicit and restricted to test infrastructure; user checks
+# refuse Server by default so their result cannot be mistaken for client proof.
+$installationType = [string](Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name InstallationType -ErrorAction Stop).InstallationType
+$consumerWindows = ($installationType -eq 'Client')
+if (-not $consumerWindows -and -not $AllowServerCI) {
+    throw "Consumer Windows 10/11 is required for final verification (found: $installationType). -AllowServerCI is only for CI rehearsal."
+}
 
 $sha = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
 $proofFile = (Resolve-Path -LiteralPath $ManifestPath -ErrorAction Stop).Path
@@ -62,6 +71,10 @@ if ($null -ne $reg) {
     $installed = ($reg.Installed -eq 1)
     $runtimeVersion = [string]$reg.Version
 }
+# Microsoft-owned DLLs in System32 can be present without evidence that the
+# official x64 VC++ Redistributable is installed. Require BOTH the registered
+# x64 runtime and the necessary system DLLs. Never silently waive the prerequisite.
+$runtimePrerequisiteSatisfied = ($installed -eq $true -and $missing.Count -eq 0)
 $report = [ordered]@{
     experiment_only = $true
     release_approved = $false
@@ -69,14 +82,18 @@ $report = [ordered]@{
     exe_sha256 = $sha
     unsigned_authenticode = 'NotSigned'
     os_build = $build
+    os_installation_type = $installationType
+    consumer_windows = $consumerWindows
+    server_ci_override = $AllowServerCI.IsPresent
     system_runtime_dll_versions = $systemDlls
     missing_system_dlls = @($missing)
     registered_x64_vc_runtime = $installed
     registered_x64_vc_runtime_version = $runtimeVersion
+    official_vc_runtime_prerequisite_satisfied = $runtimePrerequisiteSatisfied
     gui_smoke_passed = $false
     note = 'This only checks prerequisites and GUI launch, not full Windows 10/11 PDF regressions or legal compliance.'
 }
-if ($missing.Count -eq 0 -and $LaunchSmoke) {
+if ($runtimePrerequisiteSatisfied -and $LaunchSmoke) {
     $oldPath = $env:PATH
     $oldQpa = $env:QT_QPA_PLATFORM
     $oldPythonPath = $env:PYTHONPATH
@@ -116,6 +133,7 @@ Write-Host "Experimental PDF Compressor v2.8, SHA-256: $sha"
 Write-Host "OS build: $build; Microsoft runtime missing: $($missing -join ', ')"
 Write-Host "Registered official VC++ x64 runtime: $installed ($runtimeVersion)"
 Write-Host "GUI smoke passed: $($report.gui_smoke_passed)"
-if ($missing.Count -gt 0) {
-    throw 'System runtime files are missing. Use the OFFICIAL Microsoft VC++ Redistributable x64 installer, then retest; this script never installs it.'
+Write-Host "Client Windows: $consumerWindows; official VC++ x64 runtime registered and files present: $runtimePrerequisiteSatisfied"
+if (-not $runtimePrerequisiteSatisfied) {
+    throw 'Official Microsoft VC++ x64 Redistributable prerequisite is not confirmed (registration or system DLLs missing). Install only from Microsoft, then retest; this script never installs it.'
 }
