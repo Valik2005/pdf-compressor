@@ -19,6 +19,15 @@
       "sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
       "checksum_evidence": "https://api.github.com/repos/openssl/openssl/releases/tags/openssl-3.5.9",
       "scope": "Version-matched OpenSSL source/notice; exact installed Python DLL compilation patches still need assessment"
+    },
+    {
+      "id": "libffi-3.4.4",
+      "version": "3.4.4",
+      "filename": "libffi-3.4.4.tar.gz",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz",
+      "sha256": "d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676",
+      "checksum_evidence": "https://github.com/docker-library/repo-info/blob/master/repos/node/local/22-slim.md",
+      "scope": "CPython 3.14.10 Windows PCbuild/get_externals.bat pins libffi-3.4.4; original upstream source tar verified by published Debian digest; CPython build patches remain a separate question."
     }
   ]
 }
