@@ -57,6 +57,7 @@ jobs:
           cp docs/LGPL_RELINKING_2_8.md dist/sources/
           cp docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md dist/sources/THIRD_PARTY_NOTICES_2_8.md
           cp docs/third_party_libffi_license.txt dist/sources/libffi-LICENSE.txt
+          cp docs/third_party/PILLOW_12_3_0_BUILD_DEPENDENCIES.json dist/sources/
       - name: Acquire official full CPython, OpenSSL and libffi release sources
         shell: bash
         run: |
