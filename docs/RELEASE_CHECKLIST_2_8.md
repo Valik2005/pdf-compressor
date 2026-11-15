@@ -13,6 +13,13 @@
 
 **No paid certificate or paid Visual Studio purchase is a prerequisite of the currently selected unsigned individual-developer plan.** See `docs/MICROSOFT_RUNTIME_REVIEW_2_8.md` for exact vendor requirements.
 
+## Current Qt LGPL user-modification audit — verified 15 Nov 2026
+
+- [x] [Windows v2.8 Qt onefile recipient rebuild #43658575876](https://github.com/Valik2005/pdf-compressor/actions/runs/43658575876) **PASS**: injected ABI-preserving modified `Qt6Widgets.dll`, checked its exact SHA-256 inside the EXE and launched the rebuilt GUI.
+- [x] The recipient script declares original-wheel plus replacement DLL SHA-256 in an isolated manifest; unrelated wheel changes are not accepted. The **official release** same-source/EXE auditor rejects recipient-modified entries, preserving release-chain integrity.
+- [ ] The above does NOT certify arbitrary compiled source modifications or full LGPL compliance. Keep official Qt matching-source notices, relinking instructions and independent license/legal verification.
+- [ ] Complete same-commit six-job acceptance on the latest release-branch commit and separately on the exact owner-authorized `main` revision before any unsigned release.
+
 ## SignPath Foundation decision — 14 November 2026
 
 **The free OSS signing application was declined.** The Foundation cited insufficient independent recognition/usage (GitHub stars, forks, contributors, third-party discussions/articles and other public trust signals), **not a failed technical/security audit**. It invited reapplication after broader adoption. Do **not** wait for an approval of this completed application, claim the release is signed or use the existing signed-only publication workflow.
