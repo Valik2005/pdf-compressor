@@ -144,9 +144,10 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         supplements = {
             "Python runtime": "cpython-3.14.10",
             "OpenSSL": "openssl-3.5.9",
+            "libffi": "libffi-3.4.4",
         }
         if not set(supplements.values()).issubset(verified_ids):
-            raise ValueError("Incomplete verified CPython/OpenSSL source set")
+            raise ValueError("Incomplete verified CPython/OpenSSL/libffi source set")
         supplemental_groups = {
             group: (source_id,) for group, source_id in supplements.items()
         }
@@ -231,7 +232,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
     review_items = [
         "Verify actual source/wheel build options and third-party patches for shipped Qt/PySide6/MuPDF.",
         "Verify each Pillow codec's binary linkage and applicable corresponding source, not just wheel LICENSE markers.",
-        "Review AGPL System Library exclusions for CPython/OpenSSL/libffi individually; do not assume an exception.",
+        "Review AGPL System Library exclusions for CPython/OpenSSL/libffi individually; do not assume an exception. Full original sources are now bundled, but wheel-specific patches are not certified.",
         "Preserve LGPL replacement/rebuild rights, notices, and exact tagged app source with public EXE.",
     ]
     return {
