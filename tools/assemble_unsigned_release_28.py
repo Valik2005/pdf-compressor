@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import zipfile
@@ -21,6 +22,7 @@ from tools.assemble_patch_release import (
 )
 from tools.verify_presign_evidence_28 import validate as verify_presign
 from tools.audit_source_coverage_28 import analyze as review_source_coverage
+from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -91,6 +93,24 @@ def assemble_unsigned_28(
             raise ValueError("Source archive hash does not match pinned upstream checksum")
         files["sources/" + name] = archive
 
+    supplemental_rows = []
+    supplement_report = sources_dir / "supplemental-source-report.json"
+    if supplement_report.exists():
+        supplement_catalog = (
+            Path(__file__).resolve().parents[1] /
+            "docs" / "supplemental-source-archives-2_8.json"
+        )
+        supplemental_rows = verify_supplemental_sources(
+            supplement_catalog, sources_dir
+        )
+        for entry in supplemental_rows:
+            files["sources/" + entry["filename"]] = require_file(
+                sources_dir, entry["filename"]
+            )
+        files["reports/supplemental-source-report.json"] = supplement_report
+    elif os.environ.get("PDF28_REQUIRE_SUPPLEMENTAL") == "1":
+        raise ValueError("Verified CPython/OpenSSL full source archives required")
+
     for name in RELEASE_DOCS:
         files["licenses/" + name] = require_file(sources_dir, name)
     files["licenses/license-evidence.zip"] = require_file(windows_dir, "license-evidence.zip")
@@ -124,7 +144,7 @@ def assemble_unsigned_28(
         "Authenticode signature. Verify SHA256SUMS.txt against the release page.\n"
         "A checksum is an integrity check, not proof of publisher identity.\n"
         "\n"
-        "sources/: nine SHA-256-verified upstream source archives.\n"
+        "sources/: nine core SHA-256 archives, plus separately checked runtime sources if provided.\n"
         "licenses/: Qt LGPL relinking instructions, licenses and notices.\n"
         "reports/: build/source/native provenance, missing-source audit, Windows NotSigned evidence.\n"
         "SOURCES_SHA256SUMS.txt: independent upstream checksums.\n"
@@ -135,6 +155,10 @@ def assemble_unsigned_28(
     source_sums = "".join(
         f"{entry['expected_sha256'].lower()}  {entry['filename']}\n"
         for entry in required
+    )
+    source_sums += "".join(
+        f"{entry['sha256']}  {entry['filename']}\n"
+        for entry in supplemental_rows
     )
 
     destination.mkdir(parents=True)
@@ -171,6 +195,7 @@ def assemble_unsigned_28(
         "source_git_commit": source_sha,
         "unsigned_exe_sha256": digest(final_exe),
         "source_archives": SOURCES,
+        "supplemental_source_archives": len(supplemental_rows),
         "files": sorted(x.name for x in destination.iterdir()),
         "license_compliance_certified": False,
         "release_authorized": False,
