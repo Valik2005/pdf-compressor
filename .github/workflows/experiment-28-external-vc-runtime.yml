@@ -81,29 +81,13 @@ jobs:
             $v = (Get-Item -LiteralPath $p).VersionInfo
             Write-Host "System32 $name : $($v.FileVersion)"
           }
-      - name: Test EXE offscreen with sanitized PATH (no Python/Qt build directories)
+      - name: Reuse consumer Windows prerequisite script to test isolated EXE
         shell: pwsh
         run: |
-          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
-          $info = (Get-Item -LiteralPath $exe).VersionInfo
-          if ($info.FileVersion -ne '2.8.0.0' -or $info.ProductName -ne 'PDF Compressor by Valik2005') { throw "Wrong EXE metadata" }
-          if ((Get-AuthenticodeSignature -FilePath $exe).Status.ToString() -ne 'NotSigned') { throw "Unexpected signature status" }
-          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
-          $env:PYTHONPATH = ''
-          $env:QT_QPA_PLATFORM = 'offscreen'
-          $temp = Join-Path $env:RUNNER_TEMP 'pdf-compressor-2_8-runtime-only'
-          New-Item -ItemType Directory -Path $temp -Force | Out-Null
-          $isolated = Join-Path $temp 'PDF_Compressor_2_8.exe'
-          Copy-Item -LiteralPath $exe -Destination $isolated -Force
-          $p = Start-Process -FilePath $isolated -WorkingDirectory $temp -PassThru
-          try {
-            Start-Sleep -Seconds 15
-            $p.Refresh()
-            if ($p.HasExited) { throw "Isolated EXE exited early: $($p.ExitCode)" }
-            Write-Host 'EXPERIMENT: GUI started without application-local Microsoft runtime or Python in PATH'
-          } finally {
-            $p.Refresh()
-            if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ReportPath dist/runtime-validation.json -LaunchSmoke
+          $status = Get-Content dist/runtime-validation.json -Raw | ConvertFrom-Json
+          if (-not $status.gui_smoke_passed -or $status.missing_system_dlls.Count -ne 0 -or $status.release_approved) {
+            throw 'Experimental Windows runtime prerequisite report failed'
           }
       - name: Upload TEST-ONLY EXE and provenance, not a release
         uses: actions/upload-artifact@v4
@@ -113,5 +97,6 @@ jobs:
             dist/PDF_Compressor_2_8.exe
             dist/native-binary-origin.json
             dist/native-collection-sources.json
+            dist/runtime-validation.json
           retention-days: 7
           if-no-files-found: error
