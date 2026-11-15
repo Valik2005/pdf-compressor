@@ -108,6 +108,40 @@ def acquire(catalog_path: Path, dest: Path) -> dict:
     }
 
 
+
+def verify_prepared(catalog_path: Path, dest: Path) -> list[dict]:
+    """Independently verify downloaded source bytes and preflight inventory.
+
+    This is used again by the packaging and native-coverage audit, not merely
+    accepted because a download earlier printed an OK message.
+    """
+    rows = validate_catalog(json.loads(catalog_path.read_text(encoding="utf-8")))
+    report_path = dest / "supplemental-source-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    recorded = report.get("archives")
+    if (report.get("schema_version") != 1
+            or report.get("all_hashes_verified") is not True
+            or report.get("license_compliance_certified") is not False
+            or not isinstance(recorded, list)
+            or len(recorded) != len(rows)):
+        raise ValueError("Invalid supplemental source download report")
+    by_id = {item.get("id"): item for item in recorded}
+    if len(by_id) != len(rows):
+        raise ValueError("Repeated supplemental source records")
+    for row in rows:
+        path = dest / row["filename"]
+        record = by_id.get(row["id"], {})
+        if (not path.is_file() or path.is_symlink()
+                or sha256_file(path) != row["sha256"]
+                or record.get("sha256") != row["sha256"]
+                or record.get("filename") != row["filename"]
+                or record.get("version") != row["version"]
+                or record.get("status") != "verified_original_upstream_release"
+                or record.get("exact_binary_build_correspondence_verified") is not False):
+            raise ValueError("Supplemental source archive/report mismatch: " + row["id"])
+    return rows
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", required=True, type=Path)
