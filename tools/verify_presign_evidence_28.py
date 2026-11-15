@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import zipfile
 
@@ -98,7 +99,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     packages = manifest.get("installed_builder_package_versions", {})
     if {k: packages.get(k) for k in PINS} != PINS:
         raise ValueError("Installed build dependencies differ from v2.8 pinned packages")
-    if (native.get("native_file_count", 0) < 100
+    if (native.get("native_file_count", 0) < (62 if os.environ.get("PDF28_REQUIRE_SYSTEM_MSVC") == "1" else 100)
             or native.get("unmapped_native_files")
             or native.get("missing_required_source_entries")
             or binary.get("included_virtual_keyboard_files")):
@@ -118,6 +119,19 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
                 for name, blob in embedded_native_members(exe)]
     packed_names = [name for name, _, _ in unpacked]
     reject_ambient_qt_openssl(packed_names)
+    # EXPERIMENT ONLY: explicit opt-in enforces zero redistributable Microsoft
+    # binaries when a system-installed VC++ x64 runtime is a prerequisite.
+    # On normal release/main builds this variable is absent and the legacy
+    # native >=100 identity gate remains unchanged.
+    if os.environ.get("PDF28_REQUIRE_SYSTEM_MSVC") == "1":
+        if len(packed_names) != 62:
+            raise ValueError("External VC runtime experiment must contain exactly 62 native members")
+        forbidden = {"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll",
+                     "msvcp140_1.dll", "msvcp140_2.dll", "ucrtbase.dll"}
+        for name in packed_names:
+            base = name.replace(chr(92), "/").rsplit("/", 1)[-1].lower()
+            if base in forbidden or (base.startswith("api-ms-win-") and base.endswith(".dll")):
+                raise ValueError("Microsoft runtime DLL unexpectedly bundled: " + name)
     binary_names = [item.get("name") for item in binary.get("all_entries", [])
                     if str(item.get("name", "")).lower().endswith((".dll", ".pyd"))]
     mapped_names = [row.get("path") for row in native.get("native_component_mapping", [])]
