@@ -151,6 +151,8 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     if (collection.get("schema_version") != 1
             or collection.get("source_git_commit") != commit
             or collection.get("redistribution_rights_verified") is not False
+            or collection.get("recipient_qt_relink") is not False
+            or collection.get("recipient_modified_qt_count") != 0
             or collection.get("native_file_count") != count
             or not isinstance(collection_rows, list)
             or len(collection_rows) != count):
@@ -170,6 +172,8 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
                 or rel.startswith("/") or chr(92) in rel or ":" in rel
                 or ".." in rel.split("/")):
             raise ValueError("Native source path/scope is unsafe or unrecognized")
+        if record.get("recipient_modified_qt") is not False:
+            raise ValueError("Recipient-relinked Qt libraries are forbidden in official v2.8 release")
         if scope == "installed-wheel" and (
                 not record.get("distribution") or not record.get("distribution_version")
                 or record.get("wheel_record_matched") is False):
