@@ -75,6 +75,16 @@
       "checksum_source": "https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtimageformats-everywhere-src-6.12.0.tar.xz.mirrorlist",
       "required": true,
       "review_note": "Required for qicns/qtga/qtiff/qwbmp/qwebp plugins. SHA-256 checked against official Qt mirrorlist by Windows source-evidence run #42479642466."
+    },
+    {
+      "id": "pillow-12.3.0",
+      "version": "12.3.0",
+      "filename": "pillow-12.3.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/1c/3d/bb7fca845737cf9d7dbde16ed1843984665ff2e0a518f5db43e77ec540b9/pillow-12.3.0.tar.gz",
+      "expected_sha256": "3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce",
+      "checksum_source": "https://pypi.org/project/pillow/12.3.0/#files",
+      "required": true,
+      "review_note": "Official PyPI Pillow 12.3.0 sdist with published SHA-256 and PyPI verified publisher provenance. Included to improve corresponding source availability for bundled Pillow native codecs; exact vendored codec build equivalence is not proven."
     }
   ],
   "source_catalog_reused_from": "docs/source-archives-2_7.json",
