@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "review_status": "Supplemental original sources; hashes establish exact upstream archives but not custom compiler flags or patches in installed wheels",
+  "entries": [
+    {
+      "id": "cpython-3.14.10",
+      "version": "3.14.10",
+      "filename": "Python-3.14.10.tar.xz",
+      "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+      "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "checksum_evidence": "https://www.python.org/downloads/release/python-31410/",
+      "scope": "Bundled CPython core/runtime and standard library; System Library exemption assessed separately"
+    },
+    {
+      "id": "openssl-3.5.9",
+      "version": "3.5.9",
+      "filename": "openssl-3.5.9.tar.gz",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz",
+      "sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+      "checksum_evidence": "https://api.github.com/repos/openssl/openssl/releases/tags/openssl-3.5.9",
+      "scope": "Version-matched OpenSSL source/notice; exact installed Python DLL compilation patches still need assessment"
+    }
+  ]
+}
