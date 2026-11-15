@@ -81,8 +81,14 @@ def pillow_source_dependencies(source: Path) -> dict:
 
     original = (Path(__file__).resolve().parents[1] / "docs" / "third_party" /
                 PILLOW_UPSTREAM_DEPENDENCY_FILE).read_bytes()
+    # Windows Git checkout may transparently convert source-file LF to CRLF.
+    # Git blob IDs are computed over committed LF bytes, not the worktree's
+    # platform-specific line endings. Refuse stray CRs and normalize CRLF only.
+    committed_bytes = original.replace(b"\r\n", b"\n")
+    if b"\r" in committed_bytes:
+        raise ValueError("Malformed Pillow upstream dependency manifest line endings")
     git_blob = hashlib.sha1(
-        b"blob " + str(len(original)).encode("ascii") + b"\0" + original
+        b"blob " + str(len(committed_bytes)).encode("ascii") + b"\0" + committed_bytes
     ).hexdigest()
     if git_blob != PILLOW_UPSTREAM_DEPENDENCY_BLOB:
         raise ValueError("Pillow build dependency manifest differs from tag 12.3.0 Git blob")
