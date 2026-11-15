@@ -1,3 +1,11 @@
+## EXPERIMENTAL 62-NATIVE VARIANT — NO MICROSOFT DLL REDISTRIBUTION (15 Nov 2026)
+
+**This section applies ONLY to `experiment/2.8-system-runtime-latest`, not to the 115-native main release candidate or the public stable v2.7.1.** The experimental Windows EXE excludes exactly 53 Microsoft runtime DLLs (10 MSVC plus 43 UCRT/API-set). Windows 10/11 provides UCRT; consumers **must install the official Microsoft Visual C++ Redistributable x64 themselves** to meet the remaining runtime dependency. No Microsoft installer/DLL is shipped by this experimental variant, so the original 53-copy redistribution-rights question does **not** apply to the new EXE. This is not evidence of a Microsoft license or blanket third-party compliance. Windows Server 2022 and 2025 experimental smoke passed, but ordinary Windows 10/11 client verification remains mandatory for selecting it.
+
+Source/license and Qt LGPL/MuPDF AGPL/Mesa/LLVM/other third-party requirements remain independent; their full source/notices and recipient Qt rebuild are required. The original sections below refer to **earlier 115-native and older binaries** and must not be treated as current byte inventory if this variant is selected. Do not publish or merge into `main` without a new six-stage same-commit acceptance, consumer Windows results, responsible owner license review and separate owner authorization.
+
+---
+
 # PDF Compressor 2.8 — verification of distribution rights (decision record)
 
 **Prepared:** 15 November 2026. **State: unresolved; publication prohibited until reviewed.**
