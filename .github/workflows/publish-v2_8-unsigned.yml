@@ -1,8 +1,17 @@
-name: Publish verified UNSIGNED PDF Compressor v2.8 (owner manual only)
+name: Publish verified UNSIGNED PDF Compressor v2.8 (automated, owner license approval required)
 
-# No pushes, pull requests, schedules or automatic releases. This uses a
-# verified three-file artifact from a successful full pre-release CI on main.
+# Automatic only AFTER full exact-main CI acceptance and a separate, explicit
+# v2.8 third-party license attestation posted by the owner to merged PR #17.
+# A comment can re-trigger the same checked release without Run workflow.
+# Manual dispatch remains as the emergency owner-only route. Never publish
+# from a PR head, stale commit, failed CI, or unsigned unverified source ZIP.
 on:
+  workflow_run:
+    workflows: ["Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)"]
+    types: [completed]
+    branches: [main]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       acceptance_run_id:
@@ -26,8 +35,115 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        (github.event_name == 'workflow_dispatch' && github.actor == 'Valik2005') ||
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main') ||
+        (github.event_name == 'issue_comment' &&
+         github.actor == 'Valik2005' &&
+         github.event.issue.number == 17 &&
+         github.event.issue.pull_request != null)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    outputs:
+      authorized: ${{ steps.owner-gate.outputs.authorized }}
+      acceptance_run_id: ${{ steps.owner-gate.outputs.acceptance_run_id }}
+    steps:
+      - name: Check owner license attestation and successful exact-commit CI
+        id: owner-gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          OWNER_LOGIN: Valik2005
+          RUN_ID_MANUAL: ${{ inputs.acceptance_run_id }}
+          RELEASE_MANUAL: ${{ inputs.release_confirmation }}
+          LICENSE_MANUAL: ${{ inputs.license_confirmation }}
+        run: |
+          set -euo pipefail
+          echo 'authorized=false' >> "$GITHUB_OUTPUT"
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" > main-branch.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" > source-runs.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/17/comments?per_page=100" > license-comments.json
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > existing-releases.json
+          python - <<'PY'
+          import json, os, pathlib, re, sys
+          read=lambda path: json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
+          main=read('main-branch.json')
+          runs=read('source-runs.json')['workflow_runs']
+          comments=read('license-comments.json')
+          releases=read('existing-releases.json')
+          event=read(os.environ['GITHUB_EVENT_PATH'])
+          sha=os.environ['GITHUB_SHA']
+          kind=os.environ['EVENT_NAME']
+          owner=os.environ['OWNER_LOGIN']
+          assert re.fullmatch('[0-9a-f]{40}', sha), 'Invalid source SHA'
+          assert main['commit']['sha']==sha, 'main moved; refuse stale automatic release'
+          if any(x['tag_name']=='v2.8' for x in releases):
+              print('v2.8 release already exists; no new release')
+              sys.exit(0)
+          if kind=='workflow_dispatch':
+              assert os.environ['GITHUB_ACTOR']==owner, 'Only owner may manually authorize'
+              assert os.environ['RELEASE_MANUAL']=='RELEASE_V2_8_UNSIGNED'
+              assert os.environ['LICENSE_MANUAL']=='LICENSE_OBLIGATIONS_REVIEWED'
+              manual_id=os.environ['RUN_ID_MANUAL']
+              assert re.fullmatch('[0-9]{7,15}', manual_id), 'Invalid acceptance run ID'
+          else:
+              # No AI-authored summary or approval of publication substitutes for
+              # this exact independent third-party license attestation by owner.
+              attestation=f'LICENSE_OBLIGATIONS_REVIEWED v2.8 {sha}'
+              approved=any(
+                  c.get('user',{}).get('login')==owner and
+                  c.get('author_association')=='OWNER' and
+                  c.get('body','').strip()==attestation
+                  for c in comments
+              )
+              if kind=='issue_comment':
+                  assert event['issue']['number']==17
+                  assert 'pull_request' in event['issue']
+                  assert event['comment']['user']['login']==owner
+                  assert event['comment']['body'].strip()==attestation, 'Not a release license attestation'
+              elif kind=='workflow_run':
+                  assert event['workflow_run']['head_branch']=='main'
+                  assert event['workflow_run']['conclusion']=='success'
+                  assert event['workflow_run']['head_sha']==sha
+              else:
+                  raise AssertionError('Unexpected event')
+              if not approved:
+                  print('No independent owner license attestation for exact main SHA; keeping v2.8 private.')
+                  sys.exit(0)
+              manual_id=None
+          matching=[
+              x for x in runs
+              if x.get('name')=='Final 2.8 unsigned acceptance candidate (NOT FOR RELEASE)'
+              and x.get('head_sha')==sha and x.get('head_branch')=='main'
+              and x.get('status')=='completed' and x.get('conclusion')=='success'
+              and x.get('event') in ('push','workflow_dispatch')
+              and x.get('actor',{}).get('login')==owner
+          ]
+          if kind=='workflow_run':
+              matching=[x for x in matching if x['id']==event['workflow_run']['id']]
+          if kind=='workflow_dispatch':
+              matching=[x for x in matching if str(x['id'])==manual_id]
+          assert matching, 'No completed successful full acceptance CI for this exact main SHA'
+          acceptance=max(matching,key=lambda x:x['id'])
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as out:
+              out.write(f"authorized=true\nacceptance_run_id={acceptance['id']}\n")
+          print('Authorized source CI:',acceptance['html_url'],'sha:',sha)
+          PY
+
   publish-unsigned-28:
-    if: github.ref == 'refs/heads/main' && github.actor == 'Valik2005'
+    needs: [authorize]
+    if: needs.authorize.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -36,21 +152,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Enforce explicit owner consent, licensing review and exact completed source run
+      - name: Enforce exact reviewed commit and accepted 62-native build
         env:
           GH_TOKEN: ${{ github.token }}
-          ACCEPTANCE_RUN_ID: ${{ inputs.acceptance_run_id }}
-          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
-          LICENSE_CONFIRMATION: ${{ inputs.license_confirmation }}
+          ACCEPTANCE_RUN_ID: ${{ needs.authorize.outputs.acceptance_run_id }}
           EXPECTED_COMMIT: ${{ github.sha }}
           REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$RELEASE_CONFIRMATION" = 'RELEASE_V2_8_UNSIGNED' || { echo 'No owner authorization for unsigned v2.8 release' >&2; exit 1; }
-          test "$LICENSE_CONFIRMATION" = 'LICENSE_OBLIGATIONS_REVIEWED' || { echo 'Missing explicit third-party license review approval' >&2; exit 1; }
+          test "$(gh api "repos/$REPOSITORY/branches/main" --jq '.commit.sha')" = "$EXPECTED_COMMIT" || { echo 'main changed, refuse stale release'; exit 1; }
           [[ "$ACCEPTANCE_RUN_ID" =~ ^[0-9]{7,15}$ ]] || { echo 'Invalid Actions run ID' >&2; exit 1; }
           python - <<'PY'
           from pathlib import Path
@@ -71,8 +185,8 @@ jobs:
           assert run['actor']['login'] == 'Valik2005'
           print('Verified one-commit acceptance:', run['html_url'])
           PY
-          if gh release view v2.8 >/dev/null 2>&1; then
-            echo 'v2.8 already exists: refusing to overwrite' >&2; exit 1
+          if gh api "repos/$REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "v2.8") | .id' | grep -q '[0-9]'; then
+            echo 'v2.8 draft/published release already exists: refusing to overwrite' >&2; exit 1
           fi
           if git ls-remote --exit-code --tags origin refs/tags/v2.8 >/dev/null 2>&1; then
             echo 'v2.8 tag already exists: refusing to overwrite' >&2; exit 1
@@ -83,7 +197,7 @@ jobs:
         with:
           name: v2-8-UNSIGNED-three-file-candidate-NOT-PUBLISHED
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.acceptance_run_id }}
+          run-id: ${{ needs.authorize.outputs.acceptance_run_id }}
           path: release-assets
 
       - name: Verify unsigned Windows proof, sources, and all three hashes
@@ -190,7 +304,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" > uploaded.json
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > all-releases.json
+          python - <<'PY'
+          import json
+          entries=json.load(open('all-releases.json',encoding='utf-8'))
+          selected=[x for x in entries if x.get('tag_name')=='v2.8']
+          assert len(selected)==1 and selected[0]['draft'] is True
+          with open('uploaded.json','w',encoding='utf-8') as out:
+              json.dump(selected[0],out)
+          PY
           python - <<'PY'
           import hashlib, json
           from pathlib import Path
@@ -211,6 +333,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release edit v2.8 --draft=false --latest
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.8" |
-            python -c "import json,sys; r=json.load(sys.stdin); assert not r['draft'] and len(r['assets'])==3; print(r['html_url'])"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')" = "$GITHUB_SHA" || { echo 'main changed since audit; keeping draft'; exit 1; }
+          RELEASE_ID="$(python -c "import json; r=json.load(open('uploaded.json',encoding='utf-8')); print(r['id'])")"
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false -F make_latest=true > published.json
+          python - <<'PY'
+          import json,os
+          r=json.load(open('published.json',encoding='utf-8'))
+          assert r['draft'] is False and not r['prerelease']
+          assert r['tag_name']=='v2.8' and len(r['assets'])==3
+          assert r['target_commitish']==os.environ['GITHUB_SHA']
+          print('Published:',r['html_url'])
+          PY
