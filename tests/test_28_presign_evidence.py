@@ -1,5 +1,6 @@
 """Synthetic pre-sign audit fixtures; never assume an unsigned EXE is signed."""
 import hashlib
+from pathlib import Path
 import json
 import zipfile
 import zlib
