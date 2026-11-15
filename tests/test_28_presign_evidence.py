@@ -84,10 +84,13 @@ def fixture(tmp_path):
                 "source_relative_path": "DLLs/" + r["name"],
                 "distribution": None, "distribution_version": None,
                 "wheel_record_matched": None,
+                "recipient_modified_qt": False,
             }
             for r in native_records
         ],
         "redistribution_rights_verified": False,
+        "recipient_qt_relink": False,
+        "recipient_modified_qt_count": 0,
     })
     with zipfile.ZipFile(windows / "license-evidence.zip", "w") as z:
         pillow_codec_sections = (
@@ -162,7 +165,8 @@ def test_complete_presign_evidence_is_technical_not_legal_certification(tmp_path
     "native_origin_false_wheel_match",
     "collection_missing", "collection_forged_source", "collection_missing_member",
     "collection_duplicate_member", "collection_source_path_leak",
-    "collection_wrong_sha", "missing_pillow_notices",
+    "collection_wrong_sha", "collection_false_relink", "collection_count_relink",
+    "collection_member_relink", "missing_pillow_notices",
 ])
 def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
     win, source, cat, commit = fixture(tmp_path)
@@ -238,6 +242,12 @@ def test_fail_closed_on_bad_real_component_evidence(tmp_path, change):
                 j["entries"][0]["source_relative_path"] = "C:/Users/Secret/lib.dll"
             elif change == "collection_wrong_sha":
                 j["source_git_commit"] = "f" * 40
+            elif change == "collection_false_relink":
+                j["recipient_qt_relink"] = True
+            elif change == "collection_count_relink":
+                j["recipient_modified_qt_count"] = 1
+            elif change == "collection_member_relink":
+                j["entries"][0]["recipient_modified_qt"] = True
             p.write_text(json.dumps(j))
     elif change == "unmapped_native":
         p=win / "native-source-mapping.json"

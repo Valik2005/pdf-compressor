@@ -80,9 +80,50 @@ def scope_for(path: Path, known: dict) -> dict:
     return {"scope": "unclassified-builder-path", "relative_path": path.name}
 
 
+def load_recipient_qt_replacements(manifest_path: Path) -> dict[str, dict]:
+    """Only permit separately declared, SHA-verified recipient Qt wheel changes.
+
+    This is an exception for rebuilding with LGPL-modified compatible libraries.
+    Never used by the official unsigned release; normal wheel RECORD checks
+    remain fail closed. The manifest must be written by the recipient rebuild
+    tool after copying the verified override bytes into its isolated wheel.
+    """
+    data = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    rows = data.get("recipient_modified_qt_libraries")
+    if (data.get("schema_version") != 1 or data.get("scope") != "recipient-relink"
+            or not isinstance(rows, list) or not rows):
+        raise ValueError("Invalid recipient Qt override manifest")
+    expected = {}
+    hexdigits = set("0123456789abcdef")
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {
+                "path", "original_sha256", "replacement_sha256"}:
+            raise ValueError("Invalid recipient Qt override record")
+        path = row["path"]
+        if (not isinstance(path, str) or not path.startswith("PySide6/")
+                or chr(92) in path or ".." in path.split("/")
+                or not path.lower().endswith((".dll", ".pyd"))
+                or path in expected):
+            raise ValueError("Unsafe or duplicate recipient Qt override path")
+        for key in ("original_sha256", "replacement_sha256"):
+            hash_value = row[key]
+            if (not isinstance(hash_value, str) or len(hash_value) != 64
+                    or any(ch not in hexdigits for ch in hash_value)):
+                raise ValueError("Invalid recipient Qt override SHA-256")
+        if row["original_sha256"] == row["replacement_sha256"]:
+            raise ValueError("Recipient Qt override must change exact bytes")
+        expected[path] = dict(row)
+    return expected
+
+
 def capture(binaries, datas, out: Path, source_sha: str | None = None,
-            known: dict | None = None) -> dict:
+            known: dict | None = None,
+            recipient_qt_replacements: dict[str, dict] | None = None) -> dict:
     wheel_index = wheel_locations() if known is None else known
+    approved = recipient_qt_replacements or {}
+    if recipient_qt_replacements is not None and not isinstance(approved, dict):
+        raise ValueError("Recipient Qt override inventory must be a mapping")
+    seen_approved = set()
     rows = {}
     for entry in list(binaries) + list(datas):
         if len(entry) < 2:
@@ -100,7 +141,24 @@ def capture(binaries, datas, out: Path, source_sha: str | None = None,
         origin = scope_for(path, wheel_index)
         sha = digest(path)
         wheel_record = origin.pop("record_sha256", None)
-        if origin["scope"] == "installed-wheel" and wheel_record is not None and wheel_record != sha:
+        is_relinked = False
+        wheel_scope = origin["scope"] == "installed-wheel"
+        if destination in approved:
+            candidate = approved[destination]
+            if (not wheel_scope
+                    or not destination.startswith("PySide6/")
+                    or not origin["relative_path"].replace(chr(92), "/") == destination
+                    or not wheel_record
+                    or wheel_record != candidate.get("original_sha256")
+                    or sha != candidate.get("replacement_sha256")
+                    or origin.get("distribution") not in {
+                        "PySide6", "PySide6_Essentials", "PySide6_Addons"
+                    }
+                    or wheel_record == sha):
+                raise ValueError(f"Recipient Qt source/RECORD replacement mismatch: {destination}")
+            is_relinked = True
+            seen_approved.add(destination)
+        elif wheel_scope and wheel_record is not None and wheel_record != sha:
             raise ValueError(f"Installed wheel RECORD disagrees for {destination}")
         rows[destination] = {
             "path": destination,
@@ -111,9 +169,12 @@ def capture(binaries, datas, out: Path, source_sha: str | None = None,
             "distribution": origin.get("distribution"),
             "distribution_version": origin.get("version"),
             "wheel_record_matched": wheel_record == sha if wheel_record else None,
+            "recipient_modified_qt": is_relinked,
         }
     if not rows:
         raise ValueError("No native files in collected PyInstaller Analysis")
+    if seen_approved != set(approved):
+        raise ValueError("Recipient Qt replacement manifest includes missing native members")
     report = {
         "schema_version": 1,
         "source_git_commit": source_sha,
@@ -123,6 +184,8 @@ def capture(binaries, datas, out: Path, source_sha: str | None = None,
         ).items())),
         "entries": list(rows.values()),
         "redistribution_rights_verified": False,
+        "recipient_qt_relink": bool(seen_approved),
+        "recipient_modified_qt_count": len(seen_approved),
         "note": "Actual build-stage source SHA/relative scope only. Not an OSS legal certification.",
     }
     out = Path(out)
