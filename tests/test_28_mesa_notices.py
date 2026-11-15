@@ -12,6 +12,7 @@ def test_source_pack_includes_complete_upstream_boost_mit_license_texts():
     assert "LICENSES/MIT.txt" in SOURCES["qtbase-6.12.0-required"]
     assert "components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt" in NOTICES
     assert "notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt" in NOTICES
+    assert "notices/LLVM_LICENSE_UPSTREAM_2_8.txt" in NOTICES
 
 
 def test_notice_pack_identifies_upstream_copyright_without_claiming_binary_certification():
@@ -29,3 +30,20 @@ def test_release_documentation_still_requires_specific_mesa_binary_evidence():
     assert "QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt" in notices
     assert "does not establish complete Mesa attribution" in notices
     assert "full MIT and Boost Software License 1.0 texts" in notices
+
+
+def test_upstream_llvm_license_contains_both_new_and_legacy_sections():
+    text = (ROOT / "docs/third_party/LLVM_LICENSE_UPSTREAM.txt").read_text(encoding="utf-8")
+    assert len(text) >= 10_000
+    assert "Apache License" in text
+    assert "LLVM Exceptions" in text
+    assert "University of Illinois/NCSA" in text
+
+
+def test_llvm_package_still_does_not_claim_binary_provenance():
+    notice_build = (ROOT / "tools/package_release_notices.py").read_text(encoding="utf-8")
+    assert "LLVM_LICENSE_UPSTREAM_2_8.txt" in notice_build
+    assert "NOT certification" in notice_build
+    doc = (ROOT / "docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md").read_text(encoding="utf-8")
+    assert "additional LLVM precaution" in doc.lower()
+    assert "not confirmation" in doc.lower()
