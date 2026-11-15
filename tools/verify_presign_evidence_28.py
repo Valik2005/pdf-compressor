@@ -48,6 +48,7 @@ NOTICES = {
     "notice-manifest.json",
     "components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt",
     "notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt",
+    "notices/LLVM_LICENSE_UPSTREAM_2_8.txt",
 }
 
 def file_required(root: Path, name: str) -> Path:
@@ -217,6 +218,12 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
         if z.testzip() is not None or len(names) < 65 or not NOTICES.issubset(names):
             raise ValueError("Missing third-party license texts/notices in ZIP")
         declaration = json.loads(z.read("notice-manifest.json"))
+        llvm_text = z.read("notices/LLVM_LICENSE_UPSTREAM_2_8.txt")
+        if (len(llvm_text) < 10_000
+                or any(x not in llvm_text for x in
+                       (b"Apache License", b"LLVM Exceptions",
+                        b"University of Illinois/NCSA"))):
+            raise ValueError("Incomplete LLVM upstream notice/legacy text")
         if declaration.get("matching_archive_hashes_verified") is not True:
             raise ValueError("Notice manifest did not verify matching source hashes")
         licensed = {x.get("component"): x.get("sha256")
