@@ -78,7 +78,7 @@ def validate(windows: Path, sources: Path, catalog_path: Path, commit: str) -> d
     if catalog.get("schema_version") != 1 or "2.8" not in catalog.get("release", ""):
         raise ValueError("Incorrect v2.8 source catalog")
     required = [e for e in catalog.get("entries", []) if e.get("required")]
-    if len(required) != 6 or len({e["id"] for e in required}) != 6:
+    if len(required) != 7 or len({e["id"] for e in required}) != 7:
         raise ValueError("Exactly six distinct source components expected")
     exe = file_required(windows, APP_EXE)
     manifest = read_json(windows, "build-manifest.json")
