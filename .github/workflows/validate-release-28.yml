@@ -1,0 +1,36 @@
+name: Validate v2.8 release gates (NO SIGNING)
+
+on:
+  push:
+    branches: [chore/2.8-signpath-release-prep, release/2.8-ready-for-signpath, release/2.8-unsigned-preparation]
+    paths:
+      - .github/workflows/sign-v2_8.yml
+      - .github/workflows/publish-v2_8-signed.yml
+      - .github/workflows/validate-release-28.yml
+      - tools/validate_release_workflows_28.py
+      - .github/workflows/publish-v2_8-unsigned.yml
+      - .github/workflows/review-28-final-unsigned.yml
+      - tools/assemble_unsigned_release_28.py
+      - docs/RELEASE_NOTES_2_8_UNSIGNED.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-release-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install YAML parser only for CI verification
+        run: python -m pip install "PyYAML==6.0.3"
+      - name: Validate all v2.8 workflows and fail-closed policies
+        run: python tools/validate_release_workflows_28.py
+      - name: Bytecode-compile 2.8 packager and release helpers
+        run: python -m compileall -q tools/assemble_signed_release_28.py tools/assemble_unsigned_release_28.py tools/package_release_notices.py tools/rebuild_onefile_with_qt.py tools/verify_presign_evidence_28.py

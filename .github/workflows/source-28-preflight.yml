@@ -1,0 +1,90 @@
+name: v2.8 source and license evidence preflight (NO SIGNING)
+
+on:
+  push:
+    branches:
+      - chore/2.8-signpath-release-prep
+    paths:
+      - .github/workflows/source-28-preflight.yml
+      - docs/source-archives-2_8.json
+      - docs/LGPL_RELINKING_2_8.md
+      - docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md
+      - tools/fetch_required_sources.py
+      - tools/verify_source_archives.py
+      - tools/package_release_notices.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v28-source-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-license-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Acquire exactly six required upstream archives
+        run: |
+          python tools/fetch_required_sources.py \
+            --catalog docs/source-archives-2_8.json \
+            --out-dir dist/source-candidates --require-all
+      - name: Verify published SHA-256 for all six sources
+        run: |
+          python tools/verify_source_archives.py \
+            --catalog docs/source-archives-2_8.json \
+            --source-dir dist/source-candidates \
+            --out dist/source-candidates/source-archive-audit.json \
+            --require-all-verified
+      - name: Extract third-party notices from the verified archives
+        run: |
+          python tools/package_release_notices.py \
+            --catalog docs/source-archives-2_8.json \
+            --release-version 2.8 \
+            --sources dist/source-candidates \
+            --out dist/source-candidates/THIRD_PARTY_NOTICES_2_8.zip
+      - name: Check completeness and stage 2.8 relinking material
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp docs/LGPL_RELINKING_2_8.md dist/source-candidates/
+          cp docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md dist/source-candidates/THIRD_PARTY_NOTICES_2_8.md
+          cp docs/third_party_libffi_license.txt dist/source-candidates/libffi-LICENSE.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import zipfile
+          base=Path("dist/source-candidates")
+          cat=json.loads(Path("docs/source-archives-2_8.json").read_text())
+          required=[x for x in cat["entries"] if x["required"]]
+          assert len(required)==6
+          assert all((base / r["filename"]).is_file() for r in required)
+          assert json.loads((base/"source-download-report.json").read_text())["all_required_archives_verified"]
+          assert json.loads((base/"source-archive-audit.json").read_text())["all_required_with_published_hashes"]
+          with zipfile.ZipFile(base/"THIRD_PARTY_NOTICES_2_8.zip") as z:
+              assert z.testzip() is None
+              assert len(z.namelist()) >= 65
+              assert "notice-manifest.json" in z.namelist()
+          print("All six source archives have verified matching SHA-256 and source notices were packaged.")
+          PY
+      - name: Upload prerelease technical source evidence (NOT legal certification)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-8-source-license-evidence-NOT-FOR-PUBLICATION
+          path: |
+            dist/source-candidates/source-download-report.json
+            dist/source-candidates/source-archive-audit.json
+            dist/source-candidates/THIRD_PARTY_NOTICES_2_8.zip
+            dist/source-candidates/LGPL_RELINKING_2_8.md
+            dist/source-candidates/THIRD_PARTY_NOTICES_2_8.md
+          if-no-files-found: warn
+          retention-days: 7

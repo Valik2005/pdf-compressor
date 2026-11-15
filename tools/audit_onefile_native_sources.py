@@ -17,7 +17,10 @@ COVERED_SOURCES = {
     "PySide6/Shiboken": "qtforpython-6.12.0",
     "PyMuPDF": "pymupdf-1.27.2.3",
     "MuPDF": "mupdf-1.27.2-native",
+    "Pillow codecs": "pillow-12.3.0",
+    "Mesa OpenGL software rasterizer": "mesa-11.2.2",
 }
+REQUIRED_TRANSITIVE_SOURCES = {"llvm-3.6.2"}  # LLVM 3.6.2 is statically embedded inside Mesa fallback DLL.
 MANUAL_COMPONENTS = {
     "OpenSSL": "OpenSSL source/version and applicable Apache-style notices",
     "Pillow codecs": "Pillow, bundled codecs (AVIF/WebP/JPEG/etc) and their notices",
@@ -78,7 +81,7 @@ def audit(bundle: dict, catalog: dict) -> dict:
     if bundle.get("schema_version") != 1 or not isinstance(bundle.get("all_entries"), list):
         raise ValueError("Expected a PyInstaller onefile audit with all entries")
     archives = {item["id"]: item for item in catalog["entries"] if item.get("required")}
-    missing = sorted(set(COVERED_SOURCES.values()) - set(archives))
+    missing = sorted((set(COVERED_SOURCES.values()) | REQUIRED_TRANSITIVE_SOURCES) - set(archives))
     rows = []
     for item in bundle["all_entries"]:
         path = item["name"]

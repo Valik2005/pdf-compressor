@@ -11,10 +11,11 @@ from html import unescape
 import json
 from pathlib import Path
 import re
+import time
 import urllib.parse
 import urllib.request
 
-ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com", "casper.mupdf.com", "mse.uk.distfiles.macports.org"}
+ALLOWED_HOSTS = {"download.qt.io", "files.pythonhosted.org", "mupdf.com", "casper.mupdf.com", "mse.uk.distfiles.macports.org", "archive.mesa3d.org", "releases.llvm.org"}
 SHA256_RE = re.compile(r"SHA-256\s+Hash\s*:\s*([a-fA-F0-9]{64})", re.I)
 MAX_SIZE = 600 * 1024 * 1024
 
@@ -86,19 +87,30 @@ def acquire(catalog_path: Path, out_dir: Path) -> dict:
             if not digest and len(candidates) > 1:
                 raise ValueError("Unpinned mirrored downloads are not permitted")
             for url in candidates:
-                try:
-                    actual = fetch(url, out_dir / filename)
-                    record["downloaded_sha256"] = actual
-                    if digest and actual.lower() != digest.lower():
-                        (out_dir / filename).unlink(missing_ok=True)
-                        errors.append("Hash mismatch: " + url)
-                        continue
-                    record["downloaded_from"] = url
-                    record["status"] = ("hash_matches_official_source" if digest
-                                        else "UNVERIFIED_NO_OFFICIAL_CHECKSUM")
+                # Official source mirrors occasionally time out. Retry transient
+                # transfer failures, but never accept an archive without its exact
+                # pinned SHA-256; unexpected hosts remain rejected by fetch().
+                for attempt in range(1, 4):
+                    try:
+                        actual = fetch(url, out_dir / filename)
+                        record["downloaded_sha256"] = actual
+                        if digest and actual.lower() != digest.lower():
+                            (out_dir / filename).unlink(missing_ok=True)
+                            errors.append("Hash mismatch: " + url)
+                            break  # Try the next pinned mirror, not unverified bytes.
+                        record["downloaded_from"] = url
+                        record["status"] = ("hash_matches_official_source" if digest
+                                            else "UNVERIFIED_NO_OFFICIAL_CHECKSUM")
+                        break
+                    except Exception as retry_error:
+                        errors.append(f"{url} (attempt {attempt}/3): {retry_error}")
+                        # Programming/security errors must fail immediately.
+                        retryable = isinstance(retry_error, (OSError, TimeoutError, ConnectionError))
+                        if not retryable or attempt == 3:
+                            break
+                        time.sleep(min(2 ** attempt, 8))
+                if record["status"] != "pending":
                     break
-                except Exception as retry_error:
-                    errors.append(f"{url}: {retry_error}")
             if record["status"] == "pending":
                 raise ValueError("All source locations failed: " + "; ".join(errors))
         except Exception as exc:
@@ -128,7 +140,7 @@ def main() -> None:
     args = p.parse_args()
     report = acquire(args.catalog, args.out_dir)
     for entry in report["archives"]:
-        print(entry["id"], entry["status"])
+        print(entry["id"], entry["status"], entry.get("error", "")[:250])
     if args.require_all and not report["all_required_archives_verified"]:
         p.exit(2, "Required source archive acquisition/verification is incomplete.\n")
 

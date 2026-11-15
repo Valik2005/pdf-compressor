@@ -4,3 +4,4 @@
 *.py text eol=lf
 *.pyw text eol=lf
 *.md text eol=lf
+docs/third_party/OPENSSL_3_5_9_LICENSE.txt text eol=lf

@@ -16,7 +16,7 @@ import zipfile
 SOURCES = {
     "qtbase-6.12.0-required": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt",
                                 "LICENSES/Apache-2.0.txt", "LICENSES/MIT.txt",
-                                "LICENSES/BSD-3-Clause.txt"],
+                                "LICENSES/BSD-3-Clause.txt", "LICENSES/BSL-1.0.txt"],
     "qtsvg-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtimageformats-6.12.0": ["LICENSES/LGPL-3.0-only.txt", "LICENSES/GPL-3.0-only.txt"],
     "qtforpython-6.12.0": [
@@ -29,6 +29,13 @@ SOURCES = {
 }
 
 
+EXTRA_28_SOURCES = {
+    "pillow-12.3.0": ["LICENSE"],
+    "mesa-11.2.2": ["docs/license.html"],
+    "llvm-3.6.2": ["LICENSE.TXT"],
+}
+
+
 def digest(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -37,10 +44,14 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
-def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path) -> dict:
+def make_pack(source_dir: Path, catalog: Path, project_license: Path,
+              out: Path, *, release_version: str = "2.7") -> dict:
+    if release_version not in ("2.7", "2.8"):
+        raise ValueError("Unsupported release label")
     entries = json.loads(catalog.read_text(encoding="utf-8"))["entries"]
-    selected = {e["id"]: e for e in entries if e["id"] in SOURCES}
-    if set(selected) != set(SOURCES):
+    specs = {**SOURCES, **EXTRA_28_SOURCES} if release_version == "2.8" else SOURCES
+    selected = {e["id"]: e for e in entries if e["id"] in specs}
+    if set(selected) != set(specs):
         raise ValueError("Missing required source entry in catalog")
     if not project_license.is_file():
         raise ValueError("Application AGPL LICENSE file missing")
@@ -50,7 +61,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
     verified_upstream = {item["id"]: item for item in download_report["archives"]
                          if item.get("status") == "hash_matches_official_source"}
     provenance = []
-    for component_id, paths in SOURCES.items():
+    for component_id, paths in specs.items():
         entry = selected[component_id]
         archive = source_dir / entry["filename"]
         reported = verified_upstream.get(component_id, {})
@@ -108,6 +119,67 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
         ).encode("utf-8"),
     }
     notices.update(extras)
+    if release_version == "2.8":
+        # Qt documents opengl32sw.dll as a Windows Mesa llvmpipe fallback.
+        # Preserve specific credits and provide original MIT/Boost license
+        # texts extracted from the verified QtBase 6.12.0 source archive.
+        # This does NOT certify the precise Qt wheel's compiled Mesa build.
+        mesa_attribution = (
+            "Qt for Windows / Mesa llvmpipe software OpenGL fallback (opengl32sw.dll)\n"
+            "Upstream reference: https://doc.qt.io/qt-6.12/windows-graphics.html\n"
+            "Qt/Mesa component attribution: https://doc.qt.io/qt-6/qt-attribution-llvmpipe.html\n"
+            "Qt 6.12 third-party inventory: https://doc.qt.io/qt-6/licenses-used-in-qt.html\n"
+            "Mesa licensing and copyright: https://docs.mesa3d.org/license.html\n"
+            "\n"
+            "Qt's public component attribution identifies:\n"
+            "  Mesa core: Copyright (C) 1999-2007 Brian Paul; MIT License.\n"
+            "  Khronos Group materials: Copyright (c) 2013-2016 The Khronos Group Inc.; MIT License.\n"
+            "  C11 <threads.h> emulation: Copyright yohhoy 2012; Boost Software License 1.0.\n"
+            "\n"
+            "Unmodified full MIT and Boost Software License 1.0 texts are "
+            "included separately in this archive at:\n"
+            "  components/qtbase-6.12.0-required/LICENSES/MIT.txt\n"
+            "  components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt\n"
+            "\n"
+            "These source-derived notices address known Qt upstream terms. "
+            "Embedded software OpenGL DLL is the unmodified PySide6 wheel file; "
+            "its embedded version markers identify Mesa 11.2.2 and LLVM 3.6.2. "
+            "The original version-pinned sources, COPYING and historical LLVM "
+            "LICENSE.TXT accompany the EXE. Exact build flags/patches remain unknown.\n"
+        )
+        # The exact PySide6 6.12.0 opengl32sw.dll used by the release was
+        # independently inspected and contains llvmpipe plus LLVM IR/JIT names.
+        # Bundling the full upstream LLVM notice (including the legacy NCSA
+        # license) is a prudent supplement, NOT a source-version or rebuild
+        # provenance claim for the third-party DLL.
+        llvm_notice = Path(__file__).resolve().parents[1] / "docs" / "third_party" / "LLVM_LICENSE_UPSTREAM.txt"
+        if not llvm_notice.is_file() or llvm_notice.stat().st_size < 10_000:
+            raise ValueError("Missing complete upstream LLVM license and exception text")
+        llvm_text = llvm_notice.read_bytes()
+        for marker in (b"Apache License", b"LLVM Exceptions", b"University of Illinois/NCSA"):
+            if marker not in llvm_text:
+                raise ValueError("Missing required LLVM upstream license section")
+        notices["notices/LLVM_LICENSE_UPSTREAM_2_8.txt"] = llvm_text
+        mesa_attribution += (
+            "\nExact legacy LLVM 3.6.2 license is retained at "
+            "components/llvm-3.6.2/LICENSE.TXT (University of Illinois/NCSA). "
+            "Modern Apache-2.0 with LLVM exceptions material is included as "
+            "supplementary contextual history at notices/LLVM_LICENSE_UPSTREAM_2_8.txt, "
+            "NOT substituted for the actual historic LLVM 3.6.2 terms.\n"
+        )
+        notices["notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt"] = mesa_attribution.encode("utf-8")
+        # These are the exact upstream files at GitHub tag openssl-3.5.9.
+        # The embedded libcrypto version reports 3.5.9, but this alone does
+        # not establish the original binary build's provenance or configuration.
+        for filename, local_name in (
+            ("LICENSE.txt", "OPENSSL_3_5_9_LICENSE.txt"),
+            ("AUTHORS.md", "OPENSSL_3_5_9_AUTHORS.md"),
+        ):
+            p = Path(__file__).resolve().parents[1] / "docs" / "third_party" / local_name
+            if not p.is_file() or p.stat().st_size < 500:
+                raise ValueError(f"Missing exact upstream OpenSSL 3.5.9 notice: {local_name}")
+            notices["components/openssl-3.5.9/" + filename] = p.read_bytes()
+
     ffi_notice = Path(__file__).resolve().parents[1] / "docs" / "third_party_libffi_license.txt"
     if not ffi_notice.is_file() or ffi_notice.stat().st_size < 500:
         raise ValueError("Full libffi MIT-style notice missing")
@@ -119,6 +191,7 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
         "full_binary_license_compliance_certified": False,
         "outstanding": [
             "Native component-to-source correspondence and transitive notices require final verification.",
+            "OpenSSL 3.5.9 LICENSE and AUTHORS are included from the upstream tag, but actual embedded DLL provenance still needs independent confirmation.",
             "Actual recombination of an ABI-preserving PE-resource modified Qt DLL passed Windows CI #42479642467; source-code-modified Qt compatibility not certified.",
             "Corresponding sources and license texts must be permanently available alongside public EXE; MSVC redistributable license rights must be established.",
         ],
@@ -129,10 +202,10 @@ def make_pack(source_dir: Path, catalog: Path, project_license: Path, out: Path)
             z.writestr(name, data)
         z.writestr("notice-manifest.json", json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         z.writestr("README.txt", (
-            "PDF Compressor 2.7 review notices (NOT a legal-compliance certificate).\n"
+            f"PDF Compressor {release_version} review notices (NOT a legal-compliance certificate).\n"
             "Full upstream source archives are separate GitHub Actions artifacts and must\n"
             "be included permanently if a distributable executable is published.\n"
-            "Rebuilding with modified Qt: docs/LGPL_RELINKING_2_7.md.\n"
+            f"Rebuilding with modified Qt: docs/LGPL_RELINKING_{release_version.replace('.', '_')}.md.\n"
         ))
     return report
 
@@ -143,8 +216,10 @@ def main() -> None:
     p.add_argument("--catalog", type=Path, default=Path("docs/source-archives-2_7.json"))
     p.add_argument("--license", type=Path, default=Path("LICENSE"))
     p.add_argument("--out", type=Path, default=Path("dist/release-notices-review.zip"))
+    p.add_argument("--release-version", choices=("2.7", "2.8"), default="2.7")
     args = p.parse_args()
-    report = make_pack(args.sources, args.catalog, args.license, args.out)
+    report = make_pack(args.sources, args.catalog, args.license, args.out,
+                       release_version=args.release_version)
     print("Source licenses extracted:", len(report["licenses_extracted_from_verified_sources"]))
     print("Source archive hashes checked:", len(report["source_archives"]))
     print("Prepared:", args.out)
