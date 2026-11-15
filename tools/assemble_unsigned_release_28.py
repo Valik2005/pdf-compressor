@@ -108,6 +108,17 @@ def assemble_unsigned_28(
                 sources_dir, entry["filename"]
             )
         files["reports/supplemental-source-report.json"] = supplement_report
+        from tools.audit_source_coverage_28 import (
+            PILLOW_UPSTREAM_DEPENDENCY_FILE, PILLOW_UPSTREAM_DEPENDENCY_BLOB,
+        )
+        original = require_file(
+            Path(__file__).resolve().parents[1] / "docs" / "third_party",
+            PILLOW_UPSTREAM_DEPENDENCY_FILE,
+        )
+        preserved = require_file(sources_dir, PILLOW_UPSTREAM_DEPENDENCY_FILE)
+        if original.read_bytes() != preserved.read_bytes():
+            raise ValueError("Pillow official tag build inputs differ from preserved release evidence")
+        files["reports/" + PILLOW_UPSTREAM_DEPENDENCY_FILE] = preserved
     elif os.environ.get("PDF28_REQUIRE_SUPPLEMENTAL") == "1":
         raise ValueError("Verified CPython/OpenSSL/libffi full source archives required")
 
