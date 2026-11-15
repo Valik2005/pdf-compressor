@@ -13,6 +13,8 @@ def test_source_pack_includes_complete_upstream_boost_mit_license_texts():
     assert "components/qtbase-6.12.0-required/LICENSES/BSL-1.0.txt" in NOTICES
     assert "notices/QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt" in NOTICES
     assert "notices/LLVM_LICENSE_UPSTREAM_2_8.txt" in NOTICES
+    assert "components/mesa-11.2.2/COPYING" in NOTICES
+    assert "components/llvm-3.6.2/LICENSE.TXT" in NOTICES
 
 
 def test_notice_pack_identifies_upstream_copyright_without_claiming_binary_certification():
@@ -22,13 +24,15 @@ def test_notice_pack_identifies_upstream_copyright_without_claiming_binary_certi
     assert "2013-2016 The Khronos Group" in code
     assert "yohhoy 2012" in code
     assert "Boost Software License 1.0" in code
-    assert "Exact provenance, additional Mesa/LLVM notices" in code
+    assert "Mesa 11.2.2 and LLVM 3.6.2" in code
+    assert "Exact build flags/patches remain unknown" in code
 
 
 def test_release_documentation_still_requires_specific_mesa_binary_evidence():
     notices = (ROOT / "docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md").read_text(encoding="utf-8")
     assert "QT_MESA_LLVMPIPE_ATTRIBUTION_2_8.txt" in notices
-    assert "does not establish complete Mesa attribution" in notices
+    assert "Mesa 11.2.2" in notices and "LLVM 3.6.2" in notices
+    assert "Exact Qt build flags and patches remain unknown" in notices
     assert "full MIT and Boost Software License 1.0 texts" in notices
 
 
@@ -43,7 +47,7 @@ def test_upstream_llvm_license_contains_both_new_and_legacy_sections():
 def test_llvm_package_still_does_not_claim_binary_provenance():
     notice_build = (ROOT / "tools/package_release_notices.py").read_text(encoding="utf-8")
     assert "LLVM_LICENSE_UPSTREAM_2_8.txt" in notice_build
-    assert "NOT certification" in notice_build
+    assert "NOT substituted for the actual historic LLVM 3.6.2 terms" in notice_build
     doc = (ROOT / "docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md").read_text(encoding="utf-8")
     assert "additional llvm precaution" in doc.lower()
     assert "not confirmation" in doc.lower()
