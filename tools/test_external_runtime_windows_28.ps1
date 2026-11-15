@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not $IsWindows) { throw 'Windows 10/11 x64 is required.' }
+if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Windows 10/11 x64 is required.' }
 $exe = (Resolve-Path -LiteralPath $ExePath -ErrorAction Stop).Path
 if ([Environment]::Is64BitOperatingSystem -ne $true) { throw 'Windows x64 is required.' }
 $build = [Environment]::OSVersion.Version.Build
