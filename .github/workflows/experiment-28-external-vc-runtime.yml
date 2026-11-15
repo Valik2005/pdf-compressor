@@ -65,6 +65,27 @@ jobs:
           assert source["redistribution_rights_verified"] is False
           print("Verified 62 packed native members; no bundled MSVC/UCRT/API-set DLLs")
           '@ | python -
+      - name: Record exact unsigned 62-native EXE test manifest
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path dist/PDF_Compressor_2_8.exe).Path
+          $sha = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $native = Get-Content dist/native-binary-origin.json -Raw | ConvertFrom-Json
+          if ($native.native_file_count -ne 62 -or $native.exe_sha256 -ne $sha -or
+              $native.source_git_commit -ne $env:GITHUB_SHA) {
+            throw 'Test manifest and native evidence do not match the exact experiment'
+          }
+          $manifest = [ordered]@{
+            schema_version = 1
+            status = 'EXPERIMENT_ONLY'
+            source_git_commit = "$env:GITHUB_SHA"
+            exe_sha256 = $sha
+            native_file_count = 62
+            bundled_microsoft_runtime_count = 0
+            requires_official_vc_redist_x64 = $true
+            release_authorized = $false
+          }
+          $manifest | ConvertTo-Json | Set-Content -Encoding utf8 dist/runtime-experiment-manifest.json
       - name: Record official system VC runtime presence (diagnostic not a licensing claim)
         shell: pwsh
         run: |
@@ -84,7 +105,7 @@ jobs:
       - name: Reuse consumer Windows prerequisite script to test isolated EXE
         shell: pwsh
         run: |
-          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ReportPath dist/runtime-validation.json -LaunchSmoke
+          pwsh -NoProfile -File tools/test_external_runtime_windows_28.ps1 -ExePath dist/PDF_Compressor_2_8.exe -ManifestPath dist/runtime-experiment-manifest.json -ReportPath dist/runtime-validation.json -LaunchSmoke
           $status = Get-Content dist/runtime-validation.json -Raw | ConvertFrom-Json
           if (-not $status.gui_smoke_passed -or $status.missing_system_dlls.Count -ne 0 -or $status.release_approved) {
             throw 'Experimental Windows runtime prerequisite report failed'
@@ -98,5 +119,6 @@ jobs:
             dist/native-binary-origin.json
             dist/native-collection-sources.json
             dist/runtime-validation.json
+            dist/runtime-experiment-manifest.json
           retention-days: 7
           if-no-files-found: error
