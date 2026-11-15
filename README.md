@@ -17,7 +17,7 @@ English and Russian UI · Windows 10/11 · Free and open source
   <img alt="⬇ Download PDF Compressor 2.8 UNSIGNED EXE" src="https://img.shields.io/static/v1?label=%E2%AC%87%20DOWNLOAD&amp;message=PDF%20Compressor%202.8%20UNSIGNED%20EXE&amp;color=238636&amp;style=for-the-badge&amp;logo=windows11&amp;logoColor=white" />
 </a>
 
-**One EXE · No Python installation · ≈70 MB**
+**One EXE · No Python installation · Official Microsoft VC++ x64 Runtime required · ≈65 MB**
 
 [Direct EXE download](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [Release page](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
@@ -55,12 +55,12 @@ Use the green **DOWNLOAD** button at the top of this page. It links **directly**
 | :-- | :-- |
 | **Version** | 2.8 (stable, unsigned) |
 | **System** | Windows 10/11, 64-bit |
-| **Package** | Single EXE, no installer or Python |
-| **File size** | ≈70 MB |
+| **Package** | Single EXE, no installer or Python; official Microsoft VC++ Redistributable x64 installed separately |
+| **File size** | ≈65 MB (exact value depends on final build) |
 
 [**Direct EXE download**](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/PDF_Compressor_2_8.exe) · [All release assets and licenses](https://github.com/Valik2005/pdf-compressor/releases/tag/v2.8) · [Verify SHA-256](https://github.com/Valik2005/pdf-compressor/releases/download/v2.8/SHA256SUMS.txt)
 
-> **WARNING: The EXE is unsigned.** Windows SmartScreen may warn. SHA-256 checks file integrity against the published hash; it is not proof of publisher identity or a guarantee of malware-free software.
+> **WARNING: The EXE is unsigned.** SmartScreen may warn, and Windows 11 **Smart App Control can completely block unknown unsigned EXEs without an individual allow-list**. Don't disable device protection just to launch the app. SHA-256 checks file integrity but does not prove publisher identity or malware-free status. The **official [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/)** must already be installed. The application does not bundle Microsoft runtime DLLs.
 
 ## 🖥️ Windows installation from source
 
