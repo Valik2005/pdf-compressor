@@ -91,6 +91,10 @@ $report = [ordered]@{
     registered_x64_vc_runtime_version = $runtimeVersion
     official_vc_runtime_prerequisite_satisfied = $runtimePrerequisiteSatisfied
     gui_smoke_passed = $false
+    launch_status = 'not_attempted'
+    launch_error_category = $null
+    code_integrity_3077_event_count = 0
+    code_integrity_3077_recent_utc = @()
     note = 'This only checks prerequisites and GUI launch, not full Windows 10/11 PDF regressions or legal compliance.'
 }
 if ($runtimePrerequisiteSatisfied -and $LaunchSmoke) {
@@ -112,9 +116,35 @@ if ($runtimePrerequisiteSatisfied -and $LaunchSmoke) {
             $process.Refresh()
             if ($process.HasExited) { throw "EXE exited during GUI smoke check: $($process.ExitCode)" }
             $report.gui_smoke_passed = $true
+            $report.launch_status = 'passed'
         } finally {
             $process.Refresh()
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+        }
+    } catch {
+        # A Windows 11 App Control / Smart App Control denial is a real failed
+        # acceptance check. Keep protection enabled; report the failure instead
+        # of letting Start-Process terminate before the JSON can be written.
+        $launchError = [string]$_.Exception.Message
+        $policyBlocked = $launchError -match '(?i)application control|app control|политика управления приложениями|политик.{0,45}заблокир'
+        $report.launch_status = if ($policyBlocked) { 'blocked_by_app_control' } else { 'start_failed' }
+        $report.launch_error_category = if ($policyBlocked) { 'application_control_policy' } else { 'other_launch_error' }
+        # Never include a Windows username, file path or raw exception in JSON.
+        try {
+            $recent = @(Get-WinEvent -FilterHashtable @{
+                LogName = 'Microsoft-Windows-CodeIntegrity/Operational'
+                Id = 3077
+                StartTime = (Get-Date).AddMinutes(-20)
+            } -MaxEvents 30 -ErrorAction Stop |
+              Where-Object { [string]$_.Message -match 'PDF_Compressor_2_8\.exe' } |
+              Select-Object -First 5)
+            $report.code_integrity_3077_event_count = $recent.Count
+            $report.code_integrity_3077_recent_utc = @(
+                $recent | ForEach-Object { $_.TimeCreated.ToUniversalTime().ToString('o') }
+            )
+        } catch {
+            # No events / inaccessible logs are not reasons to conceal a denial.
+            $report.code_integrity_3077_event_count = 0
         }
     } finally {
         $env:PATH = $oldPath
@@ -132,8 +162,14 @@ if ($ReportPath) {
 Write-Host "Experimental PDF Compressor v2.8, SHA-256: $sha"
 Write-Host "OS build: $build; Microsoft runtime missing: $($missing -join ', ')"
 Write-Host "Registered official VC++ x64 runtime: $installed ($runtimeVersion)"
-Write-Host "GUI smoke passed: $($report.gui_smoke_passed)"
+Write-Host "GUI smoke passed: $($report.gui_smoke_passed); launch status: $($report.launch_status)"
 Write-Host "Client Windows: $consumerWindows; official VC++ x64 runtime registered and files present: $runtimePrerequisiteSatisfied"
+if ($report.launch_status -eq 'blocked_by_app_control') {
+    throw 'Windows App Control blocked the unsigned EXE. Report saved if -ReportPath was supplied. Inspect Windows Security > App & browser control > Smart App Control and CodeIntegrity/Operational event 3077. Do NOT disable protection to pass this test. Client acceptance: BLOCKED.'
+}
+if ($report.launch_status -eq 'start_failed') {
+    throw 'EXE startup failed; the redacted diagnostic JSON was saved if -ReportPath was supplied. Client acceptance: FAILED.'
+}
 if (-not $runtimePrerequisiteSatisfied) {
     throw 'Official Microsoft VC++ x64 Redistributable prerequisite is not confirmed (registration or system DLLs missing). Install only from Microsoft, then retest; this script never installs it.'
 }
