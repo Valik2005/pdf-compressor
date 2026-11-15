@@ -45,5 +45,5 @@ def test_llvm_package_still_does_not_claim_binary_provenance():
     assert "LLVM_LICENSE_UPSTREAM_2_8.txt" in notice_build
     assert "NOT certification" in notice_build
     doc = (ROOT / "docs/THIRD_PARTY_NOTICES_RELEASE_2_8.md").read_text(encoding="utf-8")
-    assert "additional LLVM precaution" in doc.lower()
+    assert "additional llvm precaution" in doc.lower()
     assert "not confirmation" in doc.lower()
