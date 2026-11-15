@@ -43,12 +43,16 @@ my-modified-qt/
 py -3.14 tools\rebuild_onefile_with_qt.py --release-version 2.8 --qt-overrides .\my-modified-qt --work-dir .\modified-rebuild-28
 ```
 
-4. Inspect `modified-rebuild-28\dist\qt-relink-build-report.json` for replaced binary SHA-256 values and `bundle-audit.json` for the final native archive; run the EXE and test its UI and PDF functions.
+4. Inspect `modified-rebuild-28\recipient-qt-relink-manifest.json` for the **original wheel SHA-256 and exact replacement SHA-256 of every modified Qt DLL**. The build script generates this manifest automatically after copying your specified modified DLL into an isolated virtual environment; you do **not** need to edit Qt's installed wheel RECORD or hand-write a legal waiver. Then inspect `modified-rebuild-28\dist\qt-relink-build-report.json` and `bundle-audit.json` for the final onefile bytes; run the EXE and test its UI and PDF functions.
 
 The tool refuses unknown paths, symlinks, empty files and non-DLL/PYD overrides. It does not compile Qt for you. Qt 6.12 bindings and native plugin compatibility cannot be guaranteed for arbitrary changes.
 
+**Integrity guarantees:** The normal release builder still requires every installed-wheel DLL to match its original `dist-info/RECORD`. A **recipient rebuild only** passes an extra manifest to the PyInstaller source auditor for the exact DLL names and original/replacement hashes declared by the user; unrelated DLL changes are still rejected. That source audit explicitly records `recipient_qt_relink=true` and `recipient_modified_qt_count`. Conversely, the official unsigned release cross-check **rejects** any `recipient_qt_relink` or `recipient_modified_qt` value, so the official three-file release can never silently include a modified-wheel exception. The changed EXE is a user rebuild, not an official authenticated release.
+
 ## Prior technical evidence and limits
 
-The historical Qt 6.12.0 one-file resource-edit replacement test, with replacement SHA-256 checks and Windows offscreen launch, succeeded in [GitHub Actions #42479642467](https://github.com/Valik2005/pdf-compressor/actions/runs/42479642467). This demonstrates PyInstaller recombination with an ABI-preserving native DLL change, **not** end-to-end recompilation from modified Qt source.
+**Current v2.8 proof:** [GitHub Actions run #43658575876](https://github.com/Valik2005/pdf-compressor/actions/runs/43658575876) on isolated release-branch commit `8d65e64808c04b93cc8e4fec41de2744ee5af6c4` **passed** on Windows: a PE-resource-modified `Qt6Widgets.dll` was injected into the isolated Qt 6.12.0 wheel; the declared original/replacement SHA manifest allowed that exact recipient override, the actual onefile embedded modified DLL SHA-256 matched `a8f9cf537438f6f9e29c45bd75f97b06450db4fd61f347a23485296c70f1d431`, and the Qt GUI launched offscreen. The unsigned EXE's overall SHA-256 was recorded independently in CI. The original strict release-source/EXE audit remains separately tested; **this verifies ABI-preserving recombination, not source-code-modified Qt compatibility or legal compliance**.
+
+For historical comparison, [GitHub Actions #42479642467](https://github.com/Valik2005/pdf-compressor/actions/runs/42479642467) previously tested similar ABI-preserving replacement on an older branch. The latest run above specifically uses the current `release_windows_2_8.spec`.
 
 The corresponding-source/license pack for v2.8 must be independently audited before public distribution. Neither replacing library files nor these scripts alone establish compliance with every LGPL, GPL, AGPL, copyright, distribution or installation-information requirement. Users retain their applicable LGPL rights to modify and debug the Qt libraries.
