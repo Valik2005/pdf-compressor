@@ -15,6 +15,45 @@ import json
 from pathlib import Path
 import shutil
 
+PILLOW_TIFF_PATCH_GIT_BLOB = "e7a88cadcbfe21fef40386627b9473c80b183ddf"
+PILLOW_TIFF_PATCH = (
+    Path(__file__).resolve().parents[1] / "docs" / "third_party"
+    / "PILLOW_TIFF_4_7_1_CVE_PATCH.patch"
+)
+
+
+def verify_libtiff_vendor_patch(sbom: dict) -> dict:
+    """Check supplier SBOM's actual base64 patch against the original tag blob."""
+    source = PILLOW_TIFF_PATCH.read_bytes().replace(b"\r\n", b"\n")
+    if b"\r" in source:
+        raise ValueError("Unexpected original Pillow TIFF patch line endings")
+    git_blob = hashlib.sha1(
+        b"blob " + str(len(source)).encode("ascii") + b"\0" + source
+    ).hexdigest()
+    if git_blob != PILLOW_TIFF_PATCH_GIT_BLOB:
+        raise ValueError("Pillow TIFF security patch differs from official 12.3.0 tag")
+    candidates = [x for x in sbom.get("components", [])
+                  if x.get("bom-ref") == "pkg:generic/libtiff"
+                  and x.get("name") == "libtiff"]
+    if len(candidates) != 1:
+        raise ValueError("Exact official Pillow libtiff component not found")
+    patches = candidates[0].get("pedigree", {}).get("patches", [])
+    found = []
+    for patch in patches:
+        wrapper = patch.get("diff", {}).get("text", {})
+        if wrapper.get("encoding") != "base64":
+            continue
+        try:
+            data = base64.b64decode(wrapper.get("content", ""), validate=True)
+        except Exception as exc:
+            raise ValueError("Invalid Pillow vendor SBOM patch data") from exc
+        found.append(data)
+    if source not in found:
+        raise ValueError("Pillow SBOM libtiff patch differs from original tag source")
+    return {"tag_git_blob": git_blob, "patch_sha256": sha256_bytes(source),
+            "vendor_sbom_patch_matched": True}
+
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -147,6 +186,7 @@ def capture(native_path: Path, manifest_path: Path,
         raise ValueError("Pillow vendor SBOM bytes differ from installed wheel RECORD")
     parsed = json.loads(source)
     assessed = analyze_sbom(parsed, exact_members)
+    patch = verify_libtiff_vendor_patch(parsed)
     report = {
         "schema_version": 1,
         "source_git_commit": manifest.get("source_git_commit"),
@@ -155,6 +195,7 @@ def capture(native_path: Path, manifest_path: Path,
         "sbom_wheel_relative_path": str(entry).replace("\\", "/"),
         "sbom_sha256": sha,
         "sbom_matches_installed_wheel_record": True,
+        "official_libtiff_patch_evidence": patch,
         **assessed,
         "corresponding_source_complete": False,
         "legal_compliance_certified": False,
@@ -180,7 +221,10 @@ def verify(windows_dir: Path) -> dict:
             or report.get("corresponding_source_complete") is not False
             or report.get("legal_compliance_certified") is not False):
         raise ValueError("Pillow wheel SBOM report/source/EXE identity mismatch")
-    expected = analyze_sbom(json.loads(source), pillow_members(native))
+    sbom = json.loads(source)
+    expected = analyze_sbom(sbom, pillow_members(native))
+    if report.get("official_libtiff_patch_evidence") != verify_libtiff_vendor_patch(sbom):
+        raise ValueError("Pillow libtiff vendor security patch evidence mismatch")
     for key, value in expected.items():
         if report.get(key) != value:
             raise ValueError("Independent Pillow SBOM analysis does not match build report: " + key)
