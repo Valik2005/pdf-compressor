@@ -288,6 +288,8 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
     additional_pillow_archives = {
         "libjpeg-turbo": "libjpeg-turbo-3.1.4.1",
         "harfbuzz": "harfbuzz-14.2.1",
+        "libwebp": "libwebp-1.6.0",
+        "brotli": "brotli-1.2.0",
     }
     for candidate in candidates:
         source_id = additional_pillow_archives.get(candidate["component"])
