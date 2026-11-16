@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PDF28_REQUIRE_SYSTEM_MSVC: '1'
+      PDF28_REQUIRE_PILLOW_SBOM: '1'
     timeout-minutes: 12
     permissions:
       contents: read
@@ -117,6 +118,13 @@ jobs:
             --sources review/sources \
             --catalog docs/source-archives-2_8.json \
             --out review/source-coverage-report.json
+          python - <<'PY'
+          from pathlib import Path
+          from tools.audit_pillow_wheel_sbom_28 import verify
+          r = verify(Path("review/windows"))
+          print("Exact Pillow wheel SBOM verified:", r["sbom_sha256"])
+          print("SBOM graph candidate count:", r["potential_native_dependency_count"])
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: v2-8-presign-cross-audit-NOT-A-LEGAL-CERTIFICATE
@@ -159,6 +167,7 @@ jobs:
           python tools/audit_onefile_native_sources.py --audit dist/bundle-audit.json --catalog docs/source-archives-2_8.json --out dist/native-source-mapping.json
           python tools/collect_license_evidence.py --exe dist/PDF_Compressor_2_8.exe --manifest dist/build-manifest.json --out dist/license-evidence.zip
           python tools/audit_native_binary_origin_28.py --exe dist/PDF_Compressor_2_8.exe --source-sha $env:GITHUB_SHA --out dist/native-binary-origin.json
+          python -m tools.audit_pillow_wheel_sbom_28 --native dist/native-source-mapping.json --manifest dist/build-manifest.json --sbom-out dist/pillow-wheel-sbom.cdx.json --report-out dist/pillow-wheel-sbom-evidence.json
       - name: Confirm VERSIONINFO, clean source, hashes, and native evidence
         shell: pwsh
         run: |
@@ -229,6 +238,8 @@ jobs:
             dist/native-source-mapping.json
             dist/native-binary-origin.json
             dist/native-collection-sources.json
+            dist/pillow-wheel-sbom.cdx.json
+            dist/pillow-wheel-sbom-evidence.json
             dist/license-evidence.zip
             dist/unsigned-authenticode-check.json
           if-no-files-found: error
@@ -240,6 +251,7 @@ jobs:
     env:
       PDF28_REQUIRE_SYSTEM_MSVC: '1'
       PDF28_REQUIRE_SUPPLEMENTAL: '1'
+      PDF28_REQUIRE_PILLOW_SBOM: '1'
     timeout-minutes: 22
     permissions:
       contents: read
