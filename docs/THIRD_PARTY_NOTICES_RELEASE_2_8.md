@@ -31,3 +31,15 @@ The unsigned v2.8 release must be audited against the **exact final EXE**. Its S
 The main application processes PDF content locally. The unsigned release is not sent to SignPath; it contains no signing credentials or users' PDF documents. Users can compare the published SHA-256, but a checksum is not a certificate of publisher identity.
 
 **Compliance gate:** verification of nine source archive hashes and applicable license notices, native bytes and Qt relinking instructions is not a legal conclusion about the complete corresponding source or every embedded codec/Mesa/LLVM notice. This selected EXE does not redistribute Microsoft runtime DLLs. Unresolved obligations block release **whether signed or unsigned**.
+
+
+## Supplemental corresponding-source evidence for the v2.8 audit branch (16 Nov 2026)
+
+The original **nine** required Qt/PyMuPDF/Pillow/Mesa/LLVM source archives remain mandatory. The candidate source/license ZIP on the source-remediation audit branch also includes **seven** additional version-pinned original archives, each checked against a published SHA-256: CPython 3.14.10, OpenSSL 3.5.9, libffi 3.4.4, libjpeg-turbo 3.1.4.1, HarfBuzz 14.2.1, libwebp 1.6.0, and Brotli 1.2.0. The exact source URLs/checksums and individual scope notes are in `docs/supplemental-source-archives-2_8.json`.
+
+The audit branch also distributes:
+- The original **Pillow 12.3.0 PEP 770 CycloneDX wheel SBOM** at `reports/pillow-wheel-sbom.cdx.json`, hash checked against its installed Windows wheel RECORD and tied to the actual EXE/native inventory.
+- `reports/pillow-wheel-sbom-evidence.json`, recording shipped Pillow native extensions versus potential vendor dependency-graph edges. Optional/excluded entries **must not** be treated as proof of static linkage or absence of transitive code.
+- `sources/PILLOW_TIFF_4_7_1_CVE_PATCH.patch`, retained from the official Pillow 12.3.0 Git tag and byte-matched to the original `libtiff` vendor SBOM pedigree.
+
+**Limits:** Further upstream source material or wheel-specific build patches may still be needed for actual compiled codecs/Qt components. The included upstream tarballs, wheel SPDX/CycloneDX notice material, original patch, and CI evidence support technical diligence, but **do not certify full AGPL/LGPL corresponding-source/recipient-rights compliance**. Do not publish this audit build until the remaining obligations and owner approval are addressed.
