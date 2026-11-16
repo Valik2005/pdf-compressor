@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import tarfile
@@ -17,6 +18,7 @@ import zipfile
 
 from tools.audit_onefile_native_sources import component
 from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
+from tools.audit_pillow_wheel_sbom_28 import verify as verify_pillow_sbom
 
 # Versions from the Pillow 12.3.0 wheel's independently checked license text
 # and its upstream Windows build dependency catalog. These are candidates,
@@ -234,6 +236,13 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
     if len({x["member"] for x in reported}) != len(entries):
         raise ValueError("Native membership mismatch")
 
+    vendor_sbom = None
+    if "Pillow codecs" in groups:
+        if (windows / "pillow-wheel-sbom-evidence.json").is_file():
+            vendor_sbom = verify_pillow_sbom(windows)
+        elif os.environ.get("PDF28_REQUIRE_PILLOW_SBOM") == "1":
+            raise ValueError("Missing required exact installed Pillow wheel SBOM")
+
     candidates = []
     if "Pillow codecs" in groups:
         evidence = windows / "license-evidence.zip"
@@ -271,6 +280,37 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
                 "decision": "check AV1/TIFF transitive compiled implementation before deciding applicability",
             })
 
+    # Version-locked wheel SBOM reflects official *candidate* edges for the
+    # exact C extensions that PyInstaller actually packs. Its optional/excluded
+    # scope does not prove linker membership; preserve that distinction.
+    if vendor_sbom is not None:
+        aliases = {
+            "libavif": "libavif",
+            "libjpeg-turbo": "libjpeg / libjpeg-turbo",
+            "libwebp": "libwebp",
+            "openjpeg": "OpenJPEG",
+            "tiff": "libtiff",
+            "freetype": "FreeType",
+            "lcms2": "Little CMS 2",
+            "harfbuzz": "HarfBuzz",
+            "zlib-ng": "zlib",
+            "libaom": None,
+            "dav1d": None,
+            "liblzma": None,
+        }
+        vendor_candidates = {
+            x["name"].lower(): x
+            for x in vendor_sbom["potential_native_dependencies_from_vendor_sbom"]
+        }
+        for candidate in candidates:
+            key = aliases.get(candidate["component"], candidate["component"])
+            hit = vendor_candidates.get(key.lower()) if key else None
+            candidate["official_wheel_sbom_edge_for_packaged_extension"] = bool(hit)
+            candidate["official_wheel_sbom_scope"] = (
+                hit["supplier_sbom_scope"] if hit else "not enumerated or transitive"
+            )
+            candidate["official_wheel_sbom_establishes_static_linkage"] = False
+
     without_sources = sorted(group for group in groups
                              if not SOURCE_GROUPS[group] and group not in supplemental_groups)
     # These are *explicit* checks, never silently treated as source complete.
@@ -295,6 +335,16 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         ),
         "component_groups_without_separate_source_archives": without_sources,
         "pillow_native_candidate_sources": candidates,
+        "pillow_vendor_sbom_evidence": (
+            {
+                "original_record_sha256": vendor_sbom["sbom_sha256"],
+                "record_sha256_verified": True,
+                "native_extensions_matched": len(vendor_sbom["native_pillow_extensions"]),
+                "potential_dependency_graph_count":
+                    vendor_sbom["potential_native_dependency_count"],
+                "dependency_graph_proves_actual_linkage": False,
+            } if vendor_sbom is not None else None
+        ),
         "outstanding_source_checks": review_items,
         "exact_native_member_identity_checked": True,
         "pillow_wheel_license_markers_checked": bool("Pillow codecs" in groups),
