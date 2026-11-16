@@ -14,7 +14,7 @@ import re
 import urllib.parse
 import urllib.request
 
-ALLOWED_HOSTS = frozenset({"www.python.org", "github.com"})
+ALLOWED_HOSTS = frozenset({"www.python.org", "github.com", "files.pythonhosted.org", "storage.googleapis.com"})
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 MAX_FILE_SIZE = 110 * 1024 * 1024
 
