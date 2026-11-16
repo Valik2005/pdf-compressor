@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -13,6 +14,8 @@ from tools.audit_pillow_wheel_sbom_28 import (
 
 
 def fixture_sbom():
+    import tools.audit_pillow_wheel_sbom_28 as evidence
+    libtiff_patch = evidence.PILLOW_TIFF_PATCH.read_bytes().replace(b"\r\n", b"\n")
     root = "pkg:pypi/pillow@12.3.0"
     return {
         "bomFormat": "CycloneDX",
@@ -21,6 +24,13 @@ def fixture_sbom():
         "components": [
             {"bom-ref": root + "#c-ext/PIL._imaging", "name": "PIL._imaging"},
             {"bom-ref": root + "#c-ext/PIL._avif", "name": "PIL._avif"},
+            {"bom-ref": "pkg:generic/libtiff", "name": "libtiff",
+             "version": "4.7.1", "pedigree": {
+                 "patches": [{"type": "cherry-pick", "diff": {"text": {
+                     "encoding": "base64",
+                     "content": base64.b64encode(libtiff_patch).decode("ascii")
+                 }}}]
+             }},
             {"bom-ref": "pkg:generic/libjpeg", "name": "libjpeg / libjpeg-turbo",
              "version": "3.1.4.1"},
             {"bom-ref": "pkg:generic/libavif", "name": "libavif",
@@ -114,6 +124,7 @@ def test_wheel_record_hash_is_verified_and_original_sbom_preserved(tmp_path, mon
     assert report["sbom_matches_installed_wheel_record"] is True
     assert out_sbom.read_bytes() == sbom_bytes
     assert verify(tmp_path) == report
+    assert report["official_libtiff_patch_evidence"]["vendor_sbom_patch_matched"] is True
 
     out_sbom.write_bytes(sbom_bytes.replace(b"libjpeg", b"libbadg"))
     with pytest.raises(ValueError, match="mismatch"):
@@ -125,3 +136,19 @@ def test_non_pillow_native_group_is_not_silently_counted():
         pillow_members({"native_component_mapping": [
             {"path": "PIL/_imaging.pyd", "component": "QtBase"},
         ]})
+
+
+def test_supplier_libtiff_patch_is_verified_against_original_tag():
+    import tools.audit_pillow_wheel_sbom_28 as evidence
+    result = evidence.verify_libtiff_vendor_patch(fixture_sbom())
+    assert result["tag_git_blob"] == evidence.PILLOW_TIFF_PATCH_GIT_BLOB
+    assert result["vendor_sbom_patch_matched"] is True
+
+
+def test_supplier_patch_tampering_is_rejected():
+    import tools.audit_pillow_wheel_sbom_28 as evidence
+    sbom = fixture_sbom()
+    patch = next(x for x in sbom["components"] if x["name"] == "libtiff")
+    patch["pedigree"]["patches"][0]["diff"]["text"]["content"] = "aW52YWxpZA=="
+    with pytest.raises(ValueError, match="differs"):
+        evidence.verify_libtiff_vendor_patch(sbom)
