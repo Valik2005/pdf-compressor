@@ -46,6 +46,24 @@
       "sha256": "a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e",
       "checksum_evidence": "https://api.github.com/repos/harfbuzz/harfbuzz/releases/tags/14.2.1",
       "scope": "Original upstream source for Pillow 12.3.0 official Windows HarfBuzz build candidate; exact linked wheel variant/patches unproven"
+    },
+    {
+      "id": "libwebp-1.6.0",
+      "version": "1.6.0",
+      "filename": "libwebp-1.6.0.tar.gz",
+      "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+      "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "checksum_evidence": "https://lists.buildroot.org/pipermail/buildroot/2026-January/794888.html",
+      "scope": "Original libwebp 1.6.0 upstream source bundle; exact Pillow Windows module linkage and any applied patch still need proof"
+    },
+    {
+      "id": "brotli-1.2.0",
+      "version": "1.2.0",
+      "filename": "brotli-1.2.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/f7/16/c92ca344d646e71a43b8bb353f0a6490d7f6e06210f8554c8f874e454285/brotli-1.2.0.tar.gz",
+      "sha256": "e310f77e41941c13340a95976fe66a8a95b01e783d430eeaf7a2f87e0a57dd0a",
+      "checksum_evidence": "https://pypi.org/project/brotli/1.2.0/",
+      "scope": "Original Brotli 1.2.0 PyPI source distribution including C codec source; linked Windows Pillow build flags still require proof"
     }
   ]
 }
