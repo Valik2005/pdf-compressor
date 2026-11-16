@@ -165,6 +165,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         by_name[name] = row
 
     supplemental_groups = {}
+    supplemental_verified_ids = set()
     if (sources / "supplemental-source-report.json").exists():
         supplement_catalog = (
             Path(__file__).resolve().parents[1] /
@@ -172,6 +173,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         )
         reviewed = verify_supplemental_sources(supplement_catalog, sources)
         verified_ids = {entry["id"] for entry in reviewed}
+        supplemental_verified_ids = verified_ids
         supplements = {
             "Python runtime": "cpython-3.14.10",
             "OpenSSL": "openssl-3.5.9",
@@ -280,6 +282,22 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
                 "decision": "check AV1/TIFF transitive compiled implementation before deciding applicability",
             })
 
+    # All original source archives below were independently hash-verified
+    # against official upstream release asset digests. This is source supply,
+    # not proof of exact static linkage or binary-patch equivalence.
+    additional_pillow_archives = {
+        "libjpeg-turbo": "libjpeg-turbo-3.1.4.1",
+        "harfbuzz": "harfbuzz-14.2.1",
+    }
+    for candidate in candidates:
+        source_id = additional_pillow_archives.get(candidate["component"])
+        candidate["supplemental_source_archive_id"] = (
+            source_id if source_id in supplemental_verified_ids else None
+        )
+        candidate["supplemental_original_source_sha256_verified"] = bool(
+            source_id and source_id in supplemental_verified_ids
+        )
+
     # Version-locked wheel SBOM reflects official *candidate* edges for the
     # exact C extensions that PyInstaller actually packs. Its optional/excluded
     # scope does not prove linker membership; preserve that distinction.
@@ -330,9 +348,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "sources_catalogued_from_verified_archives": sorted({
             name for row in reported for name in row["upstream_source_archive_ids"]
         }),
-        "supplemental_archives_independently_verified": sum(
-            len(supplemental_groups.get(group, ())) for group in groups
-        ),
+        "supplemental_archives_independently_verified": len(supplemental_verified_ids),
         "component_groups_without_separate_source_archives": without_sources,
         "pillow_native_candidate_sources": candidates,
         "pillow_vendor_sbom_evidence": (
