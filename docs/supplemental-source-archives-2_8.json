@@ -28,6 +28,24 @@
       "sha256": "d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676",
       "checksum_evidence": "https://github.com/docker-library/repo-info/blob/master/repos/node/local/22-slim.md",
       "scope": "CPython 3.14.10 Windows PCbuild/get_externals.bat pins libffi-3.4.4; original upstream source tar verified by published Debian digest; CPython build patches remain a separate question."
+    },
+    {
+      "id": "libjpeg-turbo-3.1.4.1",
+      "version": "3.1.4.1",
+      "filename": "libjpeg-turbo-3.1.4.1.tar.gz",
+      "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz",
+      "sha256": "ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
+      "checksum_evidence": "https://api.github.com/repos/libjpeg-turbo/libjpeg-turbo/releases/tags/3.1.4.1",
+      "scope": "Original upstream source for Pillow 12.3.0 official Windows libjpeg-turbo build candidate; exact Windows wheel linkage and patches assessed independently"
+    },
+    {
+      "id": "harfbuzz-14.2.1",
+      "version": "14.2.1",
+      "filename": "harfbuzz-14.2.1.tar.xz",
+      "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz",
+      "sha256": "a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e",
+      "checksum_evidence": "https://api.github.com/repos/harfbuzz/harfbuzz/releases/tags/14.2.1",
+      "scope": "Original upstream source for Pillow 12.3.0 official Windows HarfBuzz build candidate; exact linked wheel variant/patches unproven"
     }
   ]
 }
