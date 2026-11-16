@@ -23,7 +23,9 @@ from tools.assemble_patch_release import (
 from tools.verify_presign_evidence_28 import validate as verify_presign
 from tools.audit_source_coverage_28 import analyze as review_source_coverage
 from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
-from tools.audit_pillow_wheel_sbom_28 import verify as verify_pillow_sbom
+from tools.audit_pillow_wheel_sbom_28 import (
+    verify as verify_pillow_sbom, PILLOW_TIFF_PATCH
+)
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -141,6 +143,7 @@ def assemble_unsigned_28(
             raise ValueError("Supplier SBOM candidates must not be misrepresented as proven linked")
         for name in ("pillow-wheel-sbom-evidence.json", "pillow-wheel-sbom.cdx.json"):
             files["reports/" + name] = require_file(windows_dir, name)
+        files["sources/PILLOW_TIFF_4_7_1_CVE_PATCH.patch"] = PILLOW_TIFF_PATCH
     elif os.environ.get("PDF28_REQUIRE_PILLOW_SBOM") == "1":
         raise ValueError("Exact installed RECORD-verified Pillow wheel SBOM required")
 
