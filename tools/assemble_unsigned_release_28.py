@@ -23,6 +23,7 @@ from tools.assemble_patch_release import (
 from tools.verify_presign_evidence_28 import validate as verify_presign
 from tools.audit_source_coverage_28 import analyze as review_source_coverage
 from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
+from tools.audit_pillow_wheel_sbom_28 import verify as verify_pillow_sbom
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -133,6 +134,16 @@ def assemble_unsigned_28(
         files["reports/" + name] = require_file(windows_dir, name)
     files["reports/presign-technical-evidence.json"] = evidence_path
 
+    pillow_sbom = windows_dir / "pillow-wheel-sbom-evidence.json"
+    if pillow_sbom.exists():
+        verified_sbom = verify_pillow_sbom(windows_dir)
+        if verified_sbom.get("actual_static_linkage_confirmed") is not False:
+            raise ValueError("Supplier SBOM candidates must not be misrepresented as proven linked")
+        for name in ("pillow-wheel-sbom-evidence.json", "pillow-wheel-sbom.cdx.json"):
+            files["reports/" + name] = require_file(windows_dir, name)
+    elif os.environ.get("PDF28_REQUIRE_PILLOW_SBOM") == "1":
+        raise ValueError("Exact installed RECORD-verified Pillow wheel SBOM required")
+
     # Require the exact same native/source coverage audit produced independently
     # during cross-verify. This report explicitly records missing code and cannot
     # be used as a false claim of completed legal licensing review.
@@ -157,7 +168,7 @@ def assemble_unsigned_28(
         "\n"
         "sources/: nine core SHA-256 archives, plus separately checked runtime sources if provided.\n"
         "licenses/: Qt LGPL relinking instructions, licenses and notices.\n"
-        "reports/: build/source/native provenance, missing-source audit, Windows NotSigned evidence.\n"
+        "reports/: build/source/native provenance, original vendor Pillow wheel SBOM, missing-source audit, Windows NotSigned evidence.\n"
         "SOURCES_SHA256SUMS.txt: independent upstream checksums.\n"
         "\n"
         "Official project source: https://github.com/Valik2005/pdf-compressor\n"
