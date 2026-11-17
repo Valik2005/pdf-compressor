@@ -290,6 +290,14 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "harfbuzz": "harfbuzz-14.2.1",
         "libwebp": "libwebp-1.6.0",
         "brotli": "brotli-1.2.0",
+        "lcms2": "lcms2-2.19",
+        "tiff": "libtiff-4.7.1",
+        "libpng": "libpng-1.6.58",
+        "freetype": "freetype-2.14.3",
+        "libavif": "libavif-1.4.2",
+        "openjpeg": "openjpeg-2.5.4",
+        "zlib-ng": "zlib-ng-2.3.3",
+        "liblzma": "xz-5.8.3",
     }
     for candidate in candidates:
         source_id = additional_pillow_archives.get(candidate["component"])
