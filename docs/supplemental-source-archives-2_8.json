@@ -109,6 +109,35 @@
       "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d",
       "checksum_evidence": "https://fossies.org/linux/misc/libavif-1.4.2.tar.gz/",
       "scope": "Original release archive identical to versioned upstream libavif source by SHA-256; AV1 codec backends require separate review"
+    },
+    {
+      "id": "openjpeg-2.5.4",
+      "version": "2.5.4",
+      "filename": "openjpeg-2.5.4.tar.gz",
+      "url": "https://github.com/uclouvain/openjpeg/archive/v2.5.4.tar.gz",
+      "url_filename": "v2.5.4.tar.gz",
+      "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
+      "checksum_evidence": "https://fossies.org/linux/misc/openjpeg-2.5.4.tar.gz/",
+      "scope": "OpenJPEG JPEG-2000 upstream tag source; exact Pillow wheel static linkage/patches reviewed separately"
+    },
+    {
+      "id": "zlib-ng-2.3.3",
+      "version": "2.3.3",
+      "filename": "zlib-ng-2.3.3.tar.gz",
+      "url": "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+      "url_filename": "2.3.3.tar.gz",
+      "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "checksum_evidence": "https://fossies.org/linux/misc/zlib-ng-2.3.3.tar.gz/",
+      "scope": "Original upstream zlib-ng 2.3.3 tag sources; source patch and exact wheel linker settings unproven"
+    },
+    {
+      "id": "xz-5.8.3",
+      "version": "5.8.3",
+      "filename": "xz-5.8.3.tar.gz",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz",
+      "sha256": "3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0",
+      "checksum_evidence": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.3",
+      "scope": "liblzma upstream source candidate used in Pillow Windows libtiff build recipes; actual static inclusion must be established"
     }
   ]
 }
