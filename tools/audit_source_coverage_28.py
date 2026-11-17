@@ -298,7 +298,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "harfbuzz": "harfbuzz-14.2.1",
         "libwebp": "libwebp-1.6.0",
         "brotli": "brotli-1.2.0",
-        "lcms2": "lcms2-2.19",
+        "lcms2": "lcms2-2.19.1",
         "tiff": "libtiff-4.7.1",
         "libpng": "libpng-1.6.58",
         "freetype": "freetype-2.14.3",
