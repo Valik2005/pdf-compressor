@@ -52,9 +52,15 @@ def validate_catalog(catalog: dict) -> list[dict]:
         if not isinstance(sha, str) or not SHA256.fullmatch(sha):
             raise ValueError("Supplemental source lacks published SHA-256")
         parsed = urllib.parse.urlsplit(url) if isinstance(url, str) else None
+        upstream_basename = row.get("url_filename", name)
+        if (not isinstance(upstream_basename, str)
+                or not upstream_basename or upstream_basename != Path(upstream_basename).name
+                or "/" in upstream_basename or chr(92) in upstream_basename
+                or upstream_basename.startswith(".")):
+            raise ValueError("Invalid upstream source URL filename")
         if (parsed is None or parsed.scheme != "https"
                 or parsed.hostname not in ALLOWED_HOSTS
-                or parsed.path.rsplit("/", 1)[-1] != name
+                or parsed.path.rsplit("/", 1)[-1] != upstream_basename
                 or parsed.username or parsed.password or parsed.query):
             raise ValueError("Unapproved supplemental source origin: " + str(url))
         seen.add(ident)
