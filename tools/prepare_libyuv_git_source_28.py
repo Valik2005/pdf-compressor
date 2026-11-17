@@ -54,7 +54,9 @@ def archive_review(path: Path) -> int:
 
 def acquire(outdir: Path) -> dict:
     outdir.mkdir(parents=True, exist_ok=True)
-    final = outdir / FILENAME
+    # git -C <temporary checkout> resolves --output relative to the temporary
+    # repository, not the invoking Actions workspace.
+    final = (outdir / FILENAME).resolve()
     if final.exists():
         raise ValueError("Refusing to overwrite pinned Git source archive")
     with tempfile.TemporaryDirectory() as tmp:
