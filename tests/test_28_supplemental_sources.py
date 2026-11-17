@@ -76,3 +76,18 @@ def test_catalog_only_accepts_pinned_https_official_sources(tmp_path):
     data["entries"][0]["sha256"] = "unknown"
     with pytest.raises(ValueError):
         validate_catalog(data)
+
+
+def test_git_tag_url_basename_can_differ_from_local_source_archive(tmp_path):
+    _, _, source = fixture(tmp_path)
+    entry = source["entries"][0]
+    entry["filename"] = "zlib-ng-2.3.3.tar.gz"
+    entry["url"] = "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz"
+    entry["url_filename"] = "2.3.3.tar.gz"
+    assert len(validate_catalog(source)) == 1
+    entry["url_filename"] = "../2.3.3.tar.gz"
+    with pytest.raises(ValueError, match="upstream source URL filename"):
+        validate_catalog(source)
+    entry["url_filename"] = "another-version.tar.gz"
+    with pytest.raises(ValueError, match="Unapproved supplemental source origin"):
+        validate_catalog(source)
