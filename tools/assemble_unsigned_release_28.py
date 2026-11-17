@@ -26,6 +26,10 @@ from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supple
 from tools.audit_pillow_wheel_sbom_28 import (
     verify as verify_pillow_sbom, PILLOW_TIFF_PATCH
 )
+from tools.prepare_libyuv_git_source_28 import (
+    verify_prepared as verify_libyuv_source, FILENAME as LIBYUV_SOURCE_FILE,
+    REPORT as LIBYUV_SOURCE_REPORT,
+)
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -125,6 +129,14 @@ def assemble_unsigned_28(
     elif os.environ.get("PDF28_REQUIRE_SUPPLEMENTAL") == "1":
         raise ValueError("Verified CPython/OpenSSL/libffi full source archives required")
 
+    libyuv_source = None
+    if (sources_dir / LIBYUV_SOURCE_REPORT).exists():
+        libyuv_source = verify_libyuv_source(sources_dir)
+        files["sources/" + LIBYUV_SOURCE_FILE] = require_file(sources_dir, LIBYUV_SOURCE_FILE)
+        files["reports/" + LIBYUV_SOURCE_REPORT] = require_file(sources_dir, LIBYUV_SOURCE_REPORT)
+    elif os.environ.get("PDF28_REQUIRE_LIBYUV") == "1":
+        raise ValueError("Missing immutable Chromium libyuv Git tree/source archive")
+
     for name in RELEASE_DOCS:
         files["licenses/" + name] = require_file(sources_dir, name)
     files["licenses/license-evidence.zip"] = require_file(windows_dir, "license-evidence.zip")
@@ -185,6 +197,8 @@ def assemble_unsigned_28(
         f"{entry['sha256']}  {entry['filename']}\n"
         for entry in supplemental_rows
     )
+    if libyuv_source is not None:
+        source_sums += libyuv_source["archive_sha256"] + "  " + LIBYUV_SOURCE_FILE + "\n"
 
     destination.mkdir(parents=True)
     bundle = destination / BUNDLE_NAME
@@ -221,6 +235,7 @@ def assemble_unsigned_28(
         "unsigned_exe_sha256": digest(final_exe),
         "source_archives": SOURCES,
         "supplemental_source_archives": len(supplemental_rows),
+        "git_tree_source_archives": int(libyuv_source is not None),
         "files": sorted(x.name for x in destination.iterdir()),
         "license_compliance_certified": False,
         "release_authorized": False,
