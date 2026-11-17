@@ -66,6 +66,11 @@ jobs:
             --catalog docs/supplemental-source-archives-2_8.json \
             --out-dir dist/sources \
             --out-report dist/sources/supplemental-source-report.json
+      - name: Obtain exact Chromium libyuv source commit used by libavif 1.4.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m tools.prepare_libyuv_git_source_28 --out-dir dist/sources
       - name: Upload exact review sources from this commit (never a public release)
         uses: actions/upload-artifact@v4
         with:
