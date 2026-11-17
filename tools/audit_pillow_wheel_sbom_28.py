@@ -245,6 +245,11 @@ def main() -> None:
     print("Shipped Pillow native modules:", len(report["native_pillow_extensions"]))
     print("Potential linked libraries (NOT verified linkage):",
           report["potential_native_dependency_count"])
+    print("Actual packaged Pillow extensions:",
+          [x["native_member"] for x in report["native_pillow_extensions"]])
+    print("Supplier dependency graph (not actual native linkage):",
+          [(x["name"], x["version"], x["supplier_sbom_scope"])
+           for x in report["potential_native_dependencies_from_vendor_sbom"]])
 
 
 if __name__ == "__main__":
