@@ -78,7 +78,7 @@ def test_exact_member_report_is_honest_and_explicit(tmp_path):
     assert report["component_groups_without_separate_source_archives"] == [
         "OpenSSL", "Python runtime"
     ]
-    assert len(report["pillow_native_candidate_sources"]) == len(PILLOW_CANDIDATES) + 3
+    assert len(report["pillow_native_candidate_sources"]) == len(PILLOW_CANDIDATES) + 4
     assert report["native_members"][0]["upstream_source_archive_ids"] == ["pillow-12.3.0"]
     assert report["native_members"][1]["upstream_source_archive_ids"] == []
     assert all(x["full_corresponding_source_verified"] is False
