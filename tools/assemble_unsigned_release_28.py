@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import zipfile
@@ -20,6 +21,15 @@ from tools.assemble_patch_release import (
     SOURCE_REPORTS, BUNDLE_NAME, check_zip, digest, require_file,
 )
 from tools.verify_presign_evidence_28 import validate as verify_presign
+from tools.audit_source_coverage_28 import analyze as review_source_coverage
+from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
+from tools.audit_pillow_wheel_sbom_28 import (
+    verify as verify_pillow_sbom, PILLOW_TIFF_PATCH
+)
+from tools.prepare_libyuv_git_source_28 import (
+    verify_prepared as verify_libyuv_source, FILENAME as LIBYUV_SOURCE_FILE,
+    REPORT as LIBYUV_SOURCE_REPORT,
+)
 
 EXE_NAME = "PDF_Compressor_2_8.exe"
 SOURCES = 9  # v2.8: + Pillow/Mesa/LLVM; historical v2.7 remains 6.
@@ -90,6 +100,43 @@ def assemble_unsigned_28(
             raise ValueError("Source archive hash does not match pinned upstream checksum")
         files["sources/" + name] = archive
 
+    supplemental_rows = []
+    supplement_report = sources_dir / "supplemental-source-report.json"
+    if supplement_report.exists():
+        supplement_catalog = (
+            Path(__file__).resolve().parents[1] /
+            "docs" / "supplemental-source-archives-2_8.json"
+        )
+        supplemental_rows = verify_supplemental_sources(
+            supplement_catalog, sources_dir
+        )
+        for entry in supplemental_rows:
+            files["sources/" + entry["filename"]] = require_file(
+                sources_dir, entry["filename"]
+            )
+        files["reports/supplemental-source-report.json"] = supplement_report
+        from tools.audit_source_coverage_28 import (
+            PILLOW_UPSTREAM_DEPENDENCY_FILE, PILLOW_UPSTREAM_DEPENDENCY_BLOB,
+        )
+        original = require_file(
+            Path(__file__).resolve().parents[1] / "docs" / "third_party",
+            PILLOW_UPSTREAM_DEPENDENCY_FILE,
+        )
+        preserved = require_file(sources_dir, PILLOW_UPSTREAM_DEPENDENCY_FILE)
+        if original.read_bytes() != preserved.read_bytes():
+            raise ValueError("Pillow official tag build inputs differ from preserved release evidence")
+        files["reports/" + PILLOW_UPSTREAM_DEPENDENCY_FILE] = preserved
+    elif os.environ.get("PDF28_REQUIRE_SUPPLEMENTAL") == "1":
+        raise ValueError("Verified CPython/OpenSSL/libffi full source archives required")
+
+    libyuv_source = None
+    if (sources_dir / LIBYUV_SOURCE_REPORT).exists():
+        libyuv_source = verify_libyuv_source(sources_dir)
+        files["sources/" + LIBYUV_SOURCE_FILE] = require_file(sources_dir, LIBYUV_SOURCE_FILE)
+        files["reports/" + LIBYUV_SOURCE_REPORT] = require_file(sources_dir, LIBYUV_SOURCE_REPORT)
+    elif os.environ.get("PDF28_REQUIRE_LIBYUV") == "1":
+        raise ValueError("Missing immutable Chromium libyuv Git tree/source archive")
+
     for name in RELEASE_DOCS:
         files["licenses/" + name] = require_file(sources_dir, name)
     files["licenses/license-evidence.zip"] = require_file(windows_dir, "license-evidence.zip")
@@ -101,6 +148,29 @@ def assemble_unsigned_28(
         files["reports/" + name] = require_file(windows_dir, name)
     files["reports/presign-technical-evidence.json"] = evidence_path
 
+    pillow_sbom = windows_dir / "pillow-wheel-sbom-evidence.json"
+    if pillow_sbom.exists():
+        verified_sbom = verify_pillow_sbom(windows_dir)
+        if verified_sbom.get("actual_static_linkage_confirmed") is not False:
+            raise ValueError("Supplier SBOM candidates must not be misrepresented as proven linked")
+        for name in ("pillow-wheel-sbom-evidence.json", "pillow-wheel-sbom.cdx.json"):
+            files["reports/" + name] = require_file(windows_dir, name)
+        files["sources/PILLOW_TIFF_4_7_1_CVE_PATCH.patch"] = PILLOW_TIFF_PATCH
+    elif os.environ.get("PDF28_REQUIRE_PILLOW_SBOM") == "1":
+        raise ValueError("Exact installed RECORD-verified Pillow wheel SBOM required")
+
+    # Require the exact same native/source coverage audit produced independently
+    # during cross-verify. This report explicitly records missing code and cannot
+    # be used as a false claim of completed legal licensing review.
+    coverage_path = require_file(evidence_path.parent, "source-coverage-report.json")
+    recorded_coverage = json.loads(coverage_path.read_text(encoding="utf-8-sig"))
+    independent_coverage = review_source_coverage(windows_dir, sources_dir, catalog_path)
+    if recorded_coverage != independent_coverage:
+        raise ValueError("Independent source coverage audit differs from staged evidence")
+    if recorded_coverage.get("legal_compliance_certified") is not False:
+        raise ValueError("A source inventory cannot certify third-party redistribution rights")
+    files["reports/source-coverage-report.json"] = coverage_path
+
     check_zip(files["licenses/THIRD_PARTY_NOTICES_2_8.zip"], minimum_entries=65)
     check_zip(files["licenses/license-evidence.zip"])
 
@@ -111,9 +181,9 @@ def assemble_unsigned_28(
         "Authenticode signature. Verify SHA256SUMS.txt against the release page.\n"
         "A checksum is an integrity check, not proof of publisher identity.\n"
         "\n"
-        "sources/: nine SHA-256-verified upstream source archives.\n"
+        "sources/: nine core SHA-256 archives, plus separately checked runtime sources if provided.\n"
         "licenses/: Qt LGPL relinking instructions, licenses and notices.\n"
-        "reports/: build/source/native provenance, Windows NotSigned evidence.\n"
+        "reports/: build/source/native provenance, original vendor Pillow wheel SBOM, missing-source audit, Windows NotSigned evidence.\n"
         "SOURCES_SHA256SUMS.txt: independent upstream checksums.\n"
         "\n"
         "Official project source: https://github.com/Valik2005/pdf-compressor\n"
@@ -123,6 +193,12 @@ def assemble_unsigned_28(
         f"{entry['expected_sha256'].lower()}  {entry['filename']}\n"
         for entry in required
     )
+    source_sums += "".join(
+        f"{entry['sha256']}  {entry['filename']}\n"
+        for entry in supplemental_rows
+    )
+    if libyuv_source is not None:
+        source_sums += libyuv_source["archive_sha256"] + "  " + LIBYUV_SOURCE_FILE + "\n"
 
     destination.mkdir(parents=True)
     bundle = destination / BUNDLE_NAME
@@ -158,6 +234,8 @@ def assemble_unsigned_28(
         "source_git_commit": source_sha,
         "unsigned_exe_sha256": digest(final_exe),
         "source_archives": SOURCES,
+        "supplemental_source_archives": len(supplemental_rows),
+        "git_tree_source_archives": int(libyuv_source is not None),
         "files": sorted(x.name for x in destination.iterdir()),
         "license_compliance_certified": False,
         "release_authorized": False,

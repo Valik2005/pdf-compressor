@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "review_status": "Supplemental original sources; hashes establish exact upstream archives but not custom compiler flags or patches in installed wheels",
+  "entries": [
+    {
+      "id": "cpython-3.14.10",
+      "version": "3.14.10",
+      "filename": "Python-3.14.10.tar.xz",
+      "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+      "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "checksum_evidence": "https://www.python.org/downloads/release/python-31410/",
+      "scope": "Bundled CPython core/runtime and standard library; System Library exemption assessed separately"
+    },
+    {
+      "id": "openssl-3.5.9",
+      "version": "3.5.9",
+      "filename": "openssl-3.5.9.tar.gz",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz",
+      "sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+      "checksum_evidence": "https://api.github.com/repos/openssl/openssl/releases/tags/openssl-3.5.9",
+      "scope": "Version-matched OpenSSL source/notice; exact installed Python DLL compilation patches still need assessment"
+    },
+    {
+      "id": "libffi-3.4.4",
+      "version": "3.4.4",
+      "filename": "libffi-3.4.4.tar.gz",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz",
+      "sha256": "d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676",
+      "checksum_evidence": "https://github.com/docker-library/repo-info/blob/master/repos/node/local/22-slim.md",
+      "scope": "CPython 3.14.10 Windows PCbuild/get_externals.bat pins libffi-3.4.4; original upstream source tar verified by published Debian digest; CPython build patches remain a separate question."
+    },
+    {
+      "id": "libjpeg-turbo-3.1.4.1",
+      "version": "3.1.4.1",
+      "filename": "libjpeg-turbo-3.1.4.1.tar.gz",
+      "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz",
+      "sha256": "ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
+      "checksum_evidence": "https://api.github.com/repos/libjpeg-turbo/libjpeg-turbo/releases/tags/3.1.4.1",
+      "scope": "Original upstream source for Pillow 12.3.0 official Windows libjpeg-turbo build candidate; exact Windows wheel linkage and patches assessed independently"
+    },
+    {
+      "id": "harfbuzz-14.2.1",
+      "version": "14.2.1",
+      "filename": "harfbuzz-14.2.1.tar.xz",
+      "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz",
+      "sha256": "a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e",
+      "checksum_evidence": "https://api.github.com/repos/harfbuzz/harfbuzz/releases/tags/14.2.1",
+      "scope": "Original upstream source for Pillow 12.3.0 official Windows HarfBuzz build candidate; exact linked wheel variant/patches unproven"
+    },
+    {
+      "id": "libwebp-1.6.0",
+      "version": "1.6.0",
+      "filename": "libwebp-1.6.0.tar.gz",
+      "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+      "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "checksum_evidence": "https://lists.buildroot.org/pipermail/buildroot/2026-January/794888.html",
+      "scope": "Original libwebp 1.6.0 upstream source bundle; exact Pillow Windows module linkage and any applied patch still need proof"
+    },
+    {
+      "id": "brotli-1.2.0",
+      "version": "1.2.0",
+      "filename": "brotli-1.2.0.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/f7/16/c92ca344d646e71a43b8bb353f0a6490d7f6e06210f8554c8f874e454285/brotli-1.2.0.tar.gz",
+      "sha256": "e310f77e41941c13340a95976fe66a8a95b01e783d430eeaf7a2f87e0a57dd0a",
+      "checksum_evidence": "https://pypi.org/project/brotli/1.2.0/",
+      "scope": "Original Brotli 1.2.0 PyPI source distribution including C codec source; linked Windows Pillow build flags still require proof"
+    },
+    {
+      "id": "lcms2-2.19.1",
+      "version": "2.19.1",
+      "filename": "lcms2-2.19.1.tar.gz",
+      "url": "https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz",
+      "sha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",
+      "checksum_evidence": "https://api.github.com/repos/mm2/Little-CMS/releases/tags/lcms2.19.1",
+      "scope": "Supplier original Little CMS full source for Pillow native color-management extension; link flags/patch equivalence not established"
+    },
+    {
+      "id": "libtiff-4.7.1",
+      "version": "4.7.1",
+      "filename": "tiff-4.7.1.tar.gz",
+      "url": "https://download.osgeo.org/libtiff/tiff-4.7.1.tar.gz",
+      "sha256": "f698d94f3103da8ca7438d84e0344e453fe0ba3b7486e04c5bf7a9a3fabe9b69",
+      "checksum_evidence": "https://fossies.org/linux/misc/tiff-4.7.1.tar.gz/index_st.html",
+      "scope": "Original libtiff 4.7.1 release source; Pillow 12.3.0 downstream security patch from exact Git blob also bundled"
+    },
+    {
+      "id": "libpng-1.6.58",
+      "version": "1.6.58",
+      "filename": "libpng-1.6.58.tar.xz",
+      "url": "https://downloads.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
+      "sha256": "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+      "checksum_evidence": "https://lists.buildroot.org/pipermail/buildroot/2026-April/800977.html",
+      "scope": "Original libpng source archive, referenced by Pillow 12.3.0 Windows dependency build catalog; actual wheel native linkage assessed independently"
+    },
+    {
+      "id": "freetype-2.14.3",
+      "version": "2.14.3",
+      "filename": "freetype-2.14.3.tar.xz",
+      "url": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+      "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+      "checksum_evidence": "https://sourceforge.net/projects/freetype/files/freetype2/2.14.3/freetype-2.14.3.tar.xz/download",
+      "scope": "Original FreeType 2.14.3 source; only relevant if font rendering module is actually bundled and linked"
+    },
+    {
+      "id": "libavif-1.4.2",
+      "version": "1.4.2",
+      "filename": "libavif-1.4.2.tar.gz",
+      "url": "https://mse.uk.distfiles.macports.org/libavif/libavif-1.4.2.tar.gz",
+      "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d",
+      "checksum_evidence": "https://fossies.org/linux/misc/libavif-1.4.2.tar.gz/",
+      "scope": "Original release archive identical to versioned upstream libavif source by SHA-256; AV1 codec backends require separate review"
+    },
+    {
+      "id": "openjpeg-2.5.4",
+      "version": "2.5.4",
+      "filename": "openjpeg-2.5.4.tar.gz",
+      "url": "https://github.com/uclouvain/openjpeg/archive/v2.5.4.tar.gz",
+      "url_filename": "v2.5.4.tar.gz",
+      "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
+      "checksum_evidence": "https://fossies.org/linux/misc/openjpeg-2.5.4.tar.gz/",
+      "scope": "OpenJPEG JPEG-2000 upstream tag source; exact Pillow wheel static linkage/patches reviewed separately"
+    },
+    {
+      "id": "zlib-ng-2.3.3",
+      "version": "2.3.3",
+      "filename": "zlib-ng-2.3.3.tar.gz",
+      "url": "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+      "url_filename": "2.3.3.tar.gz",
+      "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "checksum_evidence": "https://fossies.org/linux/misc/zlib-ng-2.3.3.tar.gz/",
+      "scope": "Original upstream zlib-ng 2.3.3 tag sources; source patch and exact wheel linker settings unproven"
+    },
+    {
+      "id": "xz-5.8.3",
+      "version": "5.8.3",
+      "filename": "xz-5.8.3.tar.gz",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz",
+      "sha256": "3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0",
+      "checksum_evidence": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.3",
+      "scope": "liblzma upstream source candidate used in Pillow Windows libtiff build recipes; actual static inclusion must be established"
+    },
+    {
+      "id": "libaom-3.14.1",
+      "version": "3.14.1",
+      "filename": "libaom-3.14.1.tar.gz",
+      "url": "https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz",
+      "sha256": "44bf90dbd23e734d50e70a8c41c285193922938bd0d3bc2ee56764d181d55ef5",
+      "checksum_evidence": "https://lists.freebsd.org/archives/dev-commits-ports-branches/2026-June/014053.html",
+      "scope": "Source for libavif 1.4.2 Windows AV1 AOM backend pinned in ext/aom.cmd; exact codec build patches/configuration need assessment"
+    },
+    {
+      "id": "dav1d-1.5.3",
+      "version": "1.5.3",
+      "filename": "dav1d-1.5.3.tar.xz",
+      "url": "https://download.videolan.org/pub/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+      "sha256": "732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
+      "checksum_evidence": "https://get.videolan.org/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+      "scope": "Source for libavif 1.4.2 Windows AV1 dav1d backend pinned in ext/dav1d.cmd; exact codec build patches/configuration need assessment"
+    }
+  ]
+}
