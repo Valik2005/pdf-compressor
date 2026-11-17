@@ -64,6 +64,51 @@
       "sha256": "e310f77e41941c13340a95976fe66a8a95b01e783d430eeaf7a2f87e0a57dd0a",
       "checksum_evidence": "https://pypi.org/project/brotli/1.2.0/",
       "scope": "Original Brotli 1.2.0 PyPI source distribution including C codec source; linked Windows Pillow build flags still require proof"
+    },
+    {
+      "id": "lcms2-2.19",
+      "version": "2.19",
+      "filename": "lcms2-2.19.tar.gz",
+      "url": "https://github.com/mm2/Little-CMS/releases/download/lcms2.19/lcms2-2.19.tar.gz",
+      "sha256": "49e7e134e4299733dd0eda434fa468997a28ab3d33fa397c642b03644f552216",
+      "checksum_evidence": "https://api.github.com/repos/mm2/Little-CMS/releases/tags/lcms2.19",
+      "scope": "Supplier original Little CMS full source for Pillow native color-management extension; link flags/patch equivalence not established"
+    },
+    {
+      "id": "libtiff-4.7.1",
+      "version": "4.7.1",
+      "filename": "tiff-4.7.1.tar.gz",
+      "url": "https://download.osgeo.org/libtiff/tiff-4.7.1.tar.gz",
+      "sha256": "f698d94f3103da8ca7438d84e0344e453fe0ba3b7486e04c5bf7a9a3fabe9b69",
+      "checksum_evidence": "https://fossies.org/linux/misc/tiff-4.7.1.tar.gz/index_st.html",
+      "scope": "Original libtiff 4.7.1 release source; Pillow 12.3.0 downstream security patch from exact Git blob also bundled"
+    },
+    {
+      "id": "libpng-1.6.58",
+      "version": "1.6.58",
+      "filename": "libpng-1.6.58.tar.xz",
+      "url": "https://downloads.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
+      "sha256": "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+      "checksum_evidence": "https://lists.buildroot.org/pipermail/buildroot/2026-April/800977.html",
+      "scope": "Original libpng source archive, referenced by Pillow 12.3.0 Windows dependency build catalog; actual wheel native linkage assessed independently"
+    },
+    {
+      "id": "freetype-2.14.3",
+      "version": "2.14.3",
+      "filename": "freetype-2.14.3.tar.xz",
+      "url": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+      "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+      "checksum_evidence": "https://sourceforge.net/projects/freetype/files/freetype2/2.14.3/freetype-2.14.3.tar.xz/download",
+      "scope": "Original FreeType 2.14.3 source; only relevant if font rendering module is actually bundled and linked"
+    },
+    {
+      "id": "libavif-1.4.2",
+      "version": "1.4.2",
+      "filename": "libavif-1.4.2.tar.gz",
+      "url": "https://mse.uk.distfiles.macports.org/libavif/libavif-1.4.2.tar.gz",
+      "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d",
+      "checksum_evidence": "https://fossies.org/linux/misc/libavif-1.4.2.tar.gz/",
+      "scope": "Original release archive identical to versioned upstream libavif source by SHA-256; AV1 codec backends require separate review"
     }
   ]
 }
