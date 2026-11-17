@@ -39,7 +39,8 @@ PILLOW_CANDIDATES = {
 }
 # In addition to the 11 notices above, libavif can incorporate libaom and
 # dav1d. libtiff may incorporate liblzma. Check actual linkage/build evidence.
-POSSIBLE_TRANSITIVE = ("libaom", "dav1d", "liblzma")
+# libyuv can also be compiled into libavif when AVIF_LIBYUV=LOCAL.
+POSSIBLE_TRANSITIVE = ("libaom", "dav1d", "liblzma", "libyuv")
 PILLOW_BUILD_KEYS = {
     "libavif": "libavif",
     "libjpeg-turbo": "jpegturbo",
@@ -298,6 +299,8 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "openjpeg": "openjpeg-2.5.4",
         "zlib-ng": "zlib-ng-2.3.3",
         "liblzma": "xz-5.8.3",
+        "libaom": "libaom-3.14.1",
+        "dav1d": "dav1d-1.5.3",
     }
     for candidate in candidates:
         source_id = additional_pillow_archives.get(candidate["component"])
@@ -307,6 +310,35 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         candidate["supplemental_original_source_sha256_verified"] = bool(
             source_id and source_id in supplemental_verified_ids
         )
+
+    libavif_backend_pins = None
+    if "libavif-1.4.2" in supplemental_verified_ids:
+        source = sources / "libavif-1.4.2.tar.gz"
+        with tarfile.open(source, "r:gz") as archive:
+            scripts = {}
+            for item in archive.getmembers():
+                if item.isfile() and item.size <= 100_000:
+                    for filename in ("aom.cmd", "dav1d.cmd", "libyuv.cmd"):
+                        if item.name.endswith("/ext/" + filename):
+                            stream = archive.extractfile(item)
+                            if stream is None or filename in scripts:
+                                raise ValueError("Invalid libavif codec backend script: " + filename)
+                            scripts[filename] = stream.read().decode("utf-8", "replace").lower()
+        if set(scripts) != {"aom.cmd", "dav1d.cmd", "libyuv.cmd"}:
+            raise ValueError("Original libavif 1.4.2 missing backend pin scripts")
+        expected_pins = {
+            "aom.cmd": "git clone -b v3.14.1",
+            "dav1d.cmd": "git clone -b 1.5.3",
+            "libyuv.cmd": "git checkout 644251f25",
+        }
+        for file, marker in expected_pins.items():
+            if marker not in scripts[file]:
+                raise ValueError("libavif source backend pin mismatch: " + file)
+        libavif_backend_pins = {
+            "libaom": "3.14.1", "dav1d": "1.5.3",
+            "libyuv_source_commit_prefix": "644251f25",
+            "read_from_original_libavif_tarball": True,
+        }
 
     # Version-locked wheel SBOM reflects official *candidate* edges for the
     # exact C extensions that PyInstaller actually packs. Its optional/excluded
@@ -361,6 +393,7 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "supplemental_archives_independently_verified": len(supplemental_verified_ids),
         "component_groups_without_separate_source_archives": without_sources,
         "pillow_native_candidate_sources": candidates,
+        "libavif_original_backend_source_pins": libavif_backend_pins,
         "pillow_vendor_sbom_evidence": (
             {
                 "original_record_sha256": vendor_sbom["sbom_sha256"],
