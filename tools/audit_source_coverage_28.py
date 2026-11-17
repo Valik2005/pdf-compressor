@@ -19,6 +19,7 @@ import zipfile
 from tools.audit_onefile_native_sources import component
 from tools.fetch_supplemental_sources_28 import verify_prepared as verify_supplemental_sources
 from tools.audit_pillow_wheel_sbom_28 import verify as verify_pillow_sbom
+from tools.prepare_libyuv_git_source_28 import verify_prepared as verify_libyuv_source
 
 # Versions from the Pillow 12.3.0 wheel's independently checked license text
 # and its upstream Windows build dependency catalog. These are candidates,
@@ -283,6 +284,12 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
                 "decision": "check AV1/TIFF transitive compiled implementation before deciding applicability",
             })
 
+    libyuv_git = None
+    if (sources / "libyuv-git-source-report.json").exists():
+        libyuv_git = verify_libyuv_source(sources)
+    elif os.environ.get("PDF28_REQUIRE_LIBYUV") == "1":
+        raise ValueError("Missing required exact Git-pinned Chromium libyuv source archive")
+
     # All original source archives below were independently hash-verified
     # against official upstream release asset digests. This is source supply,
     # not proof of exact static linkage or binary-patch equivalence.
@@ -310,6 +317,11 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         candidate["supplemental_original_source_sha256_verified"] = bool(
             source_id and source_id in supplemental_verified_ids
         )
+        if candidate["component"] == "libyuv":
+            candidate["git_source_commit_and_tree_verified"] = bool(libyuv_git)
+            candidate["git_source_archive_sha256"] = (
+                libyuv_git["archive_sha256"] if libyuv_git else None
+            )
 
     libavif_backend_pins = None
     if "libavif-1.4.2" in supplemental_verified_ids:
@@ -394,6 +406,14 @@ def analyze(windows: Path, sources: Path, catalog_path: Path) -> dict:
         "component_groups_without_separate_source_archives": without_sources,
         "pillow_native_candidate_sources": candidates,
         "libavif_original_backend_source_pins": libavif_backend_pins,
+        "libyuv_original_git_source_evidence": (
+            {
+                "sha256": libyuv_git["archive_sha256"],
+                "git_commit": libyuv_git["git_commit_sha1"],
+                "git_tree": libyuv_git["git_tree_sha1"],
+                "binary_source_equivalence_proven": False,
+            } if libyuv_git else None
+        ),
         "pillow_vendor_sbom_evidence": (
             {
                 "original_record_sha256": vendor_sbom["sbom_sha256"],
