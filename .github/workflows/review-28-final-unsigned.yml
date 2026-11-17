@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pre-sign-acceptance-28-${{ github.ref }}
+  group: ${{ github.ref == 'refs/heads/audit/2.8-native-source-inventory' && 'pre-sign-acceptance-28-native-source-review-new' || format('pre-sign-acceptance-28-{0}', github.ref) }}
   cancel-in-progress: true
 
 jobs:
