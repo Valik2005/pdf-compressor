@@ -138,6 +138,24 @@
       "sha256": "3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0",
       "checksum_evidence": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.3",
       "scope": "liblzma upstream source candidate used in Pillow Windows libtiff build recipes; actual static inclusion must be established"
+    },
+    {
+      "id": "libaom-3.14.1",
+      "version": "3.14.1",
+      "filename": "libaom-3.14.1.tar.gz",
+      "url": "https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz",
+      "sha256": "44bf90dbd23e734d50e70a8c41c285193922938bd0d3bc2ee56764d181d55ef5",
+      "checksum_evidence": "https://lists.freebsd.org/archives/dev-commits-ports-branches/2026-June/014053.html",
+      "scope": "Source for libavif 1.4.2 Windows AV1 AOM backend pinned in ext/aom.cmd; exact codec build patches/configuration need assessment"
+    },
+    {
+      "id": "dav1d-1.5.3",
+      "version": "1.5.3",
+      "filename": "dav1d-1.5.3.tar.xz",
+      "url": "https://download.videolan.org/pub/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+      "sha256": "732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
+      "checksum_evidence": "https://get.videolan.org/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+      "scope": "Source for libavif 1.4.2 Windows AV1 dav1d backend pinned in ext/dav1d.cmd; exact codec build patches/configuration need assessment"
     }
   ]
 }
